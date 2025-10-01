@@ -34,11 +34,11 @@
 [Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Language/Version**: [e.g., Go 1.21, Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., database/sql, FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Testing**: [e.g., go test, pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, macOS CLI, iOS 15+, WASM or NEEDS CLARIFICATION]
 **Project Type**: [single/web/mobile - determines source structure]  
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
@@ -47,7 +47,39 @@
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**I. Modular Architecture**
+- [ ] Each feature component is a separate module with single responsibility
+- [ ] Modules communicate only through interfaces, no direct implementation coupling
+- [ ] Module boundaries clearly defined and documented
+
+**II. Pure/Impure Code Separation**
+- [ ] Pure logic separated from I/O and state-changing operations
+- [ ] All database, file system, network operations isolated in `io` modules
+- [ ] Pure functions do not import or depend on `io` modules
+
+**III. Test-Driven Development** *(NON-NEGOTIABLE)*
+- [ ] Tests written first and verified to fail before implementation
+- [ ] Red-Green-Refactor workflow documented in task ordering
+- [ ] All features include passing tests before considered complete
+
+**IV. CLI-First Interface**
+- [ ] All functionality exposed via CLI commands using subcommands
+- [ ] Database lifecycle phases separated: create, migrate, populate, restructure
+- [ ] Subcommands are independently executable and composable
+- [ ] Structured output to stdout, errors to stderr
+- [ ] No GUI, web, or graphical dependencies introduced
+
+**V. Open Source Readability**
+- [ ] Public APIs documented with clear godoc comments
+- [ ] Complex logic includes explanatory comments
+- [ ] Names follow Go conventions and are self-documenting
+
+**VI. Configuration Management**
+- [ ] YAML configuration file support included (gndb.yaml)
+- [ ] CLI flags override file-based configuration settings
+- [ ] Precedence order enforced: flags > env vars > config file > defaults
+- [ ] Configuration schema documented and validated at startup
+- [ ] Fail-fast with clear errors for invalid configuration
 
 ## Project Structure
 
@@ -66,21 +98,27 @@ specs/[###-feature]/
 <!--
   ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
   for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  real paths (e.g., pkg/parser, internal/io/database). The delivered plan must
   not include Option labels.
 -->
 ```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+# [REMOVE IF UNUSED] Option 1: Single Go project (DEFAULT for GNdb)
+pkg/
+├── module1/             # Pure logic modules
+│   ├── interfaces.go    # Interface definitions
+│   ├── logic.go         # Pure implementations
+│   └── logic_test.go    # Unit tests
+└── module2/
 
-tests/
-├── contract/
-├── integration/
-└── unit/
+internal/io/             # Impure implementations
+├── module1/
+│   ├── implementation.go     # Implements pkg/module1 interfaces
+│   └── integration_test.go   # I/O integration tests
+└── module2/
+
+cmd/
+└── gndb/
+    └── main.go          # CLI entry point
 
 # [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
 backend/
@@ -137,14 +175,14 @@ directories captured above]
    - Validation rules from requirements
    - State transitions if applicable
 
-2. **Generate API contracts** from functional requirements:
-   - For each user action → endpoint
-   - Use standard REST/GraphQL patterns
-   - Output OpenAPI/GraphQL schema to `/contracts/`
+2. **Define interface contracts** from functional requirements:
+   - For each module → interface definition
+   - For each user action → CLI command signature
+   - Output interface definitions to `/contracts/`
 
 3. **Generate contract tests** from contracts:
-   - One test file per endpoint
-   - Assert request/response schemas
+   - One test file per interface
+   - Assert interface compliance
    - Tests must fail (no implementation yet)
 
 4. **Extract test scenarios** from user stories:
@@ -175,10 +213,10 @@ directories captured above]
 
 **Ordering Strategy**:
 - TDD order: Tests before implementation 
-- Dependency order: Models before services before UI
+- Dependency order: Pure modules → io implementations → CLI
 - Mark [P] for parallel execution (independent files)
 
-**Estimated Output**: 25-30 numbered, ordered tasks in tasks.md
+**Estimated Output**: 20-30 numbered, ordered tasks in tasks.md
 
 **IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
 
@@ -194,8 +232,8 @@ directories captured above]
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| [e.g., Breaking modular arch] | [current need] | [why simpler approach insufficient] |
+| [e.g., Mixing pure/impure] | [specific problem] | [why separation impractical] |
 
 
 ## Progress Tracking
@@ -216,4 +254,4 @@ directories captured above]
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `.specify/memory/constitution.md`*
