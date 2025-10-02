@@ -46,7 +46,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 				Database: config.DatabaseConfig{
 					Port:     5432,
 					User:     "postgres",
-					Database: "gndb",
+					Database: "gnames",
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -60,7 +60,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 				Database: config.DatabaseConfig{
 					Host:     "localhost",
 					User:     "postgres",
-					Database: "gndb",
+					Database: "gnames",
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -74,7 +74,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 				Database: config.DatabaseConfig{
 					Host:     "localhost",
 					Port:     5432,
-					Database: "gndb",
+					Database: "gnames",
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -103,7 +103,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					Host:     "localhost",
 					Port:     5432,
 					User:     "postgres",
-					Database: "gndb",
+					Database: "gnames",
 				},
 				Import: config.ImportConfig{
 					BatchSize: 0,
@@ -118,7 +118,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					Host:     "localhost",
 					Port:     5432,
 					User:     "postgres",
-					Database: "gndb",
+					Database: "gnames",
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,

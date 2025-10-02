@@ -40,7 +40,7 @@ type DatabaseConfig struct {
 	Password string `mapstructure:"password"`
 
 	// Database is the PostgreSQL database name to connect to.
-	// Default: "gndb"
+	// Default: "gnames"
 	Database string `mapstructure:"database"`
 
 	// SSLMode specifies the SSL connection mode.
@@ -124,7 +124,7 @@ func Defaults() *Config {
 			Host:     "localhost",
 			Port:     5432,
 			User:     "postgres",
-			Database: "gndb",
+			Database: "gnames",
 			SSLMode:  "disable",
 		},
 		Import: ImportConfig{
