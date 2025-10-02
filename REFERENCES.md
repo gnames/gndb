@@ -4,14 +4,16 @@ This document contains important reference links and locations for the GNdb proj
 
 ## Local Code References
 
+**Note**: Paths use `${HOME}` for cross-platform compatibility (works on Linux/macOS/WSL)
+
 ### Schema Models (Source of Truth)
-- **gnidump models**: `/Users/dimus/code/golang/gnidump/pkg/ent/model/model.go`
+- **gnidump models**: `${HOME}/code/golang/gnidump/pkg/ent/model/model.go`
   - Our schema MUST match this for gnverifier compatibility
   - Uses UUID v5 for deterministic IDs
   - Defines all database tables and their structure
 
 ### Related GNames Projects
-- **gnidump**: `/Users/dimus/code/golang/gnidump/`
+- **gnidump**: `${HOME}/code/golang/gnidump/`
   - Database population and schema management
   - Reference implementation for data models
   
