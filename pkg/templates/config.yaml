@@ -1,0 +1,52 @@
+# GNdb Configuration File
+# This file was auto-generated. Uncomment and edit values as needed.
+#
+# Configuration precedence (highest to lowest):
+#   1. CLI flags (--host, --port, etc.)
+#   2. Environment variables (GNDB_*)
+#   3. This config file
+#   4. Built-in defaults
+#
+# For all environment variables, see: go doc github.com/gnames/gndb/pkg/config
+
+# Database connection settings
+# Uncomment the "database:" line and the settings you want to override:
+# database:
+#   host: localhost  # PostgreSQL host address (default: "localhost")
+#   port: 5432  # PostgreSQL port (default: 5432)
+#   user: postgres  # Database user name (default: "postgres")
+#   password: postgres  # Database password (default: "postgres")
+#   database: gnames  # Database name (default: "gnames")
+#   ssl_mode: disable  # SSL mode: disable, require, verify-ca, verify-full (default: "disable")
+#   batch_size: 50000  # Batch size for bulk operations (populate, optimize) (default: 50000)
+#                      # Larger batches are faster but use more memory
+#                      # Typical values: 5000-100000 depending on available RAM
+
+# Populate command settings
+# Configuration for data source import operations:
+# populate:
+#   source_ids: []  # List of data source IDs to import (default: [] = all sources)
+#                   # Example: [1, 2, 3] to import only sources with IDs 1, 2, and 3
+#   release_version: ""  # Override version for the data source (default: "")
+#                        # Only valid when importing a single source
+#                        # Example: "2024.1"
+#   release_date: ""  # Override release date for the data source (default: "")
+#                     # Format: YYYY-MM-DD. Only valid when importing a single source
+#                     # Example: "2024-01-15"
+#   with_flat_classification: false  # Use flat classification instead of parent/child hierarchy (default: false)
+#                                    # Note: If flat classification doesn't exist in SFGA,
+#                                    # classification breadcrumbs will stay empty
+
+# Logging configuration
+# Controls log output format and verbosity:
+# log:
+#   format: json  # Log format: json or text (default: "json")
+#   level: info  # Log level: debug, info, warn, error (default: "info")
+#   destination: file  # Log destination: file or stdout (default: "file")
+#                      # Note: File is rewritten on each start
+
+# Concurrent processing
+# Number of concurrent workers for parallel operations:
+# jobs_number: 0  # Number of worker threads (default: number of CPU cores)
+#                 # Leave at 0 to use all available CPU cores
+#                 # Lower values reduce memory usage but slow down processing

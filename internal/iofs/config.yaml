@@ -1,0 +1,29 @@
+# GNdb Configuration File
+#
+# This file contains persistent settings that can also be set via environment
+# variables. Uncomment and modify values as needed. All values below show the
+# built-in defaults. See pkg/config/config.go for complete documentation.
+#
+# Configuration Precedence (highest to lowest):
+#   1. CLI flags (--host, --port, etc.)
+#   2. Environment variables (GNDB_DATABASE_HOST, etc.)
+#   3. This config file (~/.config/gndb/config.yaml)
+#   4. Built-in defaults (shown below)
+
+# Database connection settings
+database:
+  # host: localhost
+  # port: 5432
+  # user: postgres
+  # password: postgres
+  # database: gnames
+  # ssl_mode: disable           # Options: disable, require, verify-ca, verify-full
+  # batch_size: 50000           # Records per batch for bulk operations
+
+# Logging settings
+log:
+  # format: json                # Options: json, text, tint
+  # level: info                 # Options: debug, info, warn, error
+  # destination: file           # Options: file, stdout, stderr
+# General settings
+# jobs_number: 0                # 0 means use runtime.NumCPU()

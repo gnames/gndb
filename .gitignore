@@ -1,9 +1,11 @@
-gnverifier
 debug.test
 coverage.txt
+/bin/
+/gndb
 t
 t.json
 .env
+# direnv local environment - may contain secrets (use .envrc.example as template)
 .envrc
 *.pprof
 *.trace
@@ -16,3 +18,9 @@ bench*.txt
 binding/*.so
 binding/*.h
 *out
+*.bak
+*.sqlite
+*.sql
+*.sqlite-shm
+*.sqlite-wal
+subset-sfga

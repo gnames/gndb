@@ -1,0 +1,28 @@
+# GNdb Environment Configuration
+#
+# Setup:
+#   cp .envrc.example .envrc
+#   # Edit .envrc with your values
+#   direnv allow .
+#
+# For complete list of variables and defaults, see:
+#   pkg/config/config.go (package documentation)
+#
+# Configuration precedence: CLI flags > env vars > config.yaml > defaults
+
+# Database
+export GNDB_DATABASE_HOST=localhost
+export GNDB_DATABASE_PORT=5432
+export GNDB_DATABASE_USER=postgres
+export GNDB_DATABASE_PASSWORD=postgres
+export GNDB_DATABASE_DATABASE=gnames
+export GNDB_DATABASE_SSL_MODE=disable
+export GNDB_DATABASE_BATCH_SIZE=50000
+
+# Logging
+export GNDB_LOG_LEVEL=info
+export GNDB_LOG_FORMAT=json
+export GNDB_LOG_DESTINATION=file
+
+# Uncomment to override defaults:
+# export GNDB_JOBS_NUMBER=8

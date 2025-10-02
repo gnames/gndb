@@ -1,0 +1,279 @@
+# sources.yaml - Data Source Configuration for gndb populate
+#
+# This file defines which SFGA data sources to import.
+# Default location: {ConfigDir}/gndb/sources.yaml (same directory as config.yaml)
+# See: specs/001-gnverifier-db-lifecycle/sources-yaml-spec.md
+#
+# Usage:
+#   gndb populate                 # Uses default {ConfigDir}/gndb/sources.yaml
+#   gndb populate --sources 1,3,5 # Import only specific IDs
+#   gndb populate --sources main  # ID < 1000 only
+#   gndb populate --exclude main  # ID >= 1000 only
+#   gndb populate --sources-config /path/to/custom-sources.yaml  # Edge case: custom location
+#
+# Configuration settings (batch_size, concurrent_jobs, logging, etc.) are in config.yaml
+#
+# Outlink Configuration:
+#   outlink_url: URL template with {} placeholder for the ID
+#   outlink_id_column: SFGA table.column (format: "table.column")
+#
+#   Allowed Columns:
+#     Direct columns (used as-is):
+#       - "taxon.col__id"         : Taxon identifier
+#       - "taxon.col__name_id"    : Name identifier in taxon context
+#       - "taxon.col__local_id"   : Local/source-specific identifier
+#       - "name.col__id"          : Name record identifier
+#       - "taxon.col__name_id"     : Nomenclatural name identifier
+#       - "name.col__local_id"    : Local name identifier
+#       - "synonym.col__id"       : Synonym identifier
+#
+#     Alternative ID columns (auto-extracts "gnoutlink:" namespace):
+#       - "taxon.col__alternative_id"  : Extracts gnoutlink:value from comma-separated list
+#                                        (synonyms get accepted taxon's value - points to accepted page)
+#       - "name.col__alternative_id"   : Extracts gnoutlink:value from comma-separated list
+#                                        (synonyms get their own name's value - preserved resolution)
+#
+#   gnoutlink Namespace Convention:
+#     Store transformed IDs in col__alternative_id during SFGA creation:
+#       Format: "namespace1:id1,namespace2:id2,gnoutlink:transformed_id"
+#       Example: "wikidata:Q123,gnoutlink:Homo_sapiens" → extracts "Homo_sapiens"
+#
+#     Use cases:
+#       - URL encoding: "gnoutlink:Homo%20sapiens"
+#       - Space replacement: "gnoutlink:Homo_sapiens"
+#       - String extraction: "gnoutlink:123456" (from "urn:lsid:...123456")
+#       - Case transformation: "gnoutlink:homo-sapiens"
+#
+#   Table Availability by Record Type:
+#     - "taxon.*"   : Taxa & synonyms only (bare names get empty outlink_id)
+#     - "name.*"    : All record types (taxa, synonyms, AND bare names)
+#     - "synonym.*" : Synonyms only
+#
+#   Common Patterns:
+#     - Taxonomic databases (CoL, ITIS, WoRMS): "taxon.col__id"
+#     - Nomenclatural databases (IPNI, MycoBank): "taxon.col__name_id"
+#     - Complex transformations: "taxon.col__alternative_id" or "name.col__alternative_id"
+
+# ============================================================================
+# Data Sources
+# ============================================================================
+
+data_sources:
+  # Catalogue of Life
+  - id: 1
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "Catalogue of Life"
+    home_url: "https://www.catalogueoflife.org/"
+    data_url: "http://www.catalogueoflife.org/DCA_Export/archive.php"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
+
+  # Wikispecies
+  - id: 2
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "Wikispecies"
+    home_url: "https://species.wikimedia.org/wiki/Main_Page"
+    data_url: "http://dumps.wikimedia.org/specieswiki/latest/specieswiki-latest-pages-articles.xml.bz2"
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url: "http://species.wikimedia.org/wiki/{}"
+    outlink_id_column: "name.col__alternative_id" # Custom: canonical_full with spaces→underscores (prepared in SFGA)
+
+  # ITIS
+  - id: 3
+    parent: http://opendata.globalnames.org/sfga/
+    title: "Integrated Taxonomic Information System"
+    title_short: "ITIS"
+    home_url: "https://www.itis.gov/"
+    data_url: "https://www.itis.gov/downloads/itisMySQLTables.tar.gz"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value={}#null"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: TSN (taxon serial number)
+
+  # NCBI
+  - id: 4
+    parent: http://opendata.globalnames.org/sfga/
+    title: "National Center for Biotechnology Information"
+    title_short: "NCBI"
+    home_url: "https://www.ncbi.nlm.nih.gov/"
+    data_url: "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"
+    is_outlink_ready: true
+    outlink_url: "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name={}&lvl=0&srchmode=1&keep=1&unlock"
+    outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical (prepared in SFGA)
+
+  # GRIN Plant Taxonomy
+  - id: 6
+    parent: http://opendata.globalnames.org/sfga/
+    title: "USDA National Plant Germplasm System"
+    title_short: "GRIN Plant Taxonomy"
+    home_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/abouttaxonomy"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/taxonomydetail?id={}"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
+
+  # WoRMS
+  - id: 9
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "WoRMS"
+    home_url: "https://marinespecies.org"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.marinespecies.org/aphia.php?p=taxdetails&id={}"
+    outlink_id_column: "taxon.col__alternative_id" # Custom: last part of col__id after ':' split (prepared in SFGA)
+
+  # EOL
+  - id: 12
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "EOL"
+    home_url: "https://eol.org"
+    data_url: "https://eol.org/data/provider_ids.csv.gz"
+    is_auto_curated: true
+    is_outlink_ready: true
+    outlink_url: "https://eol.org/pages/{}"
+    outlink_id_column: "taxon.col__name_id" # Uses name ID (available for all record types including bare names)
+
+  # VASCAN
+  - id: 147
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "VASCAN"
+    is_curated: true
+    has_classification: true
+
+  # IPNI
+  - id: 167
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "IPNI"
+    home_url: "https://www.ipni.org/"
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url: "https://www.ipni.org/n/{}"
+    outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
+
+  # Arctos
+  - id: 170
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "Arctos"
+    home_url: "https://arctosdb.org/"
+    is_auto_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://arctos.database.museum/name/{}"
+    outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical_full (prepared in SFGA)
+
+  # PaleoBioDB
+  - id: 172
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "PaleoBioDB"
+    home_url: "https://paleobiodb.org/#/"
+    is_curated: true
+    has_classification: true
+
+  # iNaturalist
+  - id: 180
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "iNaturalist"
+    home_url: "https://inaturalist.org/"
+    data_url: "https://www.inaturalist.org/taxa/inaturalist-taxonomy.dwca.zip"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.inaturalist.org/taxa/{}"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
+
+  # World Flora Online
+  - id: 196
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "World Flora Online"
+    home_url: "https://worldfloraonline.org"
+    description: "An Online Flora of All Known Plants"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://list.worldfloraonline.org/{}"
+    outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
+
+  # MycoBank
+  - id: 203
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "MycoBank"
+    home_url: "https://www.mycobank.org"
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url: "https://www.mycobank.org/page/Name details page/{}"
+    outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
+
+  # Ruhoff 1980
+  - id: 206
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "Ruhoff 1980"
+    home_url: "https://doi.org/10.5479/si.00810282.294"
+    is_auto_curated: true
+
+  # LPSN
+  - id: 208
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "LPSN"
+    home_url: "https://lpsn.dsmz.de/"
+    data_url: "https://lpsn.dsmz.de/downloads"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "{}"
+    outlink_id_column: "taxon.gn__local_id" # Uses local_id which is the full URL
+
+  # NZOR
+  - id: 209
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: NZOR
+    home_url:        https://www.nzor.org.nz/
+    data_url:        https://www.nzor.org.nz/downloads
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url:     "https://www.nzor.org.nz/names/{}"
+    outlink_id_column: "taxon.col__id"
+
+  # TAXREF
+  - id: 210
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "TAXREF"
+    home_url: "https://inpn.mnhn.fr/programme/referentiel-taxonomique-taxref"
+    data_url: "https://ipt.gbif.fr/resource?r=taxref"
+    is_curated: true
+    has_classification: true
+
+  # World Plants
+  - id: 211
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "World Plants"
+
+  # World Ferns
+  - id: 212
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "World Ferns"
+# ============================================================================
+# Template for Custom Data Sources
+# ============================================================================
+# Copy and customize this template for your own data sources (ID >= 1000):
+#a
+# - id: 1000
+#   parent: "~/data/"  # Local directory or http://... URL
+#   title: "Full Title"
+#   title_short: "ShortName"      # Required for display
+#   description: "Detailed description"
+#   home_url: "https://example.org"
+#   data_url: "https://example.org/download"
+#   data_source_type: "taxonomic"  # or "nomenclatural"
+#   is_curated: false
+#   is_auto_curated: false
+#   has_classification: false
+#   is_outlink_ready: false
+#   outlink_url: "https://example.org/{}"
+#   outlink_id_column: "taxon.col__id"  # Use "taxon.col__id" for taxonomic or "taxon.col__name_id" for nomenclatural
