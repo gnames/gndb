@@ -17,12 +17,8 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, "postgres", cfg.Database.User)
 	assert.Equal(t, "disable", cfg.Database.SSLMode)
 
-	// Test import batch size defaults
-	assert.Equal(t, 5000, cfg.Import.BatchSizes.Names)
-	assert.Equal(t, 2000, cfg.Import.BatchSizes.Taxa)
-	assert.Equal(t, 1000, cfg.Import.BatchSizes.References)
-	assert.Equal(t, 3000, cfg.Import.BatchSizes.Synonyms)
-	assert.Equal(t, 3000, cfg.Import.BatchSizes.Vernaculars)
+	// Test import batch size default
+	assert.Equal(t, 5000, cfg.Import.BatchSize)
 
 	// Test optimization defaults
 	assert.False(t, cfg.Optimization.ConcurrentIndexes)
@@ -53,13 +49,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					Database: "gndb",
 				},
 				Import: config.ImportConfig{
-					BatchSizes: config.BatchSizes{
-						Names:       5000,
-						Taxa:        2000,
-						References:  1000,
-						Synonyms:    3000,
-						Vernaculars: 3000,
-					},
+					BatchSize: 5000,
 				},
 			},
 			errMsg: "database.host is required",
@@ -73,13 +63,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					Database: "gndb",
 				},
 				Import: config.ImportConfig{
-					BatchSizes: config.BatchSizes{
-						Names:       5000,
-						Taxa:        2000,
-						References:  1000,
-						Synonyms:    3000,
-						Vernaculars: 3000,
-					},
+					BatchSize: 5000,
 				},
 			},
 			errMsg: "database.port is required",
@@ -93,13 +77,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					Database: "gndb",
 				},
 				Import: config.ImportConfig{
-					BatchSizes: config.BatchSizes{
-						Names:       5000,
-						Taxa:        2000,
-						References:  1000,
-						Synonyms:    3000,
-						Vernaculars: 3000,
-					},
+					BatchSize: 5000,
 				},
 			},
 			errMsg: "database.user is required",
@@ -113,19 +91,13 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					User: "postgres",
 				},
 				Import: config.ImportConfig{
-					BatchSizes: config.BatchSizes{
-						Names:       5000,
-						Taxa:        2000,
-						References:  1000,
-						Synonyms:    3000,
-						Vernaculars: 3000,
-					},
+					BatchSize: 5000,
 				},
 			},
 			errMsg: "database.database is required",
 		},
 		{
-			name: "invalid batch size - names",
+			name: "invalid batch size",
 			config: &config.Config{
 				Database: config.DatabaseConfig{
 					Host:     "localhost",
@@ -134,16 +106,10 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					Database: "gndb",
 				},
 				Import: config.ImportConfig{
-					BatchSizes: config.BatchSizes{
-						Names:       0,
-						Taxa:        2000,
-						References:  1000,
-						Synonyms:    3000,
-						Vernaculars: 3000,
-					},
+					BatchSize: 0,
 				},
 			},
-			errMsg: "import.batch_sizes.names must be positive",
+			errMsg: "import.batch_size must be positive",
 		},
 		{
 			name: "invalid logging format",
@@ -155,13 +121,7 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 					Database: "gndb",
 				},
 				Import: config.ImportConfig{
-					BatchSizes: config.BatchSizes{
-						Names:       5000,
-						Taxa:        2000,
-						References:  1000,
-						Synonyms:    3000,
-						Vernaculars: 3000,
-					},
+					BatchSize: 5000,
 				},
 				Logging: config.LoggingConfig{
 					Format: "invalid",
@@ -191,13 +151,7 @@ func TestValidate_CompleteConfig(t *testing.T) {
 			SSLMode:  "require",
 		},
 		Import: config.ImportConfig{
-			BatchSizes: config.BatchSizes{
-				Names:       5000,
-				Taxa:        2000,
-				References:  1000,
-				Synonyms:    3000,
-				Vernaculars: 3000,
-			},
+			BatchSize: 5000,
 		},
 		Optimization: config.OptimizationConfig{
 			ConcurrentIndexes: true,

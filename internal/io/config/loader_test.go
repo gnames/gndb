@@ -27,12 +27,7 @@ database:
   ssl_mode: require
 
 import:
-  batch_sizes:
-    names: 1000
-    taxa: 500
-    references: 250
-    synonyms: 750
-    vernaculars: 800
+  batch_size: 1000
 
 optimization:
   concurrent_indexes: true
@@ -58,11 +53,7 @@ logging:
 	assert.Equal(t, "require", cfg.Database.SSLMode)
 
 	// Verify import config
-	assert.Equal(t, 1000, cfg.Import.BatchSizes.Names)
-	assert.Equal(t, 500, cfg.Import.BatchSizes.Taxa)
-	assert.Equal(t, 250, cfg.Import.BatchSizes.References)
-	assert.Equal(t, 750, cfg.Import.BatchSizes.Synonyms)
-	assert.Equal(t, 800, cfg.Import.BatchSizes.Vernaculars)
+	assert.Equal(t, 1000, cfg.Import.BatchSize)
 
 	// Verify optimization config
 	assert.True(t, cfg.Optimization.ConcurrentIndexes)
@@ -84,12 +75,7 @@ database:
   # missing user field
 
 import:
-  batch_sizes:
-    names: 1000
-    taxa: 500
-    references: 250
-    synonyms: 750
-    vernaculars: 800
+  batch_size: 1000
 `
 
 	err := os.WriteFile(configFile, []byte(yamlContent), 0644)

@@ -51,33 +51,11 @@ type DatabaseConfig struct {
 
 // ImportConfig contains settings for SFGA data import.
 type ImportConfig struct {
-	// BatchSizes defines the number of records to insert per transaction
-	// for different record types during SFGA import.
-	BatchSizes BatchSizes `mapstructure:"batch_sizes"`
-}
-
-// BatchSizes defines batch sizes for different record types during import.
-// Larger batches are faster but use more memory. Tune based on available RAM.
-type BatchSizes struct {
-	// Names is the batch size for name_strings records.
-	// Default: 5000 (small records, can use larger batches)
-	Names int `mapstructure:"names"`
-
-	// Taxa is the batch size for taxa records.
-	// Default: 2000 (medium-sized records)
-	Taxa int `mapstructure:"taxa"`
-
-	// References is the batch size for reference records.
-	// Default: 1000 (large records with citations)
-	References int `mapstructure:"references"`
-
-	// Synonyms is the batch size for synonym records.
-	// Default: 3000 (small records)
-	Synonyms int `mapstructure:"synonyms"`
-
-	// Vernaculars is the batch size for vernacular name records.
-	// Default: 3000 (small records)
-	Vernaculars int `mapstructure:"vernaculars"`
+	// BatchSize defines the number of records to insert per transaction
+	// during SFGA import. Applies to all record types.
+	// Larger batches are faster but use more memory. Tune based on available RAM.
+	// Default: 5000
+	BatchSize int `mapstructure:"batch_size"`
 }
 
 // OptimizationConfig contains settings for database restructure phase.
@@ -126,21 +104,9 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("database.database is required")
 	}
 
-	// Validate batch sizes are positive
-	if c.Import.BatchSizes.Names <= 0 {
-		return fmt.Errorf("import.batch_sizes.names must be positive")
-	}
-	if c.Import.BatchSizes.Taxa <= 0 {
-		return fmt.Errorf("import.batch_sizes.taxa must be positive")
-	}
-	if c.Import.BatchSizes.References <= 0 {
-		return fmt.Errorf("import.batch_sizes.references must be positive")
-	}
-	if c.Import.BatchSizes.Synonyms <= 0 {
-		return fmt.Errorf("import.batch_sizes.synonyms must be positive")
-	}
-	if c.Import.BatchSizes.Vernaculars <= 0 {
-		return fmt.Errorf("import.batch_sizes.vernaculars must be positive")
+	// Validate batch size is positive
+	if c.Import.BatchSize <= 0 {
+		return fmt.Errorf("import.batch_size must be positive")
 	}
 
 	// Validate logging format
@@ -162,13 +128,7 @@ func Defaults() *Config {
 			SSLMode:  "disable",
 		},
 		Import: ImportConfig{
-			BatchSizes: BatchSizes{
-				Names:       5000,
-				Taxa:        2000,
-				References:  1000,
-				Synonyms:    3000,
-				Vernaculars: 3000,
-			},
+			BatchSize: 5000,
 		},
 		Optimization: OptimizationConfig{
 			ConcurrentIndexes: false, // Faster for initial setup, locks tables
