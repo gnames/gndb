@@ -16,27 +16,43 @@ This document contains important reference links and locations for the GNdb proj
 - **gnidump**: `${HOME}/code/golang/gnidump/`
   - Database population and schema management
   - Reference implementation for data models
-  
-- **gnparser**: (location TBD)
+
+- **gnparser**: `${HOME}/code/golang/gnparser/`
   - Name parsing library
   - Generates canonical forms and metadata
 
-- **gnverifier**: (location TBD)
-  - Name verification service
+- **gnverifier**: `${HOME}/code/golang/gnverifier/`
+  - Name verification cli and Web UI
   - Consumer of the database we're building
+
+- **gnames**: `${HOME}/code/golang/gnames/`
+  - Name verification service that gnverifier has to use remotly (currently)
+
+- **gmatcher**: `${HOME}/code/golang/gnmatcher/`
+  - Name matching service that gnames has to use remotly (currently)
 
 ## External References
 
 ### SFGA Format
-- **SFGA Schema**: https://github.com/sfborg/sfga
+- **SFGA Schema**: `${HOME}/code/sql/sfga/schema.sql`
+  - URL: https://github.com/sfborg/sfga
   - Standard Format for Global names Archive
   - SQLite-based archive format for nomenclature data
   - Our import source format
 
-- **sflib Library**: https://github.com/sfborg/sflib
+- **sflib Library**:  `${HOME}/code/golang/sflib/`
+  - URL: https://github.com/sfborg/sflib
   - Official SFGA library for Go
   - Used for reading SFGA files
   - Version compatibility checking
+
+- **sf**:  `${HOME}/code/golang/sflib/`
+  - CLI consumer of sflib library.
+
+- **to-gn**: `${HOME}/code/golang/to-gn/`
+  - CLI importer of SFGA files to gnames database
+  - It is a good reference to see importing of SFGA to gnames database.
+  - gnames database is the default name for gnverifier database.
 
 ### Database & Tools
 
