@@ -272,6 +272,7 @@ maintenance_work_mem = 4GB      # For index builds
 | **SFGA Import** | sflib | Official SFGA library |
 | **Name Parsing** | gnparser | GNames ecosystem integration |
 | **Testing** | testify/assert | Familiar, assertion-rich |
+| **Task Runner** | just | Simple command runner, cross-platform, better than Make for Go |
 
 **Not Chosen**:
 - database/sql: Rejected (pgx outperforms by 2-3x)
