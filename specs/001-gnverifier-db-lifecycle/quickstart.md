@@ -1,302 +1,498 @@
 # Quickstart: GNverifier Database Lifecycle
 
-**Purpose**: End-to-end integration test validating complete database lifecycle  
-**Duration**: ~30-60 minutes (depending on data size)  
-**Prerequisites**: PostgreSQL 15+, Go 1.21+, sample SFGA file
+**Purpose**: End-to-end integration test for GNdb CLI, validating complete database lifecycle from empty database to optimized GNverifier instance.
+
+**Duration**: ~5-10 minutes with small test dataset  
+**Prerequisites**: PostgreSQL 14+, Go 1.21+, test SFGA file
 
 ---
 
-## Setup
+## Test Environment Setup
 
-### 1. Install Prerequisites
-
-```bash
-# Install PostgreSQL (if not installed)
-brew install postgresql@15  # macOS
-# or apt-get install postgresql-15  # Linux
-
-# Start PostgreSQL
-brew services start postgresql@15
-
-# Install Atlas CLI
-curl -sSf https://atlasgo.io/install.sh | sh
-
-# Clone and build gndb
-git clone https://github.com/gnames/gndb.git
-cd gndb
-go build -o gndb cmd/gndb/main.go
-```
-
-### 2. Create Test Database
+### 1. PostgreSQL Test Database
 
 ```bash
-# Create empty test database
-createdb gndb_test
+# Start PostgreSQL via Docker (or use existing instance)
+docker run -d \
+  --name gndb-test \
+  -e POSTGRES_PASSWORD=testpass \
+  -e POSTGRES_DB=gndb_test \
+  -p 5432:5432 \
+  postgres:15
 
 # Verify connection
-psql gndb_test -c "SELECT version();"
+psql -h localhost -U postgres -d gndb_test -c "SELECT version();"
 ```
 
-### 3. Prepare Test Data
+### 2. Test Data
 
-```bash
-# Download sample SFGA file (example: Catalog of Life subset)
-wget https://example.com/sample_col.sfga -O testdata/sample.sfga
+**Small SFGA test file** (included in `testdata/sample.sfga`):
+- 100 scientific names
+- 150 taxa (50 accepted, 100 synonyms)
+- 200 vernacular names (English, Spanish, Chinese)
+- 5 references
+- Simulates 2 data sources: "Test Catalog" and "Mini Taxonomy"
 
-# Verify SFGA file
-sqlite3 testdata/sample.sfga "SELECT version FROM version LIMIT 1;"
-```
+**Expected Results**:
+- Database size: ~5MB
+- Import time: <10 seconds
+- Reconciliation: 1000+ names/sec
 
----
+### 3. Configuration File
 
-## Test Workflow
+Create `gndb.yaml`:
+```yaml
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: testpass
+  database: gndb_test
+  ssl_mode: disable
 
-### Step 1: Create Schema
+import:
+  batch_sizes:
+    names: 5000
+    taxa: 2000
+    references: 1000
+    synonyms: 3000
+    vernaculars: 3000
 
-```bash
-# Run create command
-./gndb create \
-  --url "postgres://localhost:5432/gndb_test?sslmode=disable" \
-  --config gndb.yaml
+optimization:
+  concurrent_indexes: false  # Faster for test, locks tables
+  statistics_targets:
+    name_strings.canonical_simple: 1000
+    taxa.rank: 100
 
-# Expected output:
-# ✓ Extensions created (uuid-ossp, pg_trgm)
-# ✓ Tables created (12 tables)
-# ✓ Partitions created (16 partitions for name_string_indices)
-# ✓ Schema validation passed
-# Database schema created successfully
-```
-
-**Verification**:
-```bash
-psql gndb_test -c "\dt"
-# Should show: canonicals, canonical_fulls, canonical_stems, data_sources,
-#              name_strings, name_string_indices_p00-p15, vernacular_strings, etc.
-
-psql gndb_test -c "\dx"
-# Should show: uuid-ossp, pg_trgm extensions
-```
-
-### Step 2: Populate Data
-
-```bash
-# Import sample SFGA data
-./gndb populate \
-  --url "postgres://localhost:5432/gndb_test?sslmode=disable" \
-  --sfga testdata/sample.sfga \
-  --progress
-
-# Expected output:
-# Validating SFGA file...
-# ✓ SFGA version: 1.0.0 (compatible)
-# ✓ Metadata loaded: Sample Dataset (10,000 names, 2,000 vernaculars)
-# 
-# Importing data...
-# [====================] 100% | 10,000/10,000 names | 5,000 names/sec
-# [====================] 100% | 2,000/2,000 vernaculars | 8,000 vern/sec
-# 
-# Import complete:
-#   - Data source ID: 999
-#   - Name strings: 10,000
-#   - Canonicals: 9,500
-#   - Indices: 10,000
-#   - Vernaculars: 2,000
-#   - Duration: 3.2s
-```
-
-**Verification**:
-```bash
-# Check data counts
-psql gndb_test -c "SELECT COUNT(*) FROM name_strings;"
-# Should show: 10000
-
-psql gndb_test -c "SELECT COUNT(*) FROM canonicals;"
-# Should show: ~9500 (some names share canonicals)
-
-psql gndb_test -c "SELECT COUNT(*) FROM vernacular_strings;"
-# Should show: 2000
-
-psql gndb_test -c "SELECT id, title, record_count FROM data_sources WHERE id = 999;"
-# Should show: Sample Dataset with 10,000 records
-```
-
-### Step 3: Restructure/Optimize
-
-```bash
-# Run optimization
-./gndb restructure \
-  --url "postgres://localhost:5432/gndb_test?sslmode=disable" \
-  --progress
-
-# Expected output:
-# Creating indexes...
-# [1/6] ✓ idx_name_strings_name (45s)
-# [2/6] ✓ idx_name_strings_name_trgm (120s)
-# [3/6] ✓ idx_canonicals_name (30s)
-# [4/6] ✓ idx_vernacular_english (2s)
-# [5/6] ✓ idx_nsi_name_string_id (25s)
-# [6/6] ✓ idx_nsi_canonical_id (22s)
-# 
-# Creating materialized views...
-# ✓ mv_name_lookup (15s)
-# 
-# Updating statistics...
-# ✓ ANALYZE complete (8s)
-# 
-# Optimization complete. Total time: 4m 27s
-```
-
-**Verification**:
-```bash
-# Check indexes
-psql gndb_test -c "\di"
-# Should show 30+ indexes
-
-# Verify materialized view
-psql gndb_test -c "SELECT COUNT(*) FROM mv_name_lookup;"
-# Should show: 10000
-
-# Check statistics
-psql gndb_test -c "SELECT tablename, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC;"
-```
-
-### Step 4: Performance Validation
-
-```bash
-# Test exact canonical match (should use index)
-psql gndb_test -c "EXPLAIN ANALYZE SELECT * FROM name_strings WHERE name = 'Homo sapiens';"
-# Should show: Index Scan using idx_name_strings_name
-# Execution Time: < 1ms
-
-# Test fuzzy match (should use GiST trigram index)
-psql gndb_test -c "EXPLAIN ANALYZE SELECT name FROM canonicals WHERE name % 'Homo sapienz' LIMIT 10;"
-# Should show: Bitmap Index Scan using idx_canonicals_name_trgm
-# Execution Time: < 50ms
-
-# Test vernacular lookup
-psql gndb_test -c "EXPLAIN ANALYZE SELECT * FROM vernacular_strings WHERE language = 'en' AND name = 'human' LIMIT 10;"
-# Should show: Index Scan using idx_vernacular_english
-# Execution Time: < 5ms
-
-# Test materialized view query
-psql gndb_test -c "EXPLAIN ANALYZE SELECT * FROM mv_name_lookup WHERE canonical = 'Homo sapiens' LIMIT 10;"
-# Should show: Index Scan (index-only scan if possible)
-# Execution Time: < 2ms
-```
-
-### Step 5: Test Throughput (1000 names/sec target)
-
-```bash
-# Generate 1000 random canonical lookups
-psql gndb_test -c "
-CREATE TEMP TABLE test_queries AS
-SELECT name FROM canonicals ORDER BY random() LIMIT 1000;
-
-\timing on
-SELECT ns.* 
-FROM test_queries tq
-JOIN name_strings ns ON ns.name = tq.name;
-\timing off
-"
-# Should complete in < 1 second for 1000 lookups
-# Throughput: > 1000 queries/sec
-```
-
-### Step 6: Test Migration (Optional)
-
-```bash
-# Check migration status
-./gndb migrate status \
-  --url "postgres://localhost:5432/gndb_test?sslmode=disable"
-
-# Expected output:
-# Migration Status: OK
-# Current version: 20231001120000
-# Pending migrations: 0
-
-# Dry-run a migration
-atlas migrate apply \
-  --url "postgres://localhost:5432/gndb_test?sslmode=disable" \
-  --dir "file://migrations" \
-  --dry-run
-
-# Apply migrations (if any)
-./gndb migrate apply \
-  --url "postgres://localhost:5432/gndb_test?sslmode=disable"
+logging:
+  level: info
+  format: json
 ```
 
 ---
 
-## Cleanup
+## Lifecycle Test Scenarios
 
+### Scenario 1: Create Schema from Empty Database
+
+**Given**: Empty PostgreSQL database  
+**When**: User runs `gndb create`  
+**Then**: All tables, extensions, and schema_version are created
+
+**Commands**:
 ```bash
-# Drop test database
-dropdb gndb_test
+# Build gndb CLI
+go build -o gndb ./cmd/gndb
 
-# Remove test SFGA file
-rm testdata/sample.sfga
+# Create schema
+./gndb create --config gndb.yaml
+
+# Verify schema creation
+psql -h localhost -U postgres -d gndb_test -c "\dt"
+# Expected: 8 tables (data_sources, name_strings, taxa, synonyms, 
+#           vernacular_names, references, name_string_occurrences, schema_versions)
+
+# Verify extensions
+psql -h localhost -U postgres -d gndb_test -c "\dx"
+# Expected: pg_trgm extension enabled
+
+# Verify version
+psql -h localhost -U postgres -d gndb_test -c "SELECT * FROM schema_versions;"
+# Expected: version='1.0.0', description='Initial schema'
+```
+
+**Success Criteria**:
+- [x] All 8 tables exist
+- [x] Primary keys created
+- [x] Foreign keys enforced
+- [x] pg_trgm extension enabled
+- [x] schema_versions table populated
+- [x] Exit code 0
+
+**Expected Output**:
+```json
+{
+  "status": "success",
+  "tables_created": 8,
+  "extensions_enabled": ["pg_trgm"],
+  "schema_version": "1.0.0",
+  "duration_ms": 234
+}
 ```
 
 ---
 
-## Success Criteria
+### Scenario 2: Create Schema with Force Flag (Destructive)
 
-- [x] Schema created with all tables and partitions
-- [x] Extensions (uuid-ossp, pg_trgm) installed
-- [x] Data imported successfully (10K names, 2K vernaculars)
-- [x] Indexes created (30+ indexes)
-- [x] Materialized views built
-- [x] Exact matches: < 1ms latency
-- [x] Fuzzy matches: < 50ms latency
-- [x] Vernacular lookups: < 5ms latency
-- [x] Throughput: > 1000 queries/sec
-- [x] Index usage confirmed via EXPLAIN ANALYZE
-- [x] No errors or warnings during any phase
+**Given**: Database with existing tables  
+**When**: User runs `gndb create --force`  
+**Then**: Old tables dropped, new schema created
+
+**Commands**:
+```bash
+# Insert test data to verify it gets deleted
+psql -h localhost -U postgres -d gndb_test -c \
+  "INSERT INTO data_sources (uuid, title, title_short, version, release_date, sfga_version) 
+   VALUES ('test-uuid', 'Test', 'Test', '1.0', NOW(), '1.0');"
+
+# Force recreate schema
+./gndb create --config gndb.yaml --force
+
+# Verify old data gone
+psql -h localhost -U postgres -d gndb_test -c "SELECT count(*) FROM data_sources;"
+# Expected: 0 rows
+```
+
+**Success Criteria**:
+- [x] User prompted for confirmation (unless --yes flag)
+- [x] All old tables dropped
+- [x] New schema created
+- [x] Old data not present
+- [x] Exit code 0
+
+---
+
+### Scenario 3: Populate Database from SFGA Files
+
+**Given**: Database with schema created  
+**When**: User runs `gndb populate` with test SFGA files  
+**Then**: Data imported in correct order with foreign key integrity
+
+**Commands**:
+```bash
+# Populate from test SFGA file
+./gndb populate --config gndb.yaml --source testdata/sample.sfga
+
+# Verify data imported
+psql -h localhost -U postgres -d gndb_test << EOF
+SELECT 'data_sources', count(*) FROM data_sources UNION ALL
+SELECT 'name_strings', count(*) FROM name_strings UNION ALL
+SELECT 'taxa', count(*) FROM taxa UNION ALL
+SELECT 'synonyms', count(*) FROM synonyms UNION ALL
+SELECT 'vernacular_names', count(*) FROM vernacular_names UNION ALL
+SELECT 'references', count(*) FROM references UNION ALL
+SELECT 'name_string_occurrences', count(*) FROM name_string_occurrences;
+EOF
+```
+
+**Expected Record Counts**:
+```
+data_sources             | 1
+name_strings             | 100
+taxa                     | 150
+synonyms                 | 100
+vernacular_names         | 200
+references               | 5
+name_string_occurrences  | 250
+```
+
+**Success Criteria**:
+- [x] All tables populated
+- [x] Foreign keys valid (no orphaned records)
+- [x] Canonical forms populated for name_strings
+- [x] Import completes in <10 seconds
+- [x] Progress reported during import
+- [x] Exit code 0
+
+**Expected Output**:
+```json
+{
+  "status": "success",
+  "data_source": "testdata/sample.sfga",
+  "sfga_version": "1.0.0",
+  "records_imported": {
+    "references": 5,
+    "name_strings": 100,
+    "taxa": 150,
+    "synonyms": 100,
+    "vernaculars": 200,
+    "occurrences": 250
+  },
+  "duration_ms": 8432,
+  "records_per_second": 7692
+}
+```
+
+---
+
+### Scenario 4: SFGA Version Compatibility Check
+
+**Given**: Database populated with SFGA v1.0.0  
+**When**: User attempts to import SFGA v2.0.0 (incompatible)  
+**Then**: Import fails with clear error message
+
+**Commands**:
+```bash
+# Attempt to import incompatible SFGA file
+./gndb populate --config gndb.yaml --source testdata/incompatible_v2.sfga
+
+# Expected: Exit code 1, error message
+```
+
+**Expected Output**:
+```json
+{
+  "status": "error",
+  "error": "SFGA version mismatch: database has v1.0.0, file has v2.0.0",
+  "suggestion": "Use --force to nuke database and reimport, or use compatible SFGA version"
+}
+```
+
+**Success Criteria**:
+- [x] Import rejected before any data written
+- [x] Database remains unchanged
+- [x] Clear error message
+- [x] Exit code 1
+
+---
+
+### Scenario 5: Restructure Database for Performance
+
+**Given**: Database populated with data  
+**When**: User runs `gndb restructure`  
+**Then**: Indexes, materialized views, and statistics created
+
+**Commands**:
+```bash
+# Restructure database
+./gndb restructure --config gndb.yaml
+
+# Verify indexes created
+psql -h localhost -U postgres -d gndb_test -c \
+  "SELECT tablename, indexname FROM pg_indexes WHERE schemaname = 'public' ORDER BY tablename, indexname;"
+
+# Verify materialized views
+psql -h localhost -U postgres -d gndb_test -c \
+  "SELECT matviewname FROM pg_matviews WHERE schemaname = 'public';"
+
+# Test query performance (should use indexes)
+psql -h localhost -U postgres -d gndb_test -c \
+  "EXPLAIN ANALYZE SELECT * FROM name_strings WHERE canonical_simple = 'Homo sapiens';"
+# Expected: Index Scan using idx_namestrings_canonical_simple
+```
+
+**Expected Indexes**:
+- `idx_namestrings_canonical_simple` (UNIQUE B-tree)
+- `idx_namestrings_name_trgm` (GiST trigram)
+- `idx_occurrences_namestring` (B-tree)
+- `idx_vernacular_name_trgm` (GiST trigram)
+- `idx_vernacular_english` (partial, WHERE language_code='en')
+- Plus 10+ more indexes
+
+**Expected Materialized Views**:
+- `mv_name_lookup`
+- `mv_vernacular_by_language`
+- `mv_synonym_map`
+
+**Success Criteria**:
+- [x] All secondary indexes created
+- [x] Materialized views created and populated
+- [x] Statistics updated (ANALYZE run)
+- [x] Query planner uses indexes (verify with EXPLAIN)
+- [x] Restructure completes in <30 seconds for test dataset
+- [x] Exit code 0
+
+**Expected Output**:
+```json
+{
+  "status": "success",
+  "indexes_created": 15,
+  "materialized_views_created": 3,
+  "statistics_updated": 8,
+  "vacuum_analyze_complete": true,
+  "duration_ms": 12456,
+  "database_size_mb": 5.2,
+  "cache_hit_ratio": 0.98
+}
+```
+
+---
+
+### Scenario 6: Schema Migration
+
+**Given**: Database with schema v1.0.0  
+**When**: User runs `gndb migrate` and migration v1.1.0 is available  
+**Then**: Migration applied successfully
+
+**Commands**:
+```bash
+# Check current version
+./gndb migrate status --config gndb.yaml
+# Expected: current_version=1.0.0, pending_migrations=[1.1.0]
+
+# Apply migrations
+./gndb migrate apply --config gndb.yaml
+
+# Verify new version
+psql -h localhost -U postgres -d gndb_test -c "SELECT * FROM schema_versions ORDER BY applied_at DESC LIMIT 1;"
+# Expected: version='1.1.0'
+```
+
+**Test Migration** (`migrations/20251002120000_add_cardinality_index.sql`):
+```sql
+CREATE INDEX idx_namestrings_cardinality 
+ON name_strings(cardinality) 
+WHERE cardinality > 0;
+```
+
+**Success Criteria**:
+- [x] Migration detected as pending
+- [x] Migration applied successfully
+- [x] schema_versions updated
+- [x] New index exists
+- [x] Exit code 0
+
+**Expected Output**:
+```json
+{
+  "status": "success",
+  "migrations_applied": [
+    {
+      "version": "20251002120000",
+      "name": "add_cardinality_index",
+      "applied_at": "2025-10-02T12:00:00Z"
+    }
+  ],
+  "current_version": "1.1.0",
+  "duration_ms": 456
+}
+```
+
+---
+
+### Scenario 7: End-to-End Name Reconciliation
+
+**Given**: Fully optimized database  
+**When**: User queries for scientific name reconciliation  
+**Then**: Results returned with <10ms latency
+
+**Commands**:
+```bash
+# Test exact canonical match
+psql -h localhost -U postgres -d gndb_test -c \
+  "EXPLAIN ANALYZE 
+   SELECT * FROM mv_name_lookup 
+   WHERE canonical_simple = 'Homo sapiens';"
+# Expected: Execution Time: <10ms, Index-Only Scan
+
+# Test fuzzy match
+psql -h localhost -U postgres -d gndb_test -c \
+  "EXPLAIN ANALYZE 
+   SELECT name_string, canonical_simple 
+   FROM name_strings 
+   WHERE name_string % 'Homo sapins'  -- typo: sapins instead of sapiens
+   ORDER BY similarity(name_string, 'Homo sapins') DESC 
+   LIMIT 5;"
+# Expected: Execution Time: <100ms, Bitmap Index Scan using idx_namestrings_name_trgm
+
+# Test vernacular by language
+psql -h localhost -U postgres -d gndb_test -c \
+  "EXPLAIN ANALYZE 
+   SELECT * FROM mv_vernacular_by_language 
+   WHERE language_code = 'en' AND name_string ILIKE '%human%';"
+# Expected: Execution Time: <10ms, Index Scan using idx_mv_vernacular_lang_name
+```
+
+**Success Criteria**:
+- [x] Exact matches use B-tree indexes (<10ms)
+- [x] Fuzzy matches use trigram indexes (<100ms)
+- [x] Vernacular searches use partial indexes (<10ms)
+- [x] All queries use index scans (not sequential scans)
+
+---
+
+## Integration Test Script
+
+**Complete automated test** (`quickstart_test.sh`):
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== GNdb Quickstart Integration Test ==="
+
+# 1. Create schema
+echo "[1/6] Creating schema..."
+./gndb create --config gndb.yaml --yes
+psql -h localhost -U postgres -d gndb_test -c "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" | grep 8
+
+# 2. Populate database
+echo "[2/6] Populating database..."
+./gndb populate --config gndb.yaml --source testdata/sample.sfga
+psql -h localhost -U postgres -d gndb_test -c "SELECT count(*) FROM name_strings;" | grep 100
+
+# 3. Restructure database
+echo "[3/6] Restructuring database..."
+./gndb restructure --config gndb.yaml
+psql -h localhost -U postgres -d gndb_test -c "SELECT count(*) FROM pg_indexes WHERE schemaname='public';" | grep -E "1[5-9]|[2-9][0-9]"  # At least 15 indexes
+
+# 4. Test query performance
+echo "[4/6] Testing query performance..."
+EXPLAIN_OUTPUT=$(psql -h localhost -U postgres -d gndb_test -t -c \
+  "EXPLAIN SELECT * FROM name_strings WHERE canonical_simple = 'Homo sapiens';")
+echo "$EXPLAIN_OUTPUT" | grep -q "Index Scan"
+
+# 5. Test migration
+echo "[5/6] Testing migration..."
+./gndb migrate status --config gndb.yaml
+
+# 6. Cleanup
+echo "[6/6] Cleaning up..."
+docker stop gndb-test
+docker rm gndb-test
+
+echo "✅ All tests passed!"
+```
+
+**Run test**:
+```bash
+chmod +x quickstart_test.sh
+./quickstart_test.sh
+```
+
+---
+
+## Success Metrics
+
+| Metric | Target | Verification |
+|--------|--------|--------------|
+| **Schema creation** | <1 second | Time command output |
+| **Import throughput** | >1000 records/sec | JSON output `records_per_second` |
+| **Index creation** | <30 seconds | JSON output `duration_ms` |
+| **Exact match latency** | <10ms | EXPLAIN ANALYZE execution time |
+| **Fuzzy match latency** | <100ms | EXPLAIN ANALYZE execution time |
+| **Database size** | <10MB for test data | JSON output `database_size_mb` |
+| **Cache hit ratio** | >95% | JSON output `cache_hit_ratio` |
 
 ---
 
 ## Troubleshooting
 
-### Problem: "Extension uuid-ossp not available"
-**Solution**: Install PostgreSQL contrib packages
-```bash
-apt-get install postgresql-contrib-15  # Linux
-brew reinstall postgresql@15  # macOS
-```
+### Import fails with "foreign key violation"
+- **Cause**: Import order incorrect or SFGA file corrupted
+- **Fix**: Verify SFGA schema with `./gndb populate --validate-only`
 
-### Problem: "SFGA version incompatible"
-**Solution**: Check SFGA version and update sflib
-```bash
-sqlite3 testdata/sample.sfga "SELECT version FROM version;"
-go get github.com/sfborg/sflib@latest
-```
+### Queries not using indexes
+- **Cause**: Restructure phase not run or ANALYZE not executed
+- **Fix**: Run `./gndb restructure --config gndb.yaml` again
 
-### Problem: "Out of memory during populate"
-**Solution**: Reduce batch size in config
-```yaml
-# gndb.yaml
-populate:
-  batch_size: 1000  # Reduce from default 5000
-```
+### SFGA version mismatch error
+- **Cause**: Mixing incompatible SFGA format versions
+- **Fix**: Use `--force` to nuke and rebuild, or ensure all sources use same SFGA version
 
-### Problem: "Index creation timeout"
-**Solution**: Increase maintenance_work_mem
-```sql
--- In postgresql.conf or SET
-SET maintenance_work_mem = '4GB';
-```
+### Out of memory during import
+- **Cause**: Batch size too large for available RAM
+- **Fix**: Reduce batch sizes in gndb.yaml configuration
 
 ---
 
 ## Next Steps
 
-After successful quickstart:
-1. Test with full-size SFGA files (100M+ names)
-2. Benchmark production workloads
-3. Tune PostgreSQL configuration for production
-4. Set up connection pooling (PgBouncer)
-5. Configure backups and monitoring
+After quickstart validation passes:
+1. Generate tasks.md using `/tasks` command
+2. Implement interfaces in order: config → schema → database → sfga → populate → restructure → migrate
+3. Follow TDD workflow: write tests first, verify they fail, implement, verify they pass
 
 ---
 
-**Quickstart Complete**: Database lifecycle validated end-to-end.
+**Quickstart Complete**: Ready for task generation (Phase 2).

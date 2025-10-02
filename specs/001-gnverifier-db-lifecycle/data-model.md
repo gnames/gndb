@@ -1,492 +1,648 @@
 # Data Model: GNverifier Database Schema
 
-**Based on**: gnames/gnames migrations/gnames.hcl (existing production schema)  
 **Date**: 2025-10-02  
-**Status**: Adapted from existing schema
+**Status**: Design Complete  
+**Approach**: Go models for schema creation and type-safe SQL mapping
+
+---
 
 ## Overview
 
-The GNverifier database schema is based on the existing gnames production schema with optimizations for 100M+ scientific names. This document defines the PostgreSQL schema that will be created by `gndb create` and populated by `gndb populate`.
+The GNverifier database schema is defined through Go struct models (inspired by gnidump's model.go pattern). This approach provides:
+- **Type safety**: Go structs map directly to PostgreSQL tables
+- **Schema generation**: DDL automatically generated from struct tags
+- **Query mapping**: SQL results scan directly into Go types
+- **Maintainability**: Single source of truth for schema definition
 
 ---
 
-## Core Tables
+## Core Entities
 
-### 1. canonicals
+### 1. DataSource
 
-Stores canonical forms of scientific names (standardized name strings without authorship).
+Represents external nomenclature data sources in SFGA format.
 
-```sql
-CREATE TABLE canonicals (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL UNIQUE
-);
-
-CREATE INDEX idx_canonicals_name ON canonicals (name);
-CREATE INDEX idx_canonicals_name_trgm ON canonicals USING GIST (name gist_trgm_ops(siglen=256));
+**Go Model**:
+```go
+type DataSource struct {
+    ID              int64     `db:"id" ddl:"BIGSERIAL PRIMARY KEY"`
+    UUID            string    `db:"uuid" ddl:"TEXT UNIQUE NOT NULL"`
+    Title           string    `db:"title" ddl:"TEXT NOT NULL"`
+    TitleShort      string    `db:"title_short" ddl:"TEXT NOT NULL"`
+    Version         string    `db:"version" ddl:"TEXT NOT NULL"`
+    ReleaseDate     time.Time `db:"release_date" ddl:"TIMESTAMP NOT NULL"`
+    HomeURL         string    `db:"home_url" ddl:"TEXT"`
+    Description     string    `db:"description" ddl:"TEXT"`
+    DataSourceType  string    `db:"data_source_type" ddl:"TEXT CHECK (data_source_type IN ('taxonomic', 'nomenclatural'))"`
+    RecordCount     int64     `db:"record_count" ddl:"BIGINT DEFAULT 0"`
+    SFGAVersion     string    `db:"sfga_version" ddl:"TEXT NOT NULL"`
+    ImportedAt      time.Time `db:"imported_at" ddl:"TIMESTAMP DEFAULT NOW()"`
+}
 ```
 
-**Purpose**: Fast canonical name lookups for verification  
-**Volume**: ~80-90M rows (deduplicated from 100M name strings)
-
-### 2. canonical_fulls
-
-Stores full canonical forms including infraspecific epithets and ranks.
-
-```sql
-CREATE TABLE canonical_fulls (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL UNIQUE
-);
-
-CREATE INDEX idx_canonical_fulls_name ON canonical_fulls (name);
-CREATE INDEX idx_canonical_fulls_name_trgm ON canonical_fulls USING GIST (name gist_trgm_ops(siglen=256));
-```
-
-**Purpose**: Detailed canonical matching including subspecies/varieties  
-**Volume**: ~90-95M rows
-
-### 3. canonical_stems
-
-Stores stemmed versions of canonical names for fuzzy matching.
-
-```sql
-CREATE TABLE canonical_stems (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL UNIQUE
-);
-
-CREATE INDEX idx_canonical_stems_name ON canonical_stems (name);
-CREATE INDEX idx_canonical_stems_name_trgm ON canonical_stems USING GIST (name gist_trgm_ops(siglen=128));
-```
-
-**Purpose**: Linguistic stemming for better fuzzy matches  
-**Volume**: ~70-80M rows (fewer due to stemming collisions)
-
----
-
-## 4. data_sources
-
-Metadata about taxonomic data sources (e.g., Catalog of Life, GBIF, custom sources).
-
+**PostgreSQL DDL** (generated):
 ```sql
 CREATE TABLE data_sources (
-    id SMALLINT PRIMARY KEY,
-    uuid UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'::uuid,
-    title VARCHAR(255) NOT NULL,
-    title_short VARCHAR(50),
-    version VARCHAR(50),
-    revision_date TEXT,
-    doi VARCHAR(50),
-    citation TEXT,
-    authors TEXT,
+    id BIGSERIAL PRIMARY KEY,
+    uuid TEXT UNIQUE NOT NULL,
+    title TEXT NOT NULL,
+    title_short TEXT NOT NULL,
+    version TEXT NOT NULL,
+    release_date TIMESTAMP NOT NULL,
+    home_url TEXT,
     description TEXT,
-    website_url VARCHAR(255),
-    data_url VARCHAR(255),
-    outlink_url TEXT,
-    is_outlink_ready BOOLEAN DEFAULT false,
-    is_curated BOOLEAN DEFAULT false,
-    is_auto_curated BOOLEAN DEFAULT false,
-    has_taxon_data BOOLEAN DEFAULT false,
-    record_count INTEGER DEFAULT 0,
-    vern_record_count INTEGER DEFAULT 0,
+    data_source_type TEXT CHECK (data_source_type IN ('taxonomic', 'nomenclatural')),
+    record_count BIGINT DEFAULT 0,
+    sfga_version TEXT NOT NULL,
+    imported_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_datasources_uuid ON data_sources(uuid);
+CREATE INDEX idx_datasources_title_short ON data_sources(title_short);
+```
+
+**Relationships**:
+- One-to-many with NameStringOccurrence (a data source has many name occurrences)
+
+---
+
+### 2. NameString
+
+Represents parsed scientific name strings with canonical forms for matching.
+
+**Go Model**:
+```go
+type NameString struct {
+    ID                 int64  `db:"id" ddl:"BIGSERIAL PRIMARY KEY"`
+    NameString         string `db:"name_string" ddl:"TEXT NOT NULL"`
+    CanonicalSimple    string `db:"canonical_simple" ddl:"TEXT"`
+    CanonicalFull      string `db:"canonical_full" ddl:"TEXT"`
+    CanonicalStemmed   string `db:"canonical_stemmed" ddl:"TEXT"`
+    Authorship         string `db:"authorship" ddl:"TEXT"`
+    Year               string `db:"year" ddl:"TEXT"`
+    ParseQuality       int    `db:"parse_quality" ddl:"SMALLINT CHECK (parse_quality BETWEEN 0 AND 4)"`
+    Cardinality        int    `db:"cardinality" ddl:"SMALLINT CHECK (cardinality BETWEEN 0 AND 3)"`
+    Virus              bool   `db:"virus" ddl:"BOOLEAN DEFAULT FALSE"`
+    Bacteria           bool   `db:"bacteria" ddl:"BOOLEAN DEFAULT FALSE"`
+    ParserVersion      string `db:"parser_version" ddl:"TEXT NOT NULL"`
+    UpdatedAt          time.Time `db:"updated_at" ddl:"TIMESTAMP DEFAULT NOW()"`
+}
+```
+
+**PostgreSQL DDL** (generated):
+```sql
+CREATE TABLE name_strings (
+    id BIGSERIAL PRIMARY KEY,
+    name_string TEXT NOT NULL,
+    canonical_simple TEXT,
+    canonical_full TEXT,
+    canonical_stemmed TEXT,
+    authorship TEXT,
+    year TEXT,
+    parse_quality SMALLINT CHECK (parse_quality BETWEEN 0 AND 4),
+    cardinality SMALLINT CHECK (cardinality BETWEEN 0 AND 3),
+    virus BOOLEAN DEFAULT FALSE,
+    bacteria BOOLEAN DEFAULT FALSE,
+    parser_version TEXT NOT NULL,
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_data_sources_title ON data_sources (title);
-CREATE INDEX idx_data_sources_is_curated ON data_sources (is_curated) WHERE is_curated = true;
+-- Created during populate phase (no indexes initially)
+-- Added during restructure phase:
+CREATE UNIQUE INDEX idx_namestrings_canonical_simple ON name_strings(canonical_simple);
+CREATE INDEX idx_namestrings_canonical_full ON name_strings(canonical_full);
+CREATE INDEX idx_namestrings_name_trgm ON name_strings USING GIST (name_string gist_trgm_ops(siglen=256));
+CREATE INDEX idx_namestrings_cardinality ON name_strings(cardinality) WHERE cardinality > 0;
 ```
 
-**Purpose**: Track origin of name data and enable source filtering  
-**Volume**: 100-500 rows (number of taxonomic databases)
+**Relationships**:
+- One-to-many with NameStringOccurrence
+- One-to-many with Taxon (via taxon.name_id)
+- One-to-many with Synonym (via synonym.name_id)
 
-**Key Fields**:
-- `is_curated`: Human-verified taxonomic data
-- `is_auto_curated`: Algorithm-curated data
-- `has_taxon_data`: Whether source includes full taxonomic hierarchy
-- `record_count`: Number of scientific names from this source
-- `vern_record_count`: Number of vernacular names
+**Canonical Forms**:
+- `canonical_simple`: Uninomial/binomial without authorship (e.g., "Homo sapiens")
+- `canonical_full`: Complete canonical with infraspecific (e.g., "Homo sapiens sapiens")
+- `canonical_stemmed`: Stemmed for fuzzy matching (e.g., "hom sapien")
 
 ---
 
-## 5. name_string_indices (Core Entity)
+### 3. NameStringOccurrence
 
-Links name strings to their occurrences in data sources with taxonomic context.
+Tracks where and how often a name string appears across data sources (denormalized for performance).
 
-```sql
-CREATE TABLE name_string_indices (
-    data_source_id INTEGER NOT NULL,
-    record_id VARCHAR(255) NOT NULL,
-    name_string_id UUID NOT NULL,
-    outlink_id VARCHAR(255),
-    global_id VARCHAR(255),
-    name_id VARCHAR(255),
-    local_id VARCHAR(255),
-    code_id SMALLINT,
-    rank VARCHAR(255),
-    taxonomic_status VARCHAR(255),
-    accepted_record_id VARCHAR(255),
-    classification TEXT,
-    classification_ids TEXT,
-    classification_ranks TEXT,
-    
-    -- Performance: denormalized fields added during restructure
-    canonical_id UUID,
-    canonical_full_id UUID,
-    canonical_stem_id UUID,
-    
-    PRIMARY KEY (data_source_id, record_id)
-);
-
--- Indexes
-CREATE INDEX idx_nsi_name_string_id ON name_string_indices (name_string_id);
-CREATE INDEX idx_nsi_accepted_record_id ON name_string_indices (accepted_record_id);
-CREATE INDEX idx_nsi_canonical_id ON name_string_indices (canonical_id);
-CREATE INDEX idx_nsi_data_source_id ON name_string_indices (data_source_id);
+**Go Model**:
+```go
+type NameStringOccurrence struct {
+    ID                  int64  `db:"id" ddl:"BIGSERIAL PRIMARY KEY"`
+    NameStringID        int64  `db:"name_string_id" ddl:"BIGINT NOT NULL REFERENCES name_strings(id) ON DELETE CASCADE"`
+    DataSourceID        int64  `db:"data_source_id" ddl:"BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE"`
+    DataSourceTitle     string `db:"data_source_title" ddl:"TEXT NOT NULL"` // Denormalized
+    TaxonID             string `db:"taxon_id" ddl:"TEXT"` // SFGA taxon.col__id
+    RecordType          string `db:"record_type" ddl:"TEXT CHECK (record_type IN ('accepted', 'synonym', 'vernacular'))"`
+    LocalID             string `db:"local_id" ddl:"TEXT"` // Original ID from source
+    OutlinkID           string `db:"outlink_id" ddl:"TEXT"` // External reference ID
+    AcceptedNameID      int64  `db:"accepted_name_id" ddl:"BIGINT REFERENCES name_strings(id)"` // For synonyms
+}
 ```
 
-**Purpose**: Primary lookup table for name verification and reconciliation  
-**Volume**: 200M rows (multiple occurrences per name across sources)
-
-**Note**: No partitioning initially. Current production handles 60M occurrences at 2000 names/sec (exceeds 1000 names/sec requirement). Partitioning can be added later if needed at larger scale.
-
-**Key Fields**:
-- `record_id`: Unique identifier within data source
-- `name_string_id`: Links to name_strings table
-- `accepted_record_id`: For synonyms, points to accepted name
-- `classification`: Pipe-delimited taxonomic hierarchy (Kingdom|Phylum|...|Species)
-- `classification_ids`: Corresponding IDs for classification
-- `classification_ranks`: Corresponding ranks
-
----
-
-## 6. name_strings
-
-Complete scientific name strings with parsed components and metadata.
-
+**PostgreSQL DDL** (generated):
 ```sql
-CREATE TABLE name_strings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL UNIQUE,
-    cardinality SMALLINT,
-    canonical_id UUID,
-    canonical_full_id UUID,
-    canonical_stem_id UUID,
-    virus BOOLEAN DEFAULT false,
-    bacteria BOOLEAN DEFAULT false,
-    surrogate BOOLEAN DEFAULT false,
-    parse_quality SMALLINT,
-    
-    -- Parsed components (from gnparser)
-    parsed_data JSONB,
-    year INTEGER,
-    authors TEXT,
-    
-    created_at TIMESTAMP DEFAULT NOW(),
-    
-    FOREIGN KEY (canonical_id) REFERENCES canonicals(id),
-    FOREIGN KEY (canonical_full_id) REFERENCES canonical_fulls(id),
-    FOREIGN KEY (canonical_stem_id) REFERENCES canonical_stems(id)
-);
-
-CREATE INDEX idx_name_strings_name ON name_strings (name);
-CREATE INDEX idx_name_strings_name_trgm ON name_strings USING GIST (name gist_trgm_ops(siglen=256));
-CREATE INDEX idx_name_strings_canonical_id ON name_strings (canonical_id);
-CREATE INDEX idx_name_strings_year ON name_strings (year) WHERE year IS NOT NULL;
-CREATE INDEX idx_name_strings_parse_quality ON name_strings (parse_quality);
-```
-
-**Purpose**: Master table of all unique scientific name strings  
-**Volume**: 100M rows
-
-**Key Fields**:
-- `name`: Full scientific name string (with authorship)
-- `cardinality`: Number of name parts (1=uninomial, 2=binomial, 3=trinomial, etc.)
-- `canonical_id`, `canonical_full_id`, `canonical_stem_id`: Links to canonical tables
-- `virus`, `bacteria`: Taxonomic group flags
-- `surrogate`: Whether name is placeholder/surrogate
-- `parse_quality`: gnparser quality score (1-3, higher is better)
-- `parsed_data`: Full gnparser JSON output
-
----
-
-## 7. name_strings_alphas
-
-Alphabetical index for name string browsing and pagination.
-
-```sql
-CREATE TABLE name_strings_alphas (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    name_string_id UUID NOT NULL,
-    
-    FOREIGN KEY (name_string_id) REFERENCES name_strings(id)
-);
-
-CREATE INDEX idx_name_strings_alphas_name ON name_strings_alphas (name);
-```
-
-**Purpose**: Fast alphabetical navigation (A-Z browsing)  
-**Volume**: 100M rows (same as name_strings)
-
----
-
-## 8. verification_runs
-
-Tracks batch name verification requests.
-
-```sql
-CREATE TABLE verification_runs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    input_hash VARCHAR(64) UNIQUE NOT NULL,
-    data_source_ids SMALLINT[] NOT NULL,
-    name_strings TEXT[] NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP,
-    result_count INTEGER
-);
-
-CREATE INDEX idx_verification_runs_input_hash ON verification_runs (input_hash);
-CREATE INDEX idx_verification_runs_created_at ON verification_runs (created_at);
-```
-
-**Purpose**: Cache verification results, track API usage  
-**Volume**: Variable (grows with usage)
-
----
-
-## 9. vernacular_strings
-
-Common/vernacular names in various languages.
-
-```sql
-CREATE TABLE vernacular_strings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    language VARCHAR(10) NOT NULL,
-    name_string_id UUID NOT NULL,
-    data_source_id SMALLINT NOT NULL,
-    
-    FOREIGN KEY (name_string_id) REFERENCES name_strings(id),
-    FOREIGN KEY (data_source_id) REFERENCES data_sources(id)
-);
-
--- Language-specific partial indexes
-CREATE INDEX idx_vernacular_english ON vernacular_strings (name, name_string_id) 
-WHERE language = 'en';
-
-CREATE INDEX idx_vernacular_spanish ON vernacular_strings (name, name_string_id) 
-WHERE language = 'es';
-
-CREATE INDEX idx_vernacular_french ON vernacular_strings (name, name_string_id) 
-WHERE language = 'fr';
-
-CREATE INDEX idx_vernacular_german ON vernacular_strings (name, name_string_id) 
-WHERE language = 'de';
-
--- Trigram indexes per major language
-CREATE INDEX idx_vernacular_english_trgm ON vernacular_strings USING GIST (name gist_trgm_ops(siglen=128))
-WHERE language = 'en';
-
-CREATE INDEX idx_vernacular_spanish_trgm ON vernacular_strings USING GIST (name gist_trgm_ops(siglen=128))
-WHERE language = 'es';
-
--- General language index
-CREATE INDEX idx_vernacular_language ON vernacular_strings (language);
-CREATE INDEX idx_vernacular_name_string_id ON vernacular_strings (name_string_id);
-```
-
-**Purpose**: Vernacular name search by language  
-**Volume**: 20M rows
-
----
-
-## 10. vernacular_string_indices
-
-Links vernacular names to their occurrences in data sources.
-
-```sql
-CREATE TABLE vernacular_string_indices (
+CREATE TABLE name_string_occurrences (
     id BIGSERIAL PRIMARY KEY,
-    data_source_id SMALLINT NOT NULL,
-    record_id VARCHAR(255) NOT NULL,
-    vernacular_string_id UUID NOT NULL,
-    name_string_id UUID NOT NULL,
-    language VARCHAR(10),
-    locality VARCHAR(255),
-    country_code VARCHAR(3),
-    
-    FOREIGN KEY (vernacular_string_id) REFERENCES vernacular_strings(id),
-    FOREIGN KEY (name_string_id) REFERENCES name_strings(id),
-    FOREIGN KEY (data_source_id) REFERENCES data_sources(id),
-    
-    UNIQUE (data_source_id, record_id)
+    name_string_id BIGINT NOT NULL REFERENCES name_strings(id) ON DELETE CASCADE,
+    data_source_id BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+    data_source_title TEXT NOT NULL,
+    taxon_id TEXT,
+    record_type TEXT CHECK (record_type IN ('accepted', 'synonym', 'vernacular')),
+    local_id TEXT,
+    outlink_id TEXT,
+    accepted_name_id BIGINT REFERENCES name_strings(id)
 );
 
-CREATE INDEX idx_vsi_vernacular_string_id ON vernacular_string_indices (vernacular_string_id);
-CREATE INDEX idx_vsi_name_string_id ON vernacular_string_indices (name_string_id);
-CREATE INDEX idx_vsi_language ON vernacular_string_indices (language);
-CREATE INDEX idx_vsi_country_code ON vernacular_string_indices (country_code);
+-- Restructure phase indexes:
+CREATE INDEX idx_occurrences_namestring ON name_string_occurrences(name_string_id);
+CREATE INDEX idx_occurrences_datasource ON name_string_occurrences(data_source_id);
+CREATE INDEX idx_occurrences_taxon_id ON name_string_occurrences(taxon_id);
+CREATE INDEX idx_occurrences_record_type ON name_string_occurrences(record_type);
 ```
 
-**Purpose**: Track vernacular name occurrences across sources  
-**Volume**: 20M rows
+**Design Decision**: Denormalized `data_source_title` avoids expensive joins during reconciliation.
 
 ---
 
-## Support Tables
+### 4. Taxon
 
-### 11. schema_migrations
+Represents taxonomic hierarchy and accepted scientific names.
 
-Tracks Atlas migration versions.
+**Go Model**:
+```go
+type Taxon struct {
+    ID              int64  `db:"id" ddl:"BIGSERIAL PRIMARY KEY"`
+    DataSourceID    int64  `db:"data_source_id" ddl:"BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE"`
+    LocalID         string `db:"local_id" ddl:"TEXT NOT NULL"` // SFGA col__id
+    NameID          int64  `db:"name_id" ddl:"BIGINT NOT NULL REFERENCES name_strings(id)"`
+    ParentID        string `db:"parent_id" ddl:"TEXT"` // SFGA col__parent_id
+    AcceptedID      string `db:"accepted_id" ddl:"TEXT"` // For provisional taxa
+    Rank            string `db:"rank" ddl:"TEXT"`
+    Kingdom         string `db:"kingdom" ddl:"TEXT"`
+    Phylum          string `db:"phylum" ddl:"TEXT"`
+    Class           string `db:"class" ddl:"TEXT"`
+    OrderName       string `db:"order_name" ddl:"TEXT"` // 'order' is reserved
+    Family          string `db:"family" ddl:"TEXT"`
+    Genus           string `db:"genus" ddl:"TEXT"`
+    Species         string `db:"species" ddl:"TEXT"`
+    TaxonomicStatus string `db:"taxonomic_status" ddl:"TEXT"`
+}
+```
 
+**PostgreSQL DDL** (generated):
 ```sql
-CREATE TABLE schema_migrations (
-    version VARCHAR(255) PRIMARY KEY,
+CREATE TABLE taxa (
+    id BIGSERIAL PRIMARY KEY,
+    data_source_id BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+    local_id TEXT NOT NULL,
+    name_id BIGINT NOT NULL REFERENCES name_strings(id),
+    parent_id TEXT,
+    accepted_id TEXT,
+    rank TEXT,
+    kingdom TEXT,
+    phylum TEXT,
+    class TEXT,
+    order_name TEXT,
+    family TEXT,
+    genus TEXT,
+    species TEXT,
+    taxonomic_status TEXT
+);
+
+CREATE UNIQUE INDEX idx_taxa_datasource_localid ON taxa(data_source_id, local_id);
+CREATE INDEX idx_taxa_name_id ON taxa(name_id);
+CREATE INDEX idx_taxa_parent_id ON taxa(parent_id);
+CREATE INDEX idx_taxa_rank ON taxa(rank);
+```
+
+**Relationships**:
+- Many-to-one with DataSource
+- Many-to-one with NameString
+- Self-referential via parent_id (hierarchical taxonomy)
+- One-to-many with Synonym
+- One-to-many with VernacularName
+
+---
+
+### 5. Synonym
+
+Maps alternative scientific names to accepted taxa.
+
+**Go Model**:
+```go
+type Synonym struct {
+    ID              int64  `db:"id" ddl:"BIGSERIAL PRIMARY KEY"`
+    DataSourceID    int64  `db:"data_source_id" ddl:"BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE"`
+    TaxonID         int64  `db:"taxon_id" ddl:"BIGINT NOT NULL REFERENCES taxa(id) ON DELETE CASCADE"`
+    NameID          int64  `db:"name_id" ddl:"BIGINT NOT NULL REFERENCES name_strings(id)"`
+    Status          string `db:"status" ddl:"TEXT"` // e.g., 'synonym', 'misapplied', 'homotypic'
+}
+```
+
+**PostgreSQL DDL** (generated):
+```sql
+CREATE TABLE synonyms (
+    id BIGSERIAL PRIMARY KEY,
+    data_source_id BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+    taxon_id BIGINT NOT NULL REFERENCES taxa(id) ON DELETE CASCADE,
+    name_id BIGINT NOT NULL REFERENCES name_strings(id),
+    status TEXT
+);
+
+CREATE INDEX idx_synonyms_name_id ON synonyms(name_id);
+CREATE INDEX idx_synonyms_taxon_id ON synonyms(taxon_id);
+CREATE INDEX idx_synonyms_datasource ON synonyms(data_source_id);
+```
+
+**Relationships**:
+- Many-to-one with DataSource
+- Many-to-one with Taxon (accepted taxon)
+- Many-to-one with NameString (synonym name)
+
+---
+
+### 6. VernacularName
+
+Common names in various languages associated with scientific taxa.
+
+**Go Model**:
+```go
+type VernacularName struct {
+    ID              int64  `db:"id" ddl:"BIGSERIAL PRIMARY KEY"`
+    DataSourceID    int64  `db:"data_source_id" ddl:"BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE"`
+    TaxonID         int64  `db:"taxon_id" ddl:"BIGINT NOT NULL REFERENCES taxa(id) ON DELETE CASCADE"`
+    NameString      string `db:"name_string" ddl:"TEXT NOT NULL"`
+    LanguageCode    string `db:"language_code" ddl:"TEXT"` // ISO 639-1/2
+    Country         string `db:"country" ddl:"TEXT"` // ISO 3166-1
+    Locality        string `db:"locality" ddl:"TEXT"`
+    Transliteration string `db:"transliteration" ddl:"TEXT"`
+}
+```
+
+**PostgreSQL DDL** (generated):
+```sql
+CREATE TABLE vernacular_names (
+    id BIGSERIAL PRIMARY KEY,
+    data_source_id BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+    taxon_id BIGINT NOT NULL REFERENCES taxa(id) ON DELETE CASCADE,
+    name_string TEXT NOT NULL,
+    language_code TEXT,
+    country TEXT,
+    locality TEXT,
+    transliteration TEXT
+);
+
+CREATE INDEX idx_vernacular_taxon_id ON vernacular_names(taxon_id);
+CREATE INDEX idx_vernacular_name_trgm ON vernacular_names USING GIST (name_string gist_trgm_ops(siglen=256));
+
+-- Partial indexes per language (created during restructure):
+CREATE INDEX idx_vernacular_english ON vernacular_names(name_string) WHERE language_code = 'en';
+CREATE INDEX idx_vernacular_spanish ON vernacular_names(name_string) WHERE language_code = 'es';
+CREATE INDEX idx_vernacular_chinese ON vernacular_names(name_string) WHERE language_code IN ('zh', 'cmn');
+-- Additional languages added based on data distribution
+```
+
+**Relationships**:
+- Many-to-one with DataSource
+- Many-to-one with Taxon
+
+---
+
+### 7. Reference
+
+Bibliographic citations for taxonomic data.
+
+**Go Model**:
+```go
+type Reference struct {
+    ID              int64  `db:"id" ddl:"BIGSERIAL PRIMARY KEY"`
+    DataSourceID    int64  `db:"data_source_id" ddl:"BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE"`
+    LocalID         string `db:"local_id" ddl:"TEXT NOT NULL"` // SFGA col__id
+    Citation        string `db:"citation" ddl:"TEXT NOT NULL"`
+    Author          string `db:"author" ddl:"TEXT"`
+    Title           string `db:"title" ddl:"TEXT"`
+    Year            string `db:"year" ddl:"TEXT"`
+    DOI             string `db:"doi" ddl:"TEXT"`
+    Link            string `db:"link" ddl:"TEXT"`
+}
+```
+
+**PostgreSQL DDL** (generated):
+```sql
+CREATE TABLE references (
+    id BIGSERIAL PRIMARY KEY,
+    data_source_id BIGINT NOT NULL REFERENCES data_sources(id) ON DELETE CASCADE,
+    local_id TEXT NOT NULL,
+    citation TEXT NOT NULL,
+    author TEXT,
+    title TEXT,
+    year TEXT,
+    doi TEXT,
+    link TEXT
+);
+
+CREATE UNIQUE INDEX idx_references_datasource_localid ON references(data_source_id, local_id);
+CREATE INDEX idx_references_doi ON references(doi) WHERE doi IS NOT NULL;
+```
+
+---
+
+### 8. SchemaVersion
+
+Tracks database schema migrations for Atlas.
+
+**Go Model**:
+```go
+type SchemaVersion struct {
+    Version     string    `db:"version" ddl:"TEXT PRIMARY KEY"`
+    Description string    `db:"description" ddl:"TEXT"`
+    AppliedAt   time.Time `db:"applied_at" ddl:"TIMESTAMP DEFAULT NOW()"`
+}
+```
+
+**PostgreSQL DDL** (generated):
+```sql
+CREATE TABLE schema_versions (
+    version TEXT PRIMARY KEY,
+    description TEXT,
     applied_at TIMESTAMP DEFAULT NOW()
 );
 ```
 
-### 12. version
-
-Stores current database/data version.
-
-```sql
-CREATE TABLE version (
-    id SERIAL PRIMARY KEY,
-    version VARCHAR(50) NOT NULL,
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-```
-
 ---
 
-## Materialized Views (Created During Restructure)
+## Materialized Views (Restructure Phase)
 
-### mv_name_lookup
+### 9. mv_name_lookup
 
-Denormalized view for fast name verification.
+Pre-joined view for fast name reconciliation (eliminates 3-table joins).
 
+**Go Model**:
+```go
+type NameLookup struct {
+    NameStringID        int64  `db:"name_string_id"`
+    CanonicalSimple     string `db:"canonical_simple"`
+    CanonicalFull       string `db:"canonical_full"`
+    DataSourceID        int64  `db:"data_source_id"`
+    DataSourceTitle     string `db:"data_source_title"`
+    TaxonID             int64  `db:"taxon_id"`
+    RecordType          string `db:"record_type"`
+    AcceptedNameID      int64  `db:"accepted_name_id"`
+}
+```
+
+**PostgreSQL DDL** (generated):
 ```sql
 CREATE MATERIALIZED VIEW mv_name_lookup AS
 SELECT 
     ns.id AS name_string_id,
-    ns.name AS name_string,
-    c.name AS canonical,
-    cf.name AS canonical_full,
-    cs.name AS canonical_stem,
-    ns.year,
-    ns.authors,
-    ns.parse_quality,
-    nsi.data_source_id,
-    nsi.taxonomic_status,
-    nsi.rank,
-    nsi.accepted_record_id,
-    ds.title AS data_source_title,
-    ds.is_curated
+    ns.canonical_simple,
+    ns.canonical_full,
+    nso.data_source_id,
+    nso.data_source_title,
+    nso.taxon_id::BIGINT AS taxon_id,
+    nso.record_type,
+    nso.accepted_name_id
 FROM name_strings ns
-LEFT JOIN canonicals c ON ns.canonical_id = c.id
-LEFT JOIN canonical_fulls cf ON ns.canonical_full_id = cf.id
-LEFT JOIN canonical_stems cs ON ns.canonical_stem_id = cs.id
-JOIN name_string_indices nsi ON ns.id = nsi.name_string_id
-JOIN data_sources ds ON nsi.data_source_id = ds.id;
+JOIN name_string_occurrences nso ON ns.id = nso.name_string_id;
 
-CREATE UNIQUE INDEX idx_mv_name_lookup_id ON mv_name_lookup (name_string_id, data_source_id);
-CREATE INDEX idx_mv_name_lookup_canonical ON mv_name_lookup (canonical);
-CREATE INDEX idx_mv_name_lookup_canonical_trgm ON mv_name_lookup USING GIST (canonical gist_trgm_ops(siglen=256));
+CREATE UNIQUE INDEX idx_mv_name_lookup_composite ON mv_name_lookup(name_string_id, data_source_id);
+CREATE INDEX idx_mv_name_lookup_canonical ON mv_name_lookup(canonical_simple);
 ```
 
 ---
 
-## Data Relationships
+### 10. mv_vernacular_by_language
 
+Aggregated vernacular names by language for fast language-specific searches.
+
+**Go Model**:
+```go
+type VernacularByLanguage struct {
+    LanguageCode    string `db:"language_code"`
+    NameString      string `db:"name_string"`
+    TaxonIDs        []int64 `db:"taxon_ids"` // Array of matching taxon IDs
+    RecordCount     int64  `db:"record_count"`
+}
 ```
-data_sources (1) ─── (M) name_string_indices
-                              │
-                              └─ (M) name_strings (1) ─┬─ (1) canonicals
-                                      │                 ├─ (1) canonical_fulls
-                                      │                 └─ (1) canonical_stems
-                                      │
-                                      └─ (M) vernacular_strings
-                                              │
-                                              └─ (M) vernacular_string_indices
-```
 
----
-
-## Extensions Required
-
+**PostgreSQL DDL** (generated):
 ```sql
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+CREATE MATERIALIZED VIEW mv_vernacular_by_language AS
+SELECT 
+    language_code,
+    name_string,
+    array_agg(DISTINCT taxon_id) AS taxon_ids,
+    count(*) AS record_count
+FROM vernacular_names
+GROUP BY language_code, name_string;
+
+CREATE INDEX idx_mv_vernacular_lang_name ON mv_vernacular_by_language(language_code, name_string);
+```
+
+---
+
+### 11. mv_synonym_map
+
+Denormalized synonym resolution (synonym → accepted name).
+
+**Go Model**:
+```go
+type SynonymMap struct {
+    SynonymNameID       int64  `db:"synonym_name_id"`
+    SynonymCanonical    string `db:"synonym_canonical"`
+    AcceptedNameID      int64  `db:"accepted_name_id"`
+    AcceptedCanonical   string `db:"accepted_canonical"`
+    DataSourceID        int64  `db:"data_source_id"`
+    DataSourceTitle     string `db:"data_source_title"`
+}
+```
+
+**PostgreSQL DDL** (generated):
+```sql
+CREATE MATERIALIZED VIEW mv_synonym_map AS
+SELECT 
+    syn_ns.id AS synonym_name_id,
+    syn_ns.canonical_simple AS synonym_canonical,
+    acc_ns.id AS accepted_name_id,
+    acc_ns.canonical_simple AS accepted_canonical,
+    s.data_source_id,
+    ds.title_short AS data_source_title
+FROM synonyms s
+JOIN name_strings syn_ns ON s.name_id = syn_ns.id
+JOIN taxa t ON s.taxon_id = t.id
+JOIN name_strings acc_ns ON t.name_id = acc_ns.id
+JOIN data_sources ds ON s.data_source_id = ds.id;
+
+CREATE INDEX idx_mv_synonym_map_synonym ON mv_synonym_map(synonym_name_id);
+CREATE INDEX idx_mv_synonym_map_canonical ON mv_synonym_map(synonym_canonical);
+```
+
+---
+
+## SFGA to PostgreSQL Mapping
+
+| SFGA Table | Go Model | PostgreSQL Table | Import Order |
+|------------|----------|------------------|--------------|
+| metadata | DataSource | data_sources | 1 |
+| reference | Reference | references | 2 |
+| name | NameString | name_strings | 3 |
+| taxon | Taxon | taxa | 4 |
+| synonym | Synonym | synonyms | 5 |
+| vernacular | VernacularName | vernacular_names | 6 |
+| (derived) | NameStringOccurrence | name_string_occurrences | 7 |
+
+**Import Order Rationale**: Foreign key dependencies dictate order (references before taxa, names before occurrences).
+
+---
+
+## Type Mappings
+
+| Go Type | PostgreSQL Type | SFGA SQLite Type |
+|---------|-----------------|------------------|
+| `int64` | `BIGINT` | `INTEGER` |
+| `string` | `TEXT` | `TEXT` |
+| `time.Time` | `TIMESTAMP` | `TEXT` (parsed) |
+| `bool` | `BOOLEAN` | `INTEGER` (0/1) |
+| `[]int64` | `BIGINT[]` | - (aggregated) |
+
+**Special Handling**:
+- SQLite `INTEGER` → PostgreSQL `BIGINT` (IDs can exceed int32 range)
+- SQLite `TEXT` dates → PostgreSQL `TIMESTAMP` (parse ISO 8601)
+- Reserved keywords: `order` → `order_name`
+
+---
+
+## DDL Generation Pattern
+
+**pkg/schema/ddl.go**:
+```go
+func (ns NameString) TableDDL() string {
+    // Reflect on struct tags to generate CREATE TABLE
+    return generateDDL(ns)
+}
+
+func (ns NameString) IndexDDL() []string {
+    // Return slice of CREATE INDEX statements
+    return []string{
+        "CREATE UNIQUE INDEX idx_namestrings_canonical_simple ON name_strings(canonical_simple);",
+        "CREATE INDEX idx_namestrings_name_trgm ON name_strings USING GIST (name_string gist_trgm_ops(siglen=256));",
+    }
+}
+```
+
+**Usage in gndb create**:
+```go
+models := []interface{}{
+    DataSource{}, NameString{}, Taxon{}, Synonym{}, VernacularName{}, Reference{},
+}
+
+for _, model := range models {
+    ddl := model.(DDLGenerator).TableDDL()
+    db.Exec(ddl)
+}
+```
+
+---
+
+## Query Mapping Pattern
+
+**Type-safe query result scanning**:
+```go
+func FindByCanonical(db *pgxpool.Pool, canonical string) ([]NameLookup, error) {
+    query := `SELECT * FROM mv_name_lookup WHERE canonical_simple = $1`
+    rows, err := db.Query(context.Background(), query, canonical)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var results []NameLookup
+    for rows.Next() {
+        var nl NameLookup
+        err := rows.Scan(
+            &nl.NameStringID, &nl.CanonicalSimple, &nl.CanonicalFull,
+            &nl.DataSourceID, &nl.DataSourceTitle, &nl.TaxonID,
+            &nl.RecordType, &nl.AcceptedNameID,
+        )
+        if err != nil {
+            return nil, err
+        }
+        results = append(results, nl)
+    }
+    return results, nil
+}
+```
+
+---
+
+## Schema Evolution Strategy
+
+**Atlas Migrations**:
+1. Modify Go model structs (add/remove fields)
+2. Generate migration: `atlas migrate diff --env gndb`
+3. Review generated SQL in `migrations/{timestamp}_{name}.sql`
+4. Apply: `gndb migrate` (calls Atlas SDK)
+
+**Example Migration** (add index):
+```sql
+-- migrations/20251002120000_add_cardinality_index.sql
+CREATE INDEX idx_namestrings_cardinality 
+ON name_strings(cardinality) 
+WHERE cardinality > 0;
 ```
 
 ---
 
 ## Performance Characteristics
 
-| Table | Rows | Indexes | Est. Size |
-|-------|------|---------|-----------|
-| name_strings | 100M | 6 | 50GB |
-| canonicals | 90M | 2 | 20GB |
-| canonical_fulls | 95M | 2 | 22GB |
-| canonical_stems | 80M | 2 | 18GB |
-| name_string_indices | 200M | 4 | 120GB |
-| vernacular_strings | 20M | 8 | 5GB |
-| vernacular_string_indices | 20M | 4 | 4GB |
-| data_sources | 500 | 2 | <1MB |
-| **Total** | **605M+** | **30** | **~240GB** |
+| Operation | Index Used | Expected Time |
+|-----------|-----------|---------------|
+| Exact canonical match | B-tree on canonical_simple | <5ms (index-only scan) |
+| Fuzzy name search | GiST trigram on name_string | <100ms (partial match) |
+| Vernacular by language | Partial index on language_code | <10ms |
+| Synonym resolution | mv_synonym_map canonical index | <5ms |
+| Bulk import (100M records) | No indexes during import | ~3 hours |
+| Index rebuild (100M records) | All indexes | ~2 hours |
 
 ---
 
-## Schema Creation Order
+## Validation Rules
 
-1. Extensions (`uuid-ossp`, `pg_trgm`)
-2. Core lookup tables (`data_sources`)
-3. Canonical tables (`canonicals`, `canonical_fulls`, `canonical_stems`)
-4. Name tables (`name_strings`, `name_strings_alphas`)
-5. Index tables (`name_string_indices`)
-6. Vernacular tables (`vernacular_strings`, `vernacular_string_indices`)
-7. Support tables (`schema_migrations`, `version`)
-8. Primary key indexes (auto-created)
-9. Secondary indexes (deferred to restructure phase)
-10. Materialized views (deferred to restructure phase)
+**Enforced via CHECK constraints** (in Go model tags):
+- `parse_quality`: 0-4 (0=unparsed, 4=perfect)
+- `cardinality`: 0-3 (0=uninomial, 1=binomial, 2=trinomial, 3=quadrinomial+)
+- `record_type`: 'accepted', 'synonym', 'vernacular'
+- `data_source_type`: 'taxonomic', 'nomenclatural'
 
----
-
-## Population Order (Foreign Key Dependencies)
-
-1. `data_sources`
-2. `canonicals`, `canonical_fulls`, `canonical_stems` (parallel)
-3. `name_strings` (references canonical tables)
-4. `name_strings_alphas` (references name_strings)
-5. `name_string_indices` (references name_strings, data_sources)
-6. `vernacular_strings` (references name_strings, data_sources)
-7. `vernacular_string_indices` (references vernacular_strings, name_strings, data_sources)
-
----
-
-## Index Creation Strategy
-
-### During Create Phase
-- Primary keys only
-- UNIQUE constraints on critical columns
-
-### During Restructure Phase
-- All B-tree indexes for foreign keys
-- GiST trigram indexes for fuzzy matching
-- Partial indexes for language-specific queries
-- Materialized views
-- Statistics updates (`ANALYZE`)
-
-**Rationale**: Disabling indexes during bulk load improves insert performance by 10x.
+**Application-level validation** (in pkg/):
+- SFGA version compatibility
+- Foreign key existence before insert
+- Required fields (e.g., canonical_simple for reconciliation)
 
 ---
 
 ## Next Steps
 
-1. Generate Atlas migration files from this schema
-2. Create Go models matching table structures
-3. Define interfaces for database operations
-4. Write contract tests for each table/operation
+1. **Generate interface contracts** in `/contracts/`:
+   - DatabaseOperator.go (schema creation, migrations)
+   - SFGAReader.go (data source streaming)
+   - Importer.go (batch insert operations)
 
+2. **Create contract tests** verifying:
+   - DDL generation produces valid PostgreSQL
+   - Query scanning maps correctly to Go types
+   - Materialized view definitions compile
+
+3. **Document quickstart.md** with end-to-end integration test using small SFGA sample
+
+---
+
+**Data Model Complete**: Ready for contract generation (Phase 1, step 2).
