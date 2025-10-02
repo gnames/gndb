@@ -15,6 +15,7 @@ Build a complete database lifecycle management tool for GNverifier that enables 
 - **Name Parsing**: github.com/gnames/gnparser  
 - **Reference Implementation**: github.com/gnames/gnidump (prototype)  
 - **Testing**: testify/assert (unit tests), custom integration test framework
+- **Task Runner**: just (command runner for development tasks)
 
 **Storage**: PostgreSQL (main database), SQLite (SFGA format data sources)  
 **Testing**: Go standard testing with testify/assert  
