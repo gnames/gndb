@@ -111,8 +111,6 @@ CREATE INDEX idx_data_sources_is_curated ON data_sources (is_curated) WHERE is_c
 
 ## 5. name_string_indices (Core Entity)
 
-**Partitioned Table**: Hash partitioned by `data_source_id` into 16 partitions.
-
 Links name strings to their occurrences in data sources with taxonomic context.
 
 ```sql
@@ -138,18 +136,9 @@ CREATE TABLE name_string_indices (
     canonical_stem_id UUID,
     
     PRIMARY KEY (data_source_id, record_id)
-) PARTITION BY HASH (data_source_id);
+);
 
--- Create 16 partitions
-CREATE TABLE name_string_indices_p00 PARTITION OF name_string_indices
-FOR VALUES WITH (MODULUS 16, REMAINDER 0);
-
-CREATE TABLE name_string_indices_p01 PARTITION OF name_string_indices
-FOR VALUES WITH (MODULUS 16, REMAINDER 1);
-
--- ... repeat for p02 through p15
-
--- Indexes (created on parent, inherited by partitions)
+-- Indexes
 CREATE INDEX idx_nsi_name_string_id ON name_string_indices (name_string_id);
 CREATE INDEX idx_nsi_accepted_record_id ON name_string_indices (accepted_record_id);
 CREATE INDEX idx_nsi_canonical_id ON name_string_indices (canonical_id);
@@ -158,6 +147,8 @@ CREATE INDEX idx_nsi_data_source_id ON name_string_indices (data_source_id);
 
 **Purpose**: Primary lookup table for name verification and reconciliation  
 **Volume**: 200M rows (multiple occurrences per name across sources)
+
+**Note**: No partitioning initially. Current production handles 60M occurrences at 2000 names/sec (exceeds 1000 names/sec requirement). Partitioning can be added later if needed at larger scale.
 
 **Key Fields**:
 - `record_id`: Unique identifier within data source
@@ -434,17 +425,17 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 ## Performance Characteristics
 
-| Table | Rows | Indexes | Partitioned | Est. Size |
-|-------|------|---------|-------------|-----------|
-| name_strings | 100M | 6 | No | 50GB |
-| canonicals | 90M | 2 | No | 20GB |
-| canonical_fulls | 95M | 2 | No | 22GB |
-| canonical_stems | 80M | 2 | No | 18GB |
-| name_string_indices | 200M | 5 | Yes (16) | 120GB |
-| vernacular_strings | 20M | 8 | No | 5GB |
-| vernacular_string_indices | 20M | 4 | No | 4GB |
-| data_sources | 500 | 2 | No | <1MB |
-| **Total** | **605M+** | **31** | - | **~240GB** |
+| Table | Rows | Indexes | Est. Size |
+|-------|------|---------|-----------|
+| name_strings | 100M | 6 | 50GB |
+| canonicals | 90M | 2 | 20GB |
+| canonical_fulls | 95M | 2 | 22GB |
+| canonical_stems | 80M | 2 | 18GB |
+| name_string_indices | 200M | 4 | 120GB |
+| vernacular_strings | 20M | 8 | 5GB |
+| vernacular_string_indices | 20M | 4 | 4GB |
+| data_sources | 500 | 2 | <1MB |
+| **Total** | **605M+** | **30** | **~240GB** |
 
 ---
 
@@ -454,7 +445,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 2. Core lookup tables (`data_sources`)
 3. Canonical tables (`canonicals`, `canonical_fulls`, `canonical_stems`)
 4. Name tables (`name_strings`, `name_strings_alphas`)
-5. Index tables (`name_string_indices` with partitions)
+5. Index tables (`name_string_indices`)
 6. Vernacular tables (`vernacular_strings`, `vernacular_string_indices`)
 7. Support tables (`schema_migrations`, `version`)
 8. Primary key indexes (auto-created)

@@ -17,13 +17,13 @@ This document consolidates research findings on PostgreSQL schema design, Atlas 
 - **B-tree indexes** with INCLUDE clause for exact matches and covering indexes
 - **GiST trigram indexes** (siglen=256) for fuzzy name matching
 - **Partial indexes** for language-specific vernacular names
-- **Hash partitioning** (16 partitions) for name_string_occurrences table
+- **No partitioning initially** - current architecture handles 60M occurrences at 2000 names/sec (exceeds requirements)
 
 **Rationale**:
 - Covering indexes eliminate heap lookups, improving read performance by 30-60%
 - Trigram indexes with tuned siglen parameter achieve 50%+ speedup vs defaults
 - Partial indexes reduce index size for vernacular names organized by language
-- Hash partitioning enables partition pruning and parallel queries for 200M occurrence records
+- Avoid premature optimization: current production handles 60M occurrences at 2000 names/sec without partitioning
 
 **Alternatives Considered**:
 - GIN indexes: Rejected for fuzzy matching (slower to build, higher update cost)
