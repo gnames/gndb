@@ -1,9 +1,8 @@
 # GNdb - Just task runner commands
 # Install just: https://github.com/casey/just
 
-# Default recipe - show available commands
-default:
-    @just --list
+# Default recipe - install gndb to ~/go/bin
+default: install
 
 # Run all tests (skip integration tests requiring database)
 test:
@@ -30,6 +29,11 @@ test-race:
 # Build the gndb binary
 build:
     go build -o gndb ./cmd/gndb
+
+# Install gndb to ~/go/bin
+install:
+    go install ./cmd/gndb
+    @echo "✅ gndb installed to ~/go/bin/gndb"
 
 # Clean build artifacts
 clean:
