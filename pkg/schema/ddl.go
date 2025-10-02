@@ -56,10 +56,9 @@ func (ns NameString) TableDDL() string {
 
 func (ns NameString) IndexDDL() []string {
 	return []string{
-		"CREATE UNIQUE INDEX idx_namestrings_canonical_simple ON name_strings(canonical_simple);",
-		"CREATE INDEX idx_namestrings_canonical_full ON name_strings(canonical_full);",
-		"CREATE INDEX idx_namestrings_name_trgm ON name_strings USING GIST (name_string gist_trgm_ops(siglen=256));",
-		"CREATE INDEX idx_namestrings_cardinality ON name_strings(cardinality) WHERE cardinality > 0;",
+		"CREATE INDEX idx_name_strings_canonical ON name_strings(canonical_id);",
+		"CREATE INDEX idx_name_strings_canonical_full ON name_strings(canonical_full_id);",
+		"CREATE INDEX idx_name_strings_canonical_stem ON name_strings(canonical_stem_id);",
 	}
 }
 
@@ -67,71 +66,122 @@ func (ns NameString) TableName() string {
 	return "name_strings"
 }
 
-// Taxon DDL methods
-func (t Taxon) TableDDL() string {
-	return generateDDL(t, "taxa")
+// Canonical DDL methods
+func (c Canonical) TableDDL() string {
+	return generateDDL(c, "canonicals")
 }
 
-func (t Taxon) IndexDDL() []string {
+func (c Canonical) IndexDDL() []string {
+	return []string{}
+}
+
+func (c Canonical) TableName() string {
+	return "canonicals"
+}
+
+// CanonicalFull DDL methods
+func (cf CanonicalFull) TableDDL() string {
+	return generateDDL(cf, "canonical_fulls")
+}
+
+func (cf CanonicalFull) IndexDDL() []string {
+	return []string{}
+}
+
+func (cf CanonicalFull) TableName() string {
+	return "canonical_fulls"
+}
+
+// CanonicalStem DDL methods
+func (cs CanonicalStem) TableDDL() string {
+	return generateDDL(cs, "canonical_stems")
+}
+
+func (cs CanonicalStem) IndexDDL() []string {
+	return []string{}
+}
+
+func (cs CanonicalStem) TableName() string {
+	return "canonical_stems"
+}
+
+// NameStringIndex DDL methods
+func (nsi NameStringIndex) TableDDL() string {
+	return generateDDL(nsi, "name_string_indices")
+}
+
+func (nsi NameStringIndex) IndexDDL() []string {
 	return []string{
-		"CREATE UNIQUE INDEX idx_taxa_datasource_localid ON taxa(data_source_id, local_id);",
-		"CREATE INDEX idx_taxa_name_id ON taxa(name_id);",
-		"CREATE INDEX idx_taxa_parent_id ON taxa(parent_id);",
-		"CREATE INDEX idx_taxa_rank ON taxa(rank);",
+		"CREATE INDEX idx_name_string_indices_idx ON name_string_indices(data_source_id, record_id, name_string_id);",
+		"CREATE INDEX idx_name_string_indices_name_string_id ON name_string_indices(name_string_id);",
+		"CREATE INDEX idx_name_string_indices_accepted_record_id ON name_string_indices(accepted_record_id);",
 	}
 }
 
-func (t Taxon) TableName() string {
-	return "taxa"
+func (nsi NameStringIndex) TableName() string {
+	return "name_string_indices"
 }
 
-// Synonym DDL methods
-func (s Synonym) TableDDL() string {
-	return generateDDL(s, "synonyms")
+// Word DDL methods
+func (w Word) TableDDL() string {
+	return generateDDL(w, "words")
 }
 
-func (s Synonym) IndexDDL() []string {
+func (w Word) IndexDDL() []string {
 	return []string{
-		"CREATE INDEX idx_synonyms_name_id ON synonyms(name_id);",
-		"CREATE INDEX idx_synonyms_taxon_id ON synonyms(taxon_id);",
-		"CREATE INDEX idx_synonyms_datasource ON synonyms(data_source_id);",
+		"CREATE INDEX idx_words_modified ON words(modified);",
 	}
 }
 
-func (s Synonym) TableName() string {
-	return "synonyms"
+func (w Word) TableName() string {
+	return "words"
 }
 
-// VernacularName DDL methods
-func (vn VernacularName) TableDDL() string {
-	return generateDDL(vn, "vernacular_names")
+// WordNameString DDL methods
+func (wns WordNameString) TableDDL() string {
+	return generateDDL(wns, "word_name_strings")
 }
 
-func (vn VernacularName) IndexDDL() []string {
+func (wns WordNameString) IndexDDL() []string {
 	return []string{
-		"CREATE INDEX idx_vernacular_taxon_id ON vernacular_names(taxon_id);",
-		"CREATE INDEX idx_vernacular_name_trgm ON vernacular_names USING GIST (name_string gist_trgm_ops(siglen=256));",
+		"CREATE INDEX idx_word_name_strings_word ON word_name_strings(word_id);",
+		"CREATE INDEX idx_word_name_strings_name ON word_name_strings(name_string_id);",
 	}
 }
 
-func (vn VernacularName) TableName() string {
-	return "vernacular_names"
+func (wns WordNameString) TableName() string {
+	return "word_name_strings"
 }
 
-// Reference DDL methods
-func (r Reference) TableDDL() string {
-	return generateDDL(r, "references")
+// VernacularString DDL methods
+func (vs VernacularString) TableDDL() string {
+	return generateDDL(vs, "vernacular_strings")
 }
 
-func (r Reference) IndexDDL() []string {
+func (vs VernacularString) IndexDDL() []string {
 	return []string{
-		"CREATE UNIQUE INDEX idx_references_datasource_localid ON references(data_source_id, local_id);",
-		"CREATE INDEX idx_references_doi ON references(doi) WHERE doi IS NOT NULL;",
+		"CREATE INDEX idx_vern_str_name_idx ON vernacular_strings(name);",
 	}
 }
 
-func (r Reference) TableName() string {
-	return "references"
+func (vs VernacularString) TableName() string {
+	return "vernacular_strings"
+}
+
+// VernacularStringIndex DDL methods
+func (vsi VernacularStringIndex) TableDDL() string {
+	return generateDDL(vsi, "vernacular_string_indices")
+}
+
+func (vsi VernacularStringIndex) IndexDDL() []string {
+	return []string{
+		"CREATE INDEX idx_vernacular_string_idx_idx ON vernacular_string_indices(data_source_id, record_id, lang_code);",
+		"CREATE INDEX idx_vernacular_string_id ON vernacular_string_indices(vernacular_string_id);",
+	}
+}
+
+func (vsi VernacularStringIndex) TableName() string {
+	return "vernacular_string_indices"
 }
 
 // SchemaVersion DDL methods
@@ -140,27 +190,9 @@ func (sv SchemaVersion) TableDDL() string {
 }
 
 func (sv SchemaVersion) IndexDDL() []string {
-	return []string{} // No secondary indexes needed
+	return []string{}
 }
 
 func (sv SchemaVersion) TableName() string {
 	return "schema_versions"
-}
-
-// NameStringOccurrence DDL methods
-func (occ NameStringOccurrence) TableDDL() string {
-	return generateDDL(occ, "name_string_occurrences")
-}
-
-func (occ NameStringOccurrence) IndexDDL() []string {
-	return []string{
-		"CREATE INDEX idx_occurrences_namestring ON name_string_occurrences(name_string_id);",
-		"CREATE INDEX idx_occurrences_datasource ON name_string_occurrences(data_source_id);",
-		"CREATE INDEX idx_occurrences_taxon_id ON name_string_occurrences(taxon_id);",
-		"CREATE INDEX idx_occurrences_record_type ON name_string_occurrences(record_type);",
-	}
-}
-
-func (occ NameStringOccurrence) TableName() string {
-	return "name_string_occurrences"
 }
