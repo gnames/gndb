@@ -41,6 +41,9 @@ The tool provides four main phases:
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "",
 		"config file (default: ./gndb.yaml or ~/.config/gndb/gndb.yaml)")
 
+	// Override version flag to use -V (consistent with other gn projects)
+	rootCmd.Flags().BoolP("version", "V", false, "version for gndb")
+
 	// Add subcommands
 	rootCmd.AddCommand(getCreateCmd())
 	// TODO: Add migrate, populate, restructure commands in future tasks
