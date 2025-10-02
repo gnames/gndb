@@ -1,256 +1,271 @@
 package schema_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/gnames/gndb/pkg/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
-// TestDataSourceTableDDL tests DDL generation for DataSource model
-func TestDataSourceTableDDL(t *testing.T) {
-	ds := schema.DataSource{}
-	ddl := ds.TableDDL()
+// TestAllModels tests that AllModels returns all schema models
+func TestAllModels(t *testing.T) {
+	models := schema.AllModels()
 
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE data_sources")
+	// Should return 11 models
+	require.Len(t, models, 11, "AllModels should return all 11 schema models")
 
-	// Should have SMALLINT primary key (historical hard-coded IDs)
-	assert.Contains(t, ddl, "id SMALLINT PRIMARY KEY")
-
-	// Should have UUID field
-	assert.Contains(t, ddl, "uuid UUID")
-
-	// Should have required fields
-	assert.Contains(t, ddl, "title VARCHAR(255)")
-	assert.Contains(t, ddl, "title_short VARCHAR(50)")
-}
-
-// TestDataSourceTableName tests TableName method
-func TestDataSourceTableName(t *testing.T) {
-	ds := schema.DataSource{}
-	assert.Equal(t, "data_sources", ds.TableName())
-}
-
-// TestNameStringTableDDL tests DDL generation for NameString model
-func TestNameStringTableDDL(t *testing.T) {
-	ns := schema.NameString{}
-	ddl := ns.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE name_strings")
-
-	// Should have UUID primary key
-	assert.Contains(t, ddl, "id UUID PRIMARY KEY")
-
-	// Should have name field
-	assert.Contains(t, ddl, "name VARCHAR(255) NOT NULL")
-
-	// Should have canonical ID references
-	assert.Contains(t, ddl, "canonical_id UUID")
-	assert.Contains(t, ddl, "canonical_full_id UUID")
-	assert.Contains(t, ddl, "canonical_stem_id UUID")
-
-	// Should have parse_quality with default
-	assert.Contains(t, ddl, "parse_quality INT NOT NULL DEFAULT 0")
-}
-
-// TestNameStringIndexDDL tests index generation for NameString model
-func TestNameStringIndexDDL(t *testing.T) {
-	ns := schema.NameString{}
-	indexes := ns.IndexDDL()
-
-	// Should return indexes
-	require.NotEmpty(t, indexes, "NameString should have secondary indexes")
-
-	// Convert to single string for easier searching
-	allIndexes := strings.Join(indexes, "\n")
-
-	// Should have indexes on canonical IDs
-	assert.Contains(t, allIndexes, "canonical_id")
-	assert.Contains(t, allIndexes, "canonical_full_id")
-	assert.Contains(t, allIndexes, "canonical_stem_id")
-}
-
-// TestCanonicalTableDDL tests DDL generation for Canonical model
-func TestCanonicalTableDDL(t *testing.T) {
-	c := schema.Canonical{}
-	ddl := c.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE canonicals")
-
-	// Should have UUID primary key
-	assert.Contains(t, ddl, "id UUID PRIMARY KEY")
-
-	// Should have name field
-	assert.Contains(t, ddl, "name VARCHAR(255) NOT NULL")
-}
-
-// TestCanonicalFullTableDDL tests DDL generation for CanonicalFull model
-func TestCanonicalFullTableDDL(t *testing.T) {
-	cf := schema.CanonicalFull{}
-	ddl := cf.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE canonical_fulls")
-
-	// Should have UUID primary key
-	assert.Contains(t, ddl, "id UUID PRIMARY KEY")
-
-	// Should have name field
-	assert.Contains(t, ddl, "name VARCHAR(255) NOT NULL")
-}
-
-// TestCanonicalStemTableDDL tests DDL generation for CanonicalStem model
-func TestCanonicalStemTableDDL(t *testing.T) {
-	cs := schema.CanonicalStem{}
-	ddl := cs.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE canonical_stems")
-
-	// Should have UUID primary key
-	assert.Contains(t, ddl, "id UUID PRIMARY KEY")
-
-	// Should have name field
-	assert.Contains(t, ddl, "name VARCHAR(255) NOT NULL")
-}
-
-// TestNameStringIndexTableDDL tests DDL generation for NameStringIndex model
-func TestNameStringIndexTableDDL(t *testing.T) {
-	nsi := schema.NameStringIndex{}
-	ddl := nsi.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE name_string_indices")
-
-	// Should have data_source_id
-	assert.Contains(t, ddl, "data_source_id SMALLINT NOT NULL")
-
-	// Should have name_string_id as UUID
-	assert.Contains(t, ddl, "name_string_id UUID NOT NULL")
-
-	// Should have accepted_record_id
-	assert.Contains(t, ddl, "accepted_record_id VARCHAR(255)")
-
-	// Should have classification fields
-	assert.Contains(t, ddl, "classification TEXT")
-}
-
-// TestWordTableDDL tests DDL generation for Word model
-func TestWordTableDDL(t *testing.T) {
-	w := schema.Word{}
-	ddl := w.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE words")
-
-	// Should have UUID primary key
-	assert.Contains(t, ddl, "id UUID PRIMARY KEY")
-
-	// Should have normalized and modified fields
-	assert.Contains(t, ddl, "normalized VARCHAR(250) NOT NULL")
-	assert.Contains(t, ddl, "modified VARCHAR(250) NOT NULL")
-}
-
-// TestWordNameStringTableDDL tests DDL generation for WordNameString model
-func TestWordNameStringTableDDL(t *testing.T) {
-	wns := schema.WordNameString{}
-	ddl := wns.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE word_name_strings")
-
-	// Should have word_id
-	assert.Contains(t, ddl, "word_id UUID NOT NULL")
-
-	// Should have name_string_id
-	assert.Contains(t, ddl, "name_string_id UUID NOT NULL")
-
-	// Should have canonical_id
-	assert.Contains(t, ddl, "canonical_id UUID NOT NULL")
-}
-
-// TestVernacularStringTableDDL tests DDL generation for VernacularString model
-func TestVernacularStringTableDDL(t *testing.T) {
-	vs := schema.VernacularString{}
-	ddl := vs.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE vernacular_strings")
-
-	// Should have UUID primary key
-	assert.Contains(t, ddl, "id UUID PRIMARY KEY")
-
-	// Should have name field
-	assert.Contains(t, ddl, "name VARCHAR(500) NOT NULL")
-}
-
-// TestVernacularStringIndexTableDDL tests DDL generation for VernacularStringIndex model
-func TestVernacularStringIndexTableDDL(t *testing.T) {
-	vsi := schema.VernacularStringIndex{}
-	ddl := vsi.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE vernacular_string_indices")
-
-	// Should have data_source_id
-	assert.Contains(t, ddl, "data_source_id SMALLINT NOT NULL")
-
-	// Should have vernacular_string_id
-	assert.Contains(t, ddl, "vernacular_string_id UUID NOT NULL")
-
-	// Should have language fields
-	assert.Contains(t, ddl, "lang_code VARCHAR(3)")
-	assert.Contains(t, ddl, "language VARCHAR(255)")
-}
-
-// TestSchemaVersionTableDDL tests DDL generation for SchemaVersion model
-func TestSchemaVersionTableDDL(t *testing.T) {
-	sv := schema.SchemaVersion{}
-	ddl := sv.TableDDL()
-
-	// Should create table with correct name
-	assert.Contains(t, ddl, "CREATE TABLE schema_versions")
-
-	// Should have version as primary key (TEXT type)
-	assert.Contains(t, ddl, "version TEXT PRIMARY KEY")
-
-	// Should have timestamp field
-	assert.Contains(t, ddl, "applied_at TIMESTAMP DEFAULT NOW()")
-}
-
-// TestAllModelsImplementDDLGenerator tests that all models implement the DDLGenerator interface
-func TestAllModelsImplementDDLGenerator(t *testing.T) {
-	models := []schema.DDLGenerator{
-		&schema.DataSource{},
-		&schema.NameString{},
-		&schema.Canonical{},
-		&schema.CanonicalFull{},
-		&schema.CanonicalStem{},
-		&schema.NameStringIndex{},
-		&schema.Word{},
-		&schema.WordNameString{},
-		&schema.VernacularString{},
-		&schema.VernacularStringIndex{},
-		&schema.SchemaVersion{},
-	}
-
+	// Verify each model is present
+	modelTypes := make(map[string]bool)
 	for _, model := range models {
-		// Each model should return valid DDL
-		ddl := model.TableDDL()
-		assert.NotEmpty(t, ddl, "TableDDL should return non-empty string")
-		assert.Contains(t, ddl, "CREATE TABLE", "DDL should contain CREATE TABLE")
-
-		// Each model should return a table name
-		tableName := model.TableName()
-		assert.NotEmpty(t, tableName, "TableName should return non-empty string")
-
-		// IndexDDL should return a slice (may be empty for some models)
-		indexes := model.IndexDDL()
-		assert.NotNil(t, indexes, "IndexDDL should return non-nil slice")
+		switch model.(type) {
+		case *schema.DataSource:
+			modelTypes["DataSource"] = true
+		case *schema.NameString:
+			modelTypes["NameString"] = true
+		case *schema.Canonical:
+			modelTypes["Canonical"] = true
+		case *schema.CanonicalFull:
+			modelTypes["CanonicalFull"] = true
+		case *schema.CanonicalStem:
+			modelTypes["CanonicalStem"] = true
+		case *schema.NameStringIndex:
+			modelTypes["NameStringIndex"] = true
+		case *schema.Word:
+			modelTypes["Word"] = true
+		case *schema.WordNameString:
+			modelTypes["WordNameString"] = true
+		case *schema.VernacularString:
+			modelTypes["VernacularString"] = true
+		case *schema.VernacularStringIndex:
+			modelTypes["VernacularStringIndex"] = true
+		case *schema.SchemaVersion:
+			modelTypes["SchemaVersion"] = true
+		}
 	}
+
+	// Verify all expected models are present
+	expectedModels := []string{
+		"DataSource", "NameString", "Canonical", "CanonicalFull",
+		"CanonicalStem", "NameStringIndex", "Word", "WordNameString",
+		"VernacularString", "VernacularStringIndex", "SchemaVersion",
+	}
+	for _, name := range expectedModels {
+		assert.True(t, modelTypes[name], "Model %s should be in AllModels", name)
+	}
+}
+
+// TestMigrate tests GORM AutoMigrate functionality
+func TestMigrate(t *testing.T) {
+	// Use SQLite for testing (in-memory)
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err, "Failed to open test database")
+
+	// Run migration
+	err = schema.Migrate(db)
+	require.NoError(t, err, "Migrate should succeed")
+
+	// Verify all tables were created
+	tables := []string{
+		"data_sources", "name_strings", "canonicals", "canonical_fulls",
+		"canonical_stems", "name_string_indices", "words", "word_name_strings",
+		"vernacular_strings", "vernacular_string_indices", "schema_versions",
+	}
+
+	for _, tableName := range tables {
+		has := db.Migrator().HasTable(tableName)
+		assert.True(t, has, "Table %s should exist after migration", tableName)
+	}
+}
+
+// TestDataSourceSchema tests DataSource GORM schema
+func TestDataSourceSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.DataSource{})
+	require.NoError(t, err)
+
+	// Verify table exists
+	assert.True(t, db.Migrator().HasTable("data_sources"))
+
+	// Verify columns exist
+	columns := []string{
+		"id", "uuid", "title", "title_short", "version", "revision_date",
+		"doi", "citation", "authors", "description", "website_url",
+		"data_url", "outlink_url", "is_outlink_ready", "is_curated",
+		"is_auto_curated", "has_taxon_data", "record_count",
+		"vern_record_count", "updated_at",
+	}
+
+	for _, col := range columns {
+		has := db.Migrator().HasColumn(&schema.DataSource{}, col)
+		assert.True(t, has, "Column %s should exist in data_sources", col)
+	}
+}
+
+// TestNameStringSchema tests NameString GORM schema
+func TestNameStringSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.NameString{})
+	require.NoError(t, err)
+
+	// Verify table exists
+	assert.True(t, db.Migrator().HasTable("name_strings"))
+
+	// Verify key columns exist
+	columns := []string{
+		"id", "name", "year", "cardinality", "canonical_id",
+		"canonical_full_id", "canonical_stem_id", "virus", "bacteria",
+		"surrogate", "parse_quality",
+	}
+
+	for _, col := range columns {
+		has := db.Migrator().HasColumn(&schema.NameString{}, col)
+		assert.True(t, has, "Column %s should exist in name_strings", col)
+	}
+}
+
+// TestCanonicalSchema tests Canonical GORM schema
+func TestCanonicalSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.Canonical{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("canonicals"))
+	assert.True(t, db.Migrator().HasColumn(&schema.Canonical{}, "id"))
+	assert.True(t, db.Migrator().HasColumn(&schema.Canonical{}, "name"))
+}
+
+// TestCanonicalFullSchema tests CanonicalFull GORM schema
+func TestCanonicalFullSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.CanonicalFull{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("canonical_fulls"))
+	assert.True(t, db.Migrator().HasColumn(&schema.CanonicalFull{}, "id"))
+	assert.True(t, db.Migrator().HasColumn(&schema.CanonicalFull{}, "name"))
+}
+
+// TestCanonicalStemSchema tests CanonicalStem GORM schema
+func TestCanonicalStemSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.CanonicalStem{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("canonical_stems"))
+	assert.True(t, db.Migrator().HasColumn(&schema.CanonicalStem{}, "id"))
+	assert.True(t, db.Migrator().HasColumn(&schema.CanonicalStem{}, "name"))
+}
+
+// TestNameStringIndexSchema tests NameStringIndex GORM schema
+func TestNameStringIndexSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.NameStringIndex{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("name_string_indices"))
+
+	columns := []string{
+		"data_source_id", "record_id", "name_string_id", "outlink_id",
+		"global_id", "name_id", "local_id", "code_id", "rank",
+		"taxonomic_status", "accepted_record_id", "classification",
+		"classification_ids", "classification_ranks",
+	}
+
+	for _, col := range columns {
+		has := db.Migrator().HasColumn(&schema.NameStringIndex{}, col)
+		assert.True(t, has, "Column %s should exist in name_string_indices", col)
+	}
+}
+
+// TestWordSchema tests Word GORM schema
+func TestWordSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.Word{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("words"))
+	assert.True(t, db.Migrator().HasColumn(&schema.Word{}, "id"))
+	assert.True(t, db.Migrator().HasColumn(&schema.Word{}, "normalized"))
+	assert.True(t, db.Migrator().HasColumn(&schema.Word{}, "modified"))
+	assert.True(t, db.Migrator().HasColumn(&schema.Word{}, "type_id"))
+}
+
+// TestWordNameStringSchema tests WordNameString GORM schema
+func TestWordNameStringSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.WordNameString{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("word_name_strings"))
+	assert.True(t, db.Migrator().HasColumn(&schema.WordNameString{}, "word_id"))
+	assert.True(t, db.Migrator().HasColumn(&schema.WordNameString{}, "name_string_id"))
+	assert.True(t, db.Migrator().HasColumn(&schema.WordNameString{}, "canonical_id"))
+}
+
+// TestVernacularStringSchema tests VernacularString GORM schema
+func TestVernacularStringSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.VernacularString{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("vernacular_strings"))
+	assert.True(t, db.Migrator().HasColumn(&schema.VernacularString{}, "id"))
+	assert.True(t, db.Migrator().HasColumn(&schema.VernacularString{}, "name"))
+}
+
+// TestVernacularStringIndexSchema tests VernacularStringIndex GORM schema
+func TestVernacularStringIndexSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.VernacularStringIndex{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("vernacular_string_indices"))
+
+	columns := []string{
+		"data_source_id", "record_id", "vernacular_string_id",
+		"language_orig", "language", "lang_code", "locality",
+		"country_code", "preferred",
+	}
+
+	for _, col := range columns {
+		has := db.Migrator().HasColumn(&schema.VernacularStringIndex{}, col)
+		assert.True(t, has, "Column %s should exist in vernacular_string_indices", col)
+	}
+}
+
+// TestSchemaVersionSchema tests SchemaVersion GORM schema
+func TestSchemaVersionSchema(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+
+	err = db.AutoMigrate(&schema.SchemaVersion{})
+	require.NoError(t, err)
+
+	assert.True(t, db.Migrator().HasTable("schema_versions"))
+	assert.True(t, db.Migrator().HasColumn(&schema.SchemaVersion{}, "version"))
+	assert.True(t, db.Migrator().HasColumn(&schema.SchemaVersion{}, "description"))
+	assert.True(t, db.Migrator().HasColumn(&schema.SchemaVersion{}, "applied_at"))
 }
