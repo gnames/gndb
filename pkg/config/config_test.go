@@ -16,6 +16,10 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, 5432, cfg.Database.Port)
 	assert.Equal(t, "postgres", cfg.Database.User)
 	assert.Equal(t, "disable", cfg.Database.SSLMode)
+	assert.Equal(t, 20, cfg.Database.MaxConnections)
+	assert.Equal(t, 2, cfg.Database.MinConnections)
+	assert.Equal(t, 60, cfg.Database.MaxConnLifetime)
+	assert.Equal(t, 10, cfg.Database.MaxConnIdleTime)
 
 	// Test import batch size default
 	assert.Equal(t, 5000, cfg.Import.BatchSize)
@@ -44,9 +48,13 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			name: "missing database host",
 			config: &config.Config{
 				Database: config.DatabaseConfig{
-					Port:     5432,
-					User:     "postgres",
-					Database: "gnames",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -58,9 +66,13 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			name: "missing database port",
 			config: &config.Config{
 				Database: config.DatabaseConfig{
-					Host:     "localhost",
-					User:     "postgres",
-					Database: "gnames",
+					Host:            "localhost",
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -72,9 +84,13 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			name: "missing database user",
 			config: &config.Config{
 				Database: config.DatabaseConfig{
-					Host:     "localhost",
-					Port:     5432,
-					Database: "gnames",
+					Host:            "localhost",
+					Port:            5432,
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -86,9 +102,13 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			name: "missing database name",
 			config: &config.Config{
 				Database: config.DatabaseConfig{
-					Host: "localhost",
-					Port: 5432,
-					User: "postgres",
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -100,10 +120,14 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			name: "invalid batch size",
 			config: &config.Config{
 				Database: config.DatabaseConfig{
-					Host:     "localhost",
-					Port:     5432,
-					User:     "postgres",
-					Database: "gnames",
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
 				},
 				Import: config.ImportConfig{
 					BatchSize: 0,
@@ -115,10 +139,14 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			name: "invalid logging format",
 			config: &config.Config{
 				Database: config.DatabaseConfig{
-					Host:     "localhost",
-					Port:     5432,
-					User:     "postgres",
-					Database: "gnames",
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
 				},
 				Import: config.ImportConfig{
 					BatchSize: 5000,
@@ -128,6 +156,63 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 				},
 			},
 			errMsg: "logging.format must be 'json' or 'text'",
+		},
+		{
+			name: "invalid max_connections zero",
+			config: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  0,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 5000,
+				},
+			},
+			errMsg: "database.max_connections must be at least 1",
+		},
+		{
+			name: "invalid min_connections exceeds max",
+			config: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  10,
+					MinConnections:  20,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 5000,
+				},
+			},
+			errMsg: "database.min_connections cannot exceed max_connections",
+		},
+		{
+			name: "invalid negative max_conn_lifetime",
+			config: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: -1,
+					MaxConnIdleTime: 10,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 5000,
+				},
+			},
+			errMsg: "database.max_conn_lifetime cannot be negative",
 		},
 	}
 
@@ -143,12 +228,16 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 func TestValidate_CompleteConfig(t *testing.T) {
 	cfg := &config.Config{
 		Database: config.DatabaseConfig{
-			Host:     "localhost",
-			Port:     5432,
-			User:     "postgres",
-			Password: "secret",
-			Database: "gndb_test",
-			SSLMode:  "require",
+			Host:            "localhost",
+			Port:            5432,
+			User:            "postgres",
+			Password:        "secret",
+			Database:        "gndb_test",
+			SSLMode:         "require",
+			MaxConnections:  50,
+			MinConnections:  5,
+			MaxConnLifetime: 120,
+			MaxConnIdleTime: 30,
 		},
 		Import: config.ImportConfig{
 			BatchSize: 5000,

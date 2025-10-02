@@ -47,6 +47,28 @@ type DatabaseConfig struct {
 	// Valid values: "disable", "require", "verify-ca", "verify-full"
 	// Default: "disable"
 	SSLMode string `mapstructure:"ssl_mode"`
+
+	// MaxConnections is the maximum number of connections in the pgxpool.
+	// Used for concurrent data import operations with multiple goroutines.
+	// Higher values enable more parallelism but consume more database resources.
+	// Default: 20
+	MaxConnections int `mapstructure:"max_connections"`
+
+	// MinConnections is the minimum number of connections maintained in the pool.
+	// Keeping connections warm reduces latency for new operations.
+	// Default: 2
+	MinConnections int `mapstructure:"min_connections"`
+
+	// MaxConnLifetime is the maximum duration (in minutes) a connection can be reused.
+	// After this time, connections are closed and recreated to prevent stale connections.
+	// Set to 0 for unlimited lifetime.
+	// Default: 60 (1 hour)
+	MaxConnLifetime int `mapstructure:"max_conn_lifetime"`
+
+	// MaxConnIdleTime is the maximum duration (in minutes) a connection can be idle.
+	// Idle connections beyond this time are closed to free resources.
+	// Default: 10
+	MaxConnIdleTime int `mapstructure:"max_conn_idle_time"`
 }
 
 // ImportConfig contains settings for SFGA data import.
@@ -109,6 +131,23 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("import.batch_size must be positive")
 	}
 
+	// Validate connection pool settings
+	if c.Database.MaxConnections < 1 {
+		return fmt.Errorf("database.max_connections must be at least 1")
+	}
+	if c.Database.MinConnections < 0 {
+		return fmt.Errorf("database.min_connections cannot be negative")
+	}
+	if c.Database.MinConnections > c.Database.MaxConnections {
+		return fmt.Errorf("database.min_connections cannot exceed max_connections")
+	}
+	if c.Database.MaxConnLifetime < 0 {
+		return fmt.Errorf("database.max_conn_lifetime cannot be negative")
+	}
+	if c.Database.MaxConnIdleTime < 0 {
+		return fmt.Errorf("database.max_conn_idle_time cannot be negative")
+	}
+
 	// Validate logging format
 	if c.Logging.Format != "" && c.Logging.Format != "json" && c.Logging.Format != "text" {
 		return fmt.Errorf("logging.format must be 'json' or 'text'")
@@ -121,11 +160,15 @@ func (c *Config) Validate() error {
 func Defaults() *Config {
 	return &Config{
 		Database: DatabaseConfig{
-			Host:     "localhost",
-			Port:     5432,
-			User:     "postgres",
-			Database: "gnames",
-			SSLMode:  "disable",
+			Host:            "localhost",
+			Port:            5432,
+			User:            "postgres",
+			Database:        "gnames",
+			SSLMode:         "disable",
+			MaxConnections:  20, // Allows 20 concurrent workers for import
+			MinConnections:  2,  // Keep 2 connections warm
+			MaxConnLifetime: 60, // 1 hour in minutes
+			MaxConnIdleTime: 10, // 10 minutes
 		},
 		Import: ImportConfig{
 			BatchSize: 5000,

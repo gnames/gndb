@@ -36,15 +36,16 @@
 **Technical Approach** (from research.md):
 - **Go models approach**: Use Go structs with GORM tags (matching gnidump's model.go) to define schema as single source of truth
 - **Schema creation**: GORM AutoMigrate for DDL generation (proven from gnidump)
+- **Connection pooling**: pgxpool.Pool for concurrent goroutine access during data population
 - **Queries**: Raw SQL with pgx v5 (GORM is slow/inflexible for queries)
 - **Migration**: Atlas framework with versioned migrations and integrity tracking
-- **Import**: Stream-based SFGA ingestion via sflib with batch inserts using PostgreSQL COPY protocol
+- **Import**: Stream-based SFGA ingestion via sflib with batch inserts using PostgreSQL COPY protocol, concurrent workers using pgxpool
 - **Optimization**: Hybrid indexing (B-tree + GiST trigram), materialized views for denormalization, statistics tuning
 
 ## Technical Context
 **Language/Version**: Go 1.21+  
 **Primary Dependencies**: 
-- pgx v5 (PostgreSQL driver - native protocol, 2-3x faster than database/sql)
+- pgx v5 with pgxpool (PostgreSQL driver - native protocol, 2-3x faster than database/sql, connection pooling for concurrent goroutines)
 - GORM v2 (ORM - ONLY for schema creation/migration, NOT for queries)
 - cobra (CLI framework with subcommand support)
 - viper (configuration management: YAML + flags + env)

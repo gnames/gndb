@@ -25,6 +25,10 @@ database:
   password: testpass
   database: testdb
   ssl_mode: require
+  max_connections: 30
+  min_connections: 5
+  max_conn_lifetime: 90
+  max_conn_idle_time: 15
 
 import:
   batch_size: 1000
@@ -51,6 +55,10 @@ logging:
 	assert.Equal(t, "testpass", cfg.Database.Password)
 	assert.Equal(t, "testdb", cfg.Database.Database)
 	assert.Equal(t, "require", cfg.Database.SSLMode)
+	assert.Equal(t, 30, cfg.Database.MaxConnections)
+	assert.Equal(t, 5, cfg.Database.MinConnections)
+	assert.Equal(t, 90, cfg.Database.MaxConnLifetime)
+	assert.Equal(t, 15, cfg.Database.MaxConnIdleTime)
 
 	// Verify import config
 	assert.Equal(t, 1000, cfg.Import.BatchSize)
