@@ -5,8 +5,12 @@
 default:
     @just --list
 
-# Run all tests with verbose output
+# Run all tests (skip integration tests requiring database)
 test:
+    go test -short -count=1 ./...
+
+# Run all tests including integration tests (requires PostgreSQL)
+test-all:
     go test -count=1 ./...
 
 # Run tests with coverage
