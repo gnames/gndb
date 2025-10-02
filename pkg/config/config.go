@@ -24,50 +24,40 @@ type Config struct {
 // DatabaseConfig contains PostgreSQL connection parameters.
 type DatabaseConfig struct {
 	// Host is the PostgreSQL server hostname or IP address.
-	// Default: "localhost"
 	Host string `mapstructure:"host"`
 
 	// Port is the PostgreSQL server port number.
-	// Default: 5432
 	Port int `mapstructure:"port"`
 
 	// User is the PostgreSQL database username.
-	// Default: "postgres"
 	User string `mapstructure:"user"`
 
 	// Password is the PostgreSQL database password.
-	// Optional: can be empty for trust authentication or set via environment.
 	Password string `mapstructure:"password"`
 
 	// Database is the PostgreSQL database name to connect to.
-	// Default: "gnames"
 	Database string `mapstructure:"database"`
 
 	// SSLMode specifies the SSL connection mode.
 	// Valid values: "disable", "require", "verify-ca", "verify-full"
-	// Default: "disable"
 	SSLMode string `mapstructure:"ssl_mode"`
 
 	// MaxConnections is the maximum number of connections in the pgxpool.
 	// Used for concurrent data import operations with multiple goroutines.
 	// Higher values enable more parallelism but consume more database resources.
-	// Default: 20
 	MaxConnections int `mapstructure:"max_connections"`
 
 	// MinConnections is the minimum number of connections maintained in the pool.
 	// Keeping connections warm reduces latency for new operations.
-	// Default: 2
 	MinConnections int `mapstructure:"min_connections"`
 
 	// MaxConnLifetime is the maximum duration (in minutes) a connection can be reused.
 	// After this time, connections are closed and recreated to prevent stale connections.
 	// Set to 0 for unlimited lifetime.
-	// Default: 60 (1 hour)
 	MaxConnLifetime int `mapstructure:"max_conn_lifetime"`
 
 	// MaxConnIdleTime is the maximum duration (in minutes) a connection can be idle.
 	// Idle connections beyond this time are closed to free resources.
-	// Default: 10
 	MaxConnIdleTime int `mapstructure:"max_conn_idle_time"`
 }
 
@@ -76,7 +66,6 @@ type ImportConfig struct {
 	// BatchSize defines the number of records to insert per transaction
 	// during SFGA import. Applies to all record types.
 	// Larger batches are faster but use more memory. Tune based on available RAM.
-	// Default: 5000
 	BatchSize int `mapstructure:"batch_size"`
 }
 
@@ -85,15 +74,11 @@ type OptimizationConfig struct {
 	// ConcurrentIndexes determines whether indexes are created concurrently.
 	// - false: Faster index creation but locks tables (recommended for initial setup)
 	// - true: Slower but allows reads during index creation (for production)
-	// Default: false
 	ConcurrentIndexes bool `mapstructure:"concurrent_indexes"`
 
 	// StatisticsTargets sets the statistics target for specific columns.
 	// Higher values (e.g., 1000) improve query planning for high-cardinality columns.
 	// Map key format: "table.column"
-	// Default targets:
-	//   - "name_strings.canonical_simple": 1000
-	//   - "taxa.rank": 100
 	StatisticsTargets map[string]int `mapstructure:"statistics_targets"`
 }
 
@@ -101,12 +86,10 @@ type OptimizationConfig struct {
 type LoggingConfig struct {
 	// Level is the logging level.
 	// Valid values: "debug", "info", "warn", "error"
-	// Default: "info"
 	Level string `mapstructure:"level"`
 
 	// Format is the log output format.
 	// Valid values: "json", "text"
-	// Default: "text"
 	Format string `mapstructure:"format"`
 }
 
@@ -163,6 +146,7 @@ func Defaults() *Config {
 			Host:            "localhost",
 			Port:            5432,
 			User:            "postgres",
+			Password:        "postgres",
 			Database:        "gnames",
 			SSLMode:         "disable",
 			MaxConnections:  20, // Allows 20 concurrent workers for import
