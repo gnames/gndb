@@ -7,7 +7,7 @@ default:
 
 # Run all tests with verbose output
 test:
-    go test -v ./...
+    go test -count=1 ./...
 
 # Run tests with coverage
 test-coverage:
@@ -21,7 +21,7 @@ test-pkg pkg:
 
 # Run all tests with race detector
 test-race:
-    go test -v -race ./...
+    go test -count=1 -race ./...
 
 # Build the gndb binary
 build:

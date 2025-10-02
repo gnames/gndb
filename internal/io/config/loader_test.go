@@ -148,9 +148,9 @@ func TestBindFlags(t *testing.T) {
 	cmd.Flags().String("ssl-mode", "", "SSL mode")
 
 	// Set some flags
-	cmd.Flags().Set("host", "flaghost")
-	cmd.Flags().Set("port", "9999")
-	cmd.Flags().Set("user", "flaguser")
+	require.NoError(t, cmd.Flags().Set("host", "flaghost"))
+	require.NoError(t, cmd.Flags().Set("port", "9999"))
+	require.NoError(t, cmd.Flags().Set("user", "flaguser"))
 
 	// Bind flags to config
 	updatedCfg, err := ioconfig.BindFlags(cmd, cfg)
@@ -178,8 +178,8 @@ func TestBindFlags_InvalidConfig(t *testing.T) {
 	cmd.Flags().String("host", "", "database host")
 	cmd.Flags().Int("port", 0, "database port")
 
-	// Set invalid port (0 after binding will fail validation)
-	cmd.Flags().Set("host", "") // Empty host is invalid
+	// Set invalid host (empty host will fail validation)
+	require.NoError(t, cmd.Flags().Set("host", ""))
 
 	// Bind flags should fail validation
 	_, err := ioconfig.BindFlags(cmd, cfg)
