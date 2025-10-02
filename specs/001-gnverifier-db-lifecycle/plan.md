@@ -34,7 +34,9 @@
 **Primary Requirement**: Enable local setup of GNverifier database lifecycle, from empty database through schema creation, migration, data population, and performance optimization for scientific name verification at 1000+ names/sec.
 
 **Technical Approach** (from research.md):
-- **Go models approach**: Use Go structs (like gnidump's model.go) to define schema, enabling type-safe SQL-to-Go mapping and simplified schema creation
+- **Go models approach**: Use Go structs with GORM tags (matching gnidump's model.go) to define schema as single source of truth
+- **Schema creation**: GORM AutoMigrate for DDL generation (proven from gnidump)
+- **Queries**: Raw SQL with pgx v5 (GORM is slow/inflexible for queries)
 - **Migration**: Atlas framework with versioned migrations and integrity tracking
 - **Import**: Stream-based SFGA ingestion via sflib with batch inserts using PostgreSQL COPY protocol
 - **Optimization**: Hybrid indexing (B-tree + GiST trigram), materialized views for denormalization, statistics tuning
@@ -43,6 +45,7 @@
 **Language/Version**: Go 1.21+  
 **Primary Dependencies**: 
 - pgx v5 (PostgreSQL driver - native protocol, 2-3x faster than database/sql)
+- GORM v2 (ORM - ONLY for schema creation/migration, NOT for queries)
 - cobra (CLI framework with subcommand support)
 - viper (configuration management: YAML + flags + env)
 - atlasexec (Atlas Go SDK for migrations)
@@ -75,7 +78,12 @@
 - 10M vernacular name-strings with 20M occurrences
 - Support for smaller local datasets with reduced hardware requirements
 
-**User-Provided Context**: Use Go models (like gnidump's model.go) for schema creation and SQL-to-Go mapping to simplify database operations and maintain type safety.
+**User-Provided Context**: 
+- Use Go models with GORM tags (matching gnidump's model.go) for schema creation
+- GORM used ONLY for database creation via AutoMigrate (single source of truth)
+- GORM NOT used for queries (too slow/inflexible) - use raw SQL with pgx instead
+- Schema changes only require updating Go models, not maintaining separate SQL DDL
+- Proven approach from gnidump (will be archived when gndb is functional)
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -166,10 +174,10 @@ pkg/
 │   ├── config.go                # Config struct, defaults, validation
 │   └── config_test.go           # Unit tests for validation logic
 ├── schema/                      # Database schema models (pure)
-│   ├── models.go                # Go structs representing DB tables
-│   ├── ddl.go                   # DDL generation from models
+│   ├── models.go                # Go structs with GORM tags (matches gnidump)
+│   ├── gorm.go                  # GORM AutoMigrate wrapper
 │   ├── interfaces.go            # DatabaseOperator interface
-│   └── schema_test.go           # Unit tests for DDL generation
+│   └── schema_test.go           # Tests for GORM migration
 ├── migrate/                     # Migration orchestration (pure)
 │   ├── interfaces.go            # MigrationRunner interface
 │   ├── orchestrator.go          # Migration coordination logic
@@ -220,7 +228,7 @@ testdata/                        # Test fixtures
 - **pkg/**: Pure business logic modules defining interfaces and orchestration
 - **internal/io/**: Impure implementations of pkg/ interfaces for database and file I/O
 - **cmd/gndb/**: CLI subcommands (create, migrate, populate, restructure) using cobra
-- **Go models approach**: pkg/schema/models.go defines database tables as Go structs, enabling type-safe SQL mapping and DDL generation (per user requirement, inspired by gnidump's model.go pattern)
+- **Go models approach**: pkg/schema/models.go defines database tables as Go structs with GORM tags (matching gnidump's model.go), enabling schema creation via AutoMigrate while queries use raw SQL with pgx for performance
 
 ## Phase 0: Outline & Research
 ✅ **Status**: COMPLETE (research.md already exists)
