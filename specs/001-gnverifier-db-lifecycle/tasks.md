@@ -365,7 +365,97 @@
 
 ---
 
-## Task Execution Order (T006-T010)
+### T011: Add Environment Variable Overrides for All Config Fields
+
+**Description**: Implement environment variable support in `internal/io/config/loader.go` to allow all config fields to be overridden via `GNDB_*` environment variables, satisfying Constitution Principle VI (precedence: flags > env vars > config file > defaults)
+
+**Actions**:
+1. Update `internal/io/config/loader.go` to add environment variable support:
+   - Import `strings` package for key replacer
+   - In `Load()` function, add after `v.SetConfigType("yaml")`:
+     ```go
+     // Enable environment variable overrides
+     v.SetEnvPrefix("GNDB")
+     v.AutomaticEnv()
+     v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+     ```
+   - This enables automatic binding of environment variables with GNDB_ prefix
+   - Nested config fields map to env vars with underscores (database.host → GNDB_DATABASE_HOST)
+
+2. Create `internal/io/config/loader_test.go` with environment variable tests:
+   - `TestLoad_EnvVarOverride_DatabaseHost()`: Set GNDB_DATABASE_HOST, verify it overrides config file
+   - `TestLoad_EnvVarOverride_NestedField()`: Set GNDB_DATABASE_MAX_CONNECTIONS, verify override
+   - `TestLoad_EnvVarOverride_ImportBatchSize()`: Set GNDB_IMPORT_BATCH_SIZE, verify override
+   - `TestLoad_EnvVarOverride_LoggingLevel()`: Set GNDB_LOGGING_LEVEL, verify override
+   - `TestLoad_PrecedenceOrder()`: Verify env var overrides config file but is overridden by flags
+   - Use `t.Setenv()` to set environment variables in tests (Go 1.17+)
+
+3. Update `pkg/config/config.go` godoc to document all supported environment variables:
+   - Add godoc section before `Config` struct listing all GNDB_* environment variables
+   - Include examples for each field type (string, int, bool, map)
+
+4. Update `cmd/gndb/root.go` to add environment variable documentation to help text:
+   - In `rootCmd.Long`, add section "Environment Variables:" listing all GNDB_* variables
+   - Include note about precedence order
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/internal/io/config/loader.go` (update Load function)
+- `/Users/dimus/code/golang/gndb/internal/io/config/loader_test.go` (create with env var tests)
+- `/Users/dimus/code/golang/gndb/pkg/config/config.go` (update godoc)
+- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go` (update help text)
+
+**Environment Variables to Support** (all config fields from pkg/config/config.go):
+```
+GNDB_DATABASE_HOST                     # database.host
+GNDB_DATABASE_PORT                     # database.port
+GNDB_DATABASE_USER                     # database.user
+GNDB_DATABASE_PASSWORD                 # database.password
+GNDB_DATABASE_DATABASE                 # database.database
+GNDB_DATABASE_SSL_MODE                 # database.ssl_mode
+GNDB_DATABASE_MAX_CONNECTIONS          # database.max_connections
+GNDB_DATABASE_MIN_CONNECTIONS          # database.min_connections
+GNDB_DATABASE_MAX_CONN_LIFETIME        # database.max_conn_lifetime
+GNDB_DATABASE_MAX_CONN_IDLE_TIME       # database.max_conn_idle_time
+GNDB_IMPORT_BATCH_SIZE                 # import.batch_size
+GNDB_OPTIMIZATION_CONCURRENT_INDEXES   # optimization.concurrent_indexes
+GNDB_LOGGING_LEVEL                     # logging.level
+GNDB_LOGGING_FORMAT                    # logging.format
+```
+
+**Success Criteria**:
+- [ ] All config fields can be overridden via GNDB_* environment variables
+- [ ] Nested field naming uses underscores (database.host → GNDB_DATABASE_HOST)
+- [ ] Environment variables override config file values
+- [ ] CLI flags override environment variables (precedence maintained)
+- [ ] All tests pass: `go test ./internal/io/config`
+- [ ] Godoc documentation includes all environment variables
+- [ ] `gndb --help` shows environment variable usage
+
+**Dependencies**: Requires T003 (config loader implementation)
+
+**Parallel**: No (modifies existing config loader)
+
+**Constitutional Compliance**: Satisfies Principle VI (Configuration Management) - precedence order: flags > env vars > config file > defaults
+
+**Testing Strategy**:
+- Unit tests verify each environment variable works
+- Integration test verifies precedence order (flag > env > file > default)
+- Use `t.Setenv()` for isolated test environment
+
+**Example Usage After Implementation**:
+```bash
+# Override database host via environment variable
+export GNDB_DATABASE_HOST=production-db.example.com
+export GNDB_DATABASE_PASSWORD=secret123
+gndb create
+
+# CLI flag still takes highest precedence
+gndb create --host=override-db.example.com  # Uses override-db, not production-db
+```
+
+---
+
+## Task Execution Order (T006-T011)
 
 ```
 T006 [P] (DatabaseOperator contract tests - MUST FAIL)
@@ -377,13 +467,17 @@ T008 [P] (CLI tests - MUST FAIL) ←┐
 T009 (CLI root + create) ──────────┘
   ↓
 T010 (Integration test - Scenario 1)
+  ↓
+T011 (Environment variable overrides)
 ```
 
-## Dependencies (T006-T010)
+## Dependencies (T006-T011)
 - T006 blocks T007 (TDD: contract tests before implementation)
 - T008 can run parallel with T006 (independent test files)
 - T007, T008 both block T009 (CLI needs database operator and tests)
 - T009 blocks T010 (integration test needs working CLI)
+- T003 blocks T011 (env var support needs config loader to exist)
+- T011 enhances T009 (adds env var capability to existing CLI)
 
 ---
 
@@ -395,12 +489,13 @@ T010 (Integration test - Scenario 1)
 - ✅ Schema models with GORM AutoMigrate
 - ✅ Connection pool configuration
 
-**Next** (T006-T010):
+**Next** (T006-T011):
 - [ ] Database operator with pgxpool
 - [ ] CLI root command and create subcommand
 - [ ] Integration test for schema creation
+- [ ] Environment variable config overrides
 
-**After T010**:
+**After T011**:
 - Migration operations (Atlas integration)
 - SFGA import (populate phase)
 - Optimization (restructure phase)

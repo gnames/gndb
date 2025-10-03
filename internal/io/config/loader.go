@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/spf13/cobra"
@@ -24,6 +25,12 @@ func Load(configPath string) (*config.Config, error) {
 	// Set config file type
 	v.SetConfigType("yaml")
 
+	// Enable environment variable overrides
+	// Precedence: flags > env vars > config file > defaults
+	v.SetEnvPrefix("GNDB")
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
 	if configPath != "" {
 		// Use explicit config path
 		v.SetConfigFile(configPath)
@@ -41,18 +48,43 @@ func Load(configPath string) (*config.Config, error) {
 		}
 	}
 
-	// Read config file
+	// Read config file (if it exists)
+	configFileRead := false
 	if err := v.ReadInConfig(); err != nil {
-		// If no config file found, return defaults
+		// If no config file found and no explicit path, continue with defaults + env vars
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			return config.Defaults(), nil
-		}
-		// For explicit config path that doesn't exist, return error
-		if configPath != "" {
+			if configPath != "" {
+				// Explicit path that doesn't exist is an error
+				return nil, fmt.Errorf("config file not found: %s", configPath)
+			}
+			// No config file in default locations - will use defaults + env vars
+			configFileRead = false
+		} else {
+			// Other error reading config
 			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
-		// For default search paths, return defaults if not found
-		return config.Defaults(), nil
+	} else {
+		configFileRead = true
+	}
+
+	// If no config file was read, start with defaults
+	if !configFileRead {
+		// Set default values in viper so env vars can override them
+		defaults := config.Defaults()
+		v.SetDefault("database.host", defaults.Database.Host)
+		v.SetDefault("database.port", defaults.Database.Port)
+		v.SetDefault("database.user", defaults.Database.User)
+		v.SetDefault("database.password", defaults.Database.Password)
+		v.SetDefault("database.database", defaults.Database.Database)
+		v.SetDefault("database.ssl_mode", defaults.Database.SSLMode)
+		v.SetDefault("database.max_connections", defaults.Database.MaxConnections)
+		v.SetDefault("database.min_connections", defaults.Database.MinConnections)
+		v.SetDefault("database.max_conn_lifetime", defaults.Database.MaxConnLifetime)
+		v.SetDefault("database.max_conn_idle_time", defaults.Database.MaxConnIdleTime)
+		v.SetDefault("import.batch_size", defaults.Import.BatchSize)
+		v.SetDefault("optimization.concurrent_indexes", defaults.Optimization.ConcurrentIndexes)
+		v.SetDefault("logging.level", defaults.Logging.Level)
+		v.SetDefault("logging.format", defaults.Logging.Format)
 	}
 
 	// Unmarshal into Config struct

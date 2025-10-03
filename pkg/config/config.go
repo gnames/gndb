@@ -1,5 +1,54 @@
 // Package config provides configuration types and validation for GNdb.
 // This is a pure package with no I/O dependencies.
+//
+// # Configuration Loading
+//
+// Configuration is loaded with the following precedence (highest to lowest):
+//  1. CLI flags (--host, --port, etc.)
+//  2. Environment variables (GNDB_*)
+//  3. Config file (gndb.yaml)
+//  4. Defaults
+//
+// # Environment Variables
+//
+// All configuration fields can be overridden using environment variables with the GNDB_ prefix.
+// Nested fields use underscores instead of dots.
+//
+// Database configuration:
+//
+//	GNDB_DATABASE_HOST              - PostgreSQL host (string, default: "localhost")
+//	GNDB_DATABASE_PORT              - PostgreSQL port (int, default: 5432)
+//	GNDB_DATABASE_USER              - PostgreSQL user (string, default: "postgres")
+//	GNDB_DATABASE_PASSWORD          - PostgreSQL password (string, default: "postgres")
+//	GNDB_DATABASE_DATABASE          - PostgreSQL database name (string, default: "gnames")
+//	GNDB_DATABASE_SSL_MODE          - SSL mode: disable/require/verify-ca/verify-full (string, default: "disable")
+//	GNDB_DATABASE_MAX_CONNECTIONS   - Maximum connections in pool (int, default: 20)
+//	GNDB_DATABASE_MIN_CONNECTIONS   - Minimum connections in pool (int, default: 2)
+//	GNDB_DATABASE_MAX_CONN_LIFETIME - Max connection lifetime in minutes (int, default: 60)
+//	GNDB_DATABASE_MAX_CONN_IDLE_TIME - Max connection idle time in minutes (int, default: 10)
+//
+// Import configuration:
+//
+//	GNDB_IMPORT_BATCH_SIZE          - Batch size for imports (int, default: 5000)
+//
+// Optimization configuration:
+//
+//	GNDB_OPTIMIZATION_CONCURRENT_INDEXES - Create indexes concurrently (bool, default: false)
+//
+// Logging configuration:
+//
+//	GNDB_LOGGING_LEVEL              - Log level: debug/info/warn/error (string, default: "info")
+//	GNDB_LOGGING_FORMAT             - Log format: json/text (string, default: "text")
+//
+// # Example Usage
+//
+//	# Override database connection via environment variables
+//	export GNDB_DATABASE_HOST=prod-db.example.com
+//	export GNDB_DATABASE_PASSWORD=secret123
+//	gndb create
+//
+//	# CLI flags still take highest precedence
+//	gndb create --host=override-db.example.com  # Uses override-db, not prod-db
 package config
 
 import (

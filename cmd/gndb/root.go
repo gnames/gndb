@@ -24,7 +24,28 @@ The tool provides four main phases:
   - create: Create database schema and extensions
   - migrate: Apply schema migrations
   - populate: Import data from SFGA files
-  - restructure: Optimize with indexes and materialized views`,
+  - restructure: Optimize with indexes and materialized views
+
+Configuration precedence (highest to lowest):
+  1. CLI flags (--host, --port, etc.)
+  2. Environment variables (GNDB_*)
+  3. Config file (gndb.yaml)
+  4. Built-in defaults
+
+Environment Variables:
+  All configuration can be set via GNDB_* environment variables.
+  Nested fields use underscores (database.host → GNDB_DATABASE_HOST).
+
+  Examples:
+    GNDB_DATABASE_HOST              PostgreSQL host
+    GNDB_DATABASE_PORT              PostgreSQL port
+    GNDB_DATABASE_USER              PostgreSQL user
+    GNDB_DATABASE_PASSWORD          PostgreSQL password
+    GNDB_DATABASE_DATABASE          Database name
+    GNDB_IMPORT_BATCH_SIZE          Import batch size
+    GNDB_LOGGING_LEVEL              Log level (debug/info/warn/error)
+
+  See 'go doc github.com/gnames/gndb/pkg/config' for complete list.`,
 		Version: Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration
