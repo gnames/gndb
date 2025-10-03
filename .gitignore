@@ -4,7 +4,7 @@ coverage.txt
 t
 t.json
 .env
-.envrc
+.envrc  # direnv local environment - may contain secrets (use .envrc.example as template)
 *.pprof
 *.trace
 *.test

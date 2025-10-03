@@ -1,0 +1,130 @@
+# GNdb Environment Configuration for direnv
+#
+# This file demonstrates how to configure gndb using environment variables.
+# direnv automatically loads these variables when you cd into this directory.
+#
+# Setup:
+#   1. Install direnv: https://direnv.net/
+#   2. Copy this file: cp .envrc.example .envrc
+#   3. Edit .envrc with your actual values
+#   4. Allow direnv: direnv allow .
+#
+# Configuration Precedence (highest to lowest):
+#   1. CLI flags (--host, --port, etc.)
+#   2. Environment variables (these GNDB_* vars)
+#   3. Config file (~/.config/gndb/gndb.yaml)
+#   4. Built-in defaults
+#
+# SECURITY: Never commit .envrc with real credentials!
+
+# ============================================================================
+# Database Connection Settings
+# ============================================================================
+# Override these for local development or testing
+
+export GNDB_DATABASE_HOST=localhost              # Default: localhost
+export GNDB_DATABASE_PORT=5432                   # Default: 5432
+export GNDB_DATABASE_USER=postgres               # Default: postgres
+export GNDB_DATABASE_PASSWORD=postgres           # Default: postgres (CHANGE IN PRODUCTION!)
+export GNDB_DATABASE_DATABASE=gnames             # Default: gnames
+export GNDB_DATABASE_SSL_MODE=disable            # Default: disable (use 'require' in production)
+
+# ============================================================================
+# Connection Pool Settings
+# ============================================================================
+# Uncomment to override connection pool behavior
+
+# export GNDB_DATABASE_MAX_CONNECTIONS=20        # Default: 20 - Max connections in pool
+# export GNDB_DATABASE_MIN_CONNECTIONS=2         # Default: 2 - Min connections maintained
+# export GNDB_DATABASE_MAX_CONN_LIFETIME=60      # Default: 60 - Max connection lifetime (minutes)
+# export GNDB_DATABASE_MAX_CONN_IDLE_TIME=10     # Default: 10 - Max idle time (minutes)
+
+# ============================================================================
+# Import Settings
+# ============================================================================
+# Controls batch size for SFGA data import operations
+
+# export GNDB_IMPORT_BATCH_SIZE=5000             # Default: 5000 - Records per batch insert
+
+# ============================================================================
+# Optimization Settings
+# ============================================================================
+# Performance tuning for database restructure phase
+
+# export GNDB_OPTIMIZATION_CONCURRENT_INDEXES=false  # Default: false - Set true for production (slower but non-blocking)
+
+# ============================================================================
+# Logging Settings
+# ============================================================================
+# Configure logging output
+
+# export GNDB_LOGGING_LEVEL=info                 # Default: info - Options: debug, info, warn, error
+# export GNDB_LOGGING_FORMAT=text                # Default: text - Options: text, json
+
+# ============================================================================
+# Example Configurations
+# ============================================================================
+# Uncomment one of these sections for quick setup
+
+# ----------------------------------------------------------------------------
+# Local Development (PostgreSQL via Docker)
+# ----------------------------------------------------------------------------
+# export GNDB_DATABASE_HOST=localhost
+# export GNDB_DATABASE_PORT=5432
+# export GNDB_DATABASE_USER=gndb_dev
+# export GNDB_DATABASE_PASSWORD=dev_password
+# export GNDB_DATABASE_DATABASE=gndb_local
+# export GNDB_LOGGING_LEVEL=debug
+# export GNDB_LOGGING_FORMAT=text
+
+# ----------------------------------------------------------------------------
+# Testing Environment
+# ----------------------------------------------------------------------------
+# export GNDB_DATABASE_DATABASE=gndb_test
+# export GNDB_IMPORT_BATCH_SIZE=100              # Smaller batches for testing
+# export GNDB_LOGGING_LEVEL=warn                 # Less verbose for tests
+# export GNDB_LOGGING_FORMAT=text
+
+# ----------------------------------------------------------------------------
+# Production-like Setup
+# ----------------------------------------------------------------------------
+# export GNDB_DATABASE_HOST=prod-db.example.com
+# export GNDB_DATABASE_SSL_MODE=require
+# export GNDB_DATABASE_PASSWORD=<use_secret_manager>  # Use secret management!
+# export GNDB_OPTIMIZATION_CONCURRENT_INDEXES=true
+# export GNDB_LOGGING_FORMAT=json                # Structured logs for production
+# export GNDB_LOGGING_LEVEL=info
+
+# ============================================================================
+# Usage Examples
+# ============================================================================
+#
+# After setting up direnv, your workflow becomes:
+#
+#   $ cd gndb                    # Auto-loads environment variables
+#   direnv: loading ~/gndb/.envrc
+#   direnv: export +GNDB_DATABASE_HOST +GNDB_DATABASE_PORT ...
+#
+#   $ gndb create                # Uses environment variables automatically
+#   Using config from: /home/user/.config/gndb/gndb.yaml
+#   Environment variable overrides active
+#
+#   $ gndb create --host=override-db.example.com  # CLI flags take precedence
+#
+# ============================================================================
+# Troubleshooting
+# ============================================================================
+#
+# If direnv doesn't activate:
+#   - Make sure you have: eval "$(direnv hook bash)" in your shell rc file
+#   - Run: direnv allow .
+#
+# To see which variables are set:
+#   - Run: env | grep GNDB_
+#
+# To verify precedence:
+#   - Set env var: export GNDB_DATABASE_HOST=env-host
+#   - Config file has: host: config-host
+#   - Result: Uses env-host (env vars override config)
+#   - CLI flag --host=flag-host
+#   - Result: Uses flag-host (flags override everything)
