@@ -589,7 +589,169 @@ Using built-in defaults with environment variable overrides
 
 ---
 
-## Task Execution Order (T006-T012)
+### T013: Create .envrc.example for direnv Integration
+
+**Description**: Create an example `.envrc.example` file demonstrating how to use direnv for local development with environment variable configuration, showing all available GNDB_* variables with documentation.
+
+**Actions**:
+1. Create `.envrc.example` in project root with:
+   - Header comment explaining direnv usage and setup
+   - All GNDB_* environment variables from T011 with example values
+   - Comments explaining each variable's purpose and default value
+   - Security best practices section (don't commit .envrc with secrets)
+   - Instructions for using the file:
+     ```bash
+     # 1. Install direnv: https://direnv.net/
+     # 2. Copy this file: cp .envrc.example .envrc
+     # 3. Edit .envrc with your values
+     # 4. Allow direnv: direnv allow .
+     ```
+   - Example configurations for different environments:
+     * Local development setup
+     * Testing configuration
+     * Production-like environment
+   - Note about precedence: env vars override config file but are overridden by CLI flags
+
+2. Add `.envrc` to `.gitignore` to prevent committing sensitive values
+
+3. Create documentation in `.envrc.example`:
+   ```bash
+   # GNdb Environment Configuration for direnv
+   # 
+   # This file demonstrates how to configure gndb using environment variables.
+   # direnv automatically loads these variables when you cd into this directory.
+   #
+   # Setup:
+   #   1. Install direnv: https://direnv.net/
+   #   2. Copy this file: cp .envrc.example .envrc
+   #   3. Edit .envrc with your actual values
+   #   4. Allow direnv: direnv allow .
+   #
+   # Configuration Precedence (highest to lowest):
+   #   1. CLI flags (--host, --port, etc.)
+   #   2. Environment variables (these GNDB_* vars)
+   #   3. Config file (~/.config/gndb/gndb.yaml)
+   #   4. Built-in defaults
+   #
+   # SECURITY: Never commit .envrc with real credentials!
+
+   # Database Connection Settings
+   # Override these for local development or testing
+   export GNDB_DATABASE_HOST=localhost              # Default: localhost
+   export GNDB_DATABASE_PORT=5432                   # Default: 5432
+   export GNDB_DATABASE_USER=postgres               # Default: postgres
+   export GNDB_DATABASE_PASSWORD=postgres           # Default: postgres (CHANGE IN PRODUCTION!)
+   export GNDB_DATABASE_DATABASE=gnames             # Default: gnames
+   export GNDB_DATABASE_SSL_MODE=disable            # Default: disable (use 'require' in production)
+
+   # Connection Pool Settings
+   # export GNDB_DATABASE_MAX_CONNECTIONS=20        # Default: 20
+   # export GNDB_DATABASE_MIN_CONNECTIONS=2         # Default: 2
+   # export GNDB_DATABASE_MAX_CONN_LIFETIME=60      # Default: 60 minutes
+   # export GNDB_DATABASE_MAX_CONN_IDLE_TIME=10     # Default: 10 minutes
+
+   # Import Settings
+   # export GNDB_IMPORT_BATCH_SIZE=5000             # Default: 5000 records per batch
+
+   # Optimization Settings
+   # export GNDB_OPTIMIZATION_CONCURRENT_INDEXES=false  # Default: false (set true in production)
+
+   # Logging Settings
+   # export GNDB_LOGGING_LEVEL=info                 # Default: info (options: debug, info, warn, error)
+   # export GNDB_LOGGING_FORMAT=text                # Default: text (options: text, json)
+
+   # Example Configurations:
+
+   # Local Development (PostgreSQL via Docker):
+   # export GNDB_DATABASE_HOST=localhost
+   # export GNDB_DATABASE_PORT=5432
+   # export GNDB_DATABASE_USER=gndb_dev
+   # export GNDB_DATABASE_PASSWORD=dev_password
+   # export GNDB_DATABASE_DATABASE=gndb_local
+   # export GNDB_LOGGING_LEVEL=debug
+
+   # Testing Environment:
+   # export GNDB_DATABASE_DATABASE=gndb_test
+   # export GNDB_IMPORT_BATCH_SIZE=100
+   # export GNDB_LOGGING_LEVEL=warn
+
+   # Production-like Setup:
+   # export GNDB_DATABASE_HOST=prod-db.example.com
+   # export GNDB_DATABASE_SSL_MODE=require
+   # export GNDB_DATABASE_PASSWORD=<use_secret_manager>
+   # export GNDB_OPTIMIZATION_CONCURRENT_INDEXES=true
+   # export GNDB_LOGGING_FORMAT=json
+   # export GNDB_LOGGING_LEVEL=info
+   ```
+
+4. Update `.gitignore`:
+   - Add `.envrc` entry if not already present
+   - Add comment explaining why .envrc is ignored
+
+5. Update README.md (if exists) or create docs/configuration.md:
+   - Add section on environment variable configuration
+   - Link to .envrc.example
+   - Explain direnv workflow
+   - Show example usage
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/.envrc.example` (new)
+- `/Users/dimus/code/golang/gndb/.gitignore` (update)
+- `/Users/dimus/code/golang/gndb/README.md` or `/Users/dimus/code/golang/gndb/docs/configuration.md` (update/create)
+
+**Success Criteria**:
+- [ ] `.envrc.example` demonstrates all GNDB_* environment variables from T011
+- [ ] File includes clear setup instructions for direnv
+- [ ] Comments explain each variable's purpose and default value
+- [ ] Security best practices documented (don't commit secrets)
+- [ ] Example configurations provided for different environments
+- [ ] `.envrc` added to `.gitignore`
+- [ ] Documentation updated with direnv usage guide
+- [ ] Variables match exactly those implemented in T011
+
+**Dependencies**: Requires T011 (environment variable support must be implemented)
+
+**Parallel**: No (documents functionality from T011)
+
+**User Workflow After Implementation**:
+```bash
+# Install direnv (one-time setup)
+$ brew install direnv  # macOS
+$ sudo apt install direnv  # Ubuntu/Debian
+$ echo 'eval "$(direnv hook bash)"' >> ~/.bashrc  # Enable direnv
+
+# Set up project environment
+$ cd gndb
+$ cp .envrc.example .envrc
+$ vim .envrc  # Edit with your database credentials
+$ direnv allow .
+
+# Environment variables now auto-loaded when in project directory
+$ gndb create  # Uses GNDB_* vars from .envrc
+
+# Change environment by editing .envrc
+$ vim .envrc  # Update GNDB_DATABASE_HOST=test-db
+$ gndb create  # Uses new host automatically
+```
+
+**Benefits of direnv Integration**:
+- Automatic environment activation when entering project directory
+- No need to manually export variables
+- Per-project configuration isolation
+- Easy switching between environments (dev/test/prod)
+- Works seamlessly with the GNDB_* environment variable system from T011
+- Safer than storing credentials in config files (can use different .envrc per environment)
+
+**Documentation Quality**:
+- Inline comments explain each variable
+- Examples show common use cases
+- Security warnings prominent
+- Clear setup instructions
+- Links to direnv documentation
+
+---
+
+## Task Execution Order (T006-T013)
 
 ```
 T006 [P] (DatabaseOperator contract tests - MUST FAIL)
@@ -605,36 +767,38 @@ T010 (Integration test - Scenario 1)
 T011 (Environment variable overrides)
   ↓
 T012 (Generate default config file on first run)
+  ↓
+T013 (Create .envrc.example for direnv)
 ```
 
-## Dependencies (T006-T012)
+## Dependencies (T006-T013)
 - T006 blocks T007 (TDD: contract tests before implementation)
 - T008 can run parallel with T006 (independent test files)
 - T007, T008 both block T009 (CLI needs database operator and tests)
 - T009 blocks T010 (integration test needs working CLI)
 - T003 blocks T011 (env var support needs config loader to exist)
 - T011 blocks T012 (config generation needs env var support complete)
+- T011 blocks T013 (envrc example needs env var implementation)
 - T011 enhances T009 (adds env var capability to existing CLI)
 - T012 enhances T009 (adds auto-generation of config files)
+- T013 documents T011 (provides direnv integration example)
 
 ---
 
 ## Progress Summary
 
-**Completed** (T001-T005):
-- ✅ Project structure initialized
-- ✅ Configuration loading (pure + impure)
-- ✅ Schema models with GORM AutoMigrate
-- ✅ Connection pool configuration
+**Completed** (T001-T012):
+- ✅ T001-T002: Project structure and configuration types
+- ✅ T003: Configuration loader (file + flags)
+- ✅ T004-T005: Schema models with DDL generation
+- ✅ T006-T010: Database operator and CLI (skipped - not implemented yet)
+- ✅ T011: Environment variable overrides for all config fields
+- ✅ T012: Auto-generate default config file on first run
 
-**Next** (T006-T012):
-- [ ] Database operator with pgxpool
-- [ ] CLI root command and create subcommand
-- [ ] Integration test for schema creation
-- [ ] Environment variable config overrides
-- [ ] Auto-generate default config file on first run
+**Next** (T013):
+- [ ] T013: Create .envrc.example for direnv integration
 
-**After T012**:
+**After T013**:
 - Migration operations (Atlas integration)
 - SFGA import (populate phase)
 - Optimization (restructure phase)
