@@ -48,12 +48,43 @@ Environment Variables:
   See 'go doc github.com/gnames/gndb/pkg/config' for complete list.`,
 		Version: Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Auto-generate config file on first run if it doesn't exist
+			if cfgFile == "" {
+				// Check if default config exists
+				exists, err := config.ConfigFileExists()
+				if err != nil {
+					return fmt.Errorf("failed to check config file: %w", err)
+				}
+
+				if !exists {
+					// Generate default config
+					generatedPath, err := config.GenerateDefaultConfig()
+					if err != nil {
+						// Only warn, don't fail - can use defaults
+						fmt.Printf("Warning: could not generate config file: %v\n", err)
+					} else {
+						fmt.Printf("Generated default config at: %s\n", generatedPath)
+					}
+				}
+			}
+
 			// Load configuration
-			var err error
-			cfg, err = config.Load(cfgFile)
+			result, err := config.Load(cfgFile)
 			if err != nil {
 				return fmt.Errorf("failed to load configuration: %w", err)
 			}
+			cfg = result.Config
+
+			// Display config source
+			switch result.Source {
+			case "file":
+				fmt.Printf("Using config from: %s\n", result.SourcePath)
+			case "defaults+env":
+				fmt.Println("Using built-in defaults with environment variable overrides")
+			case "defaults":
+				fmt.Println("Using built-in defaults (no config file)")
+			}
+
 			return nil
 		},
 	}

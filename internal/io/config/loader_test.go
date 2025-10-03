@@ -40,14 +40,18 @@ logging:
 	t.Setenv("GNDB_DATABASE_HOST", "env-override-host")
 
 	// Load config
-	cfg, err := Load(configPath)
+	result, err := Load(configPath)
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify environment variable overrode config file
 	assert.Equal(t, "env-override-host", cfg.Database.Host)
 	// Other values should remain from config file
 	assert.Equal(t, 5432, cfg.Database.Port)
 	assert.Equal(t, "postgres", cfg.Database.User)
+	// Verify source is file
+	assert.Equal(t, "file", result.Source)
+	assert.NotEmpty(t, result.SourcePath)
 }
 
 func TestLoad_EnvVarOverride_NestedField(t *testing.T) {
@@ -82,8 +86,9 @@ logging:
 	t.Setenv("GNDB_DATABASE_MIN_CONNECTIONS", "5")
 
 	// Load config
-	cfg, err := Load(configPath)
+	result, err := Load(configPath)
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify environment variables overrode config file
 	assert.Equal(t, 50, cfg.Database.MaxConnections)
@@ -123,8 +128,9 @@ logging:
 	t.Setenv("GNDB_IMPORT_BATCH_SIZE", "10000")
 
 	// Load config
-	cfg, err := Load(configPath)
+	result, err := Load(configPath)
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify environment variable overrode config file
 	assert.Equal(t, 10000, cfg.Import.BatchSize)
@@ -162,8 +168,9 @@ logging:
 	t.Setenv("GNDB_LOGGING_FORMAT", "json")
 
 	// Load config
-	cfg, err := Load(configPath)
+	result, err := Load(configPath)
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify environment variables overrode config file
 	assert.Equal(t, "debug", cfg.Logging.Level)
@@ -201,8 +208,9 @@ logging:
 	t.Setenv("GNDB_OPTIMIZATION_CONCURRENT_INDEXES", "true")
 
 	// Load config
-	cfg, err := Load(configPath)
+	result, err := Load(configPath)
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify environment variable overrode config file
 	assert.True(t, cfg.Optimization.ConcurrentIndexes)
@@ -246,8 +254,9 @@ logging:
 	t.Setenv("GNDB_LOGGING_LEVEL", "warn")
 
 	// Load config
-	cfg, err := Load(configPath)
+	result, err := Load(configPath)
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify all environment variables overrode config file
 	assert.Equal(t, "prod-db.example.com", cfg.Database.Host)
@@ -262,6 +271,10 @@ logging:
 
 func TestLoad_NoConfigFile_EnvVarsOnly(t *testing.T) {
 	// No config file, only environment variables
+	// Override HOME to a temp directory to ensure no config file exists
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+
 	t.Setenv("GNDB_DATABASE_HOST", "env-only-host")
 	t.Setenv("GNDB_DATABASE_PORT", "5432")
 	t.Setenv("GNDB_DATABASE_USER", "testuser")
@@ -269,8 +282,9 @@ func TestLoad_NoConfigFile_EnvVarsOnly(t *testing.T) {
 	t.Setenv("GNDB_DATABASE_DATABASE", "testdb")
 
 	// Load config without config file (will use defaults + env vars)
-	cfg, err := Load("")
+	result, err := Load("")
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify environment variables overrode defaults
 	assert.Equal(t, "env-only-host", cfg.Database.Host)
@@ -282,6 +296,10 @@ func TestLoad_NoConfigFile_EnvVarsOnly(t *testing.T) {
 	// Other values should be defaults
 	assert.Equal(t, 20, cfg.Database.MaxConnections) // default
 	assert.Equal(t, 5000, cfg.Import.BatchSize)      // default
+
+	// Verify source is defaults+env
+	assert.Equal(t, "defaults+env", result.Source)
+	assert.Empty(t, result.SourcePath)
 }
 
 func TestLoad_PrecedenceOrder(t *testing.T) {
@@ -320,8 +338,9 @@ logging:
 	// Don't set password, port, etc - should come from config file
 
 	// Load config
-	cfg, err := Load(configPath)
+	result, err := Load(configPath)
 	require.NoError(t, err)
+	cfg := result.Config
 
 	// Verify env vars take precedence
 	assert.Equal(t, "env-host", cfg.Database.Host)

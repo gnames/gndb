@@ -5,7 +5,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/gnames/gndb/pkg/config"
@@ -13,13 +12,20 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Load reads configuration from a YAML file and returns a validated Config.
+// LoadResult contains the loaded configuration and metadata about the source.
+type LoadResult struct {
+	Config     *config.Config
+	SourcePath string // Path to config file used, or empty if using defaults
+	Source     string // "file", "defaults", or "defaults+env"
+}
+
+// Load reads configuration from a YAML file and returns a validated Config with source info.
 // If configPath is empty, it searches default locations:
 //   - ./gndb.yaml
 //   - ~/.config/gndb/gndb.yaml
 //
 // Returns error if file is malformed or validation fails.
-func Load(configPath string) (*config.Config, error) {
+func Load(configPath string) (*LoadResult, error) {
 	v := viper.New()
 
 	// Set config file type
@@ -35,21 +41,21 @@ func Load(configPath string) (*config.Config, error) {
 		// Use explicit config path
 		v.SetConfigFile(configPath)
 	} else {
-		// Search default locations
-		v.SetConfigName("gndb")
-
-		// Current directory
-		v.AddConfigPath(".")
-
-		// User config directory
-		homeDir, err := os.UserHomeDir()
+		// Try explicit default path first
+		defaultPath, err := GetDefaultConfigPath()
 		if err == nil {
-			v.AddConfigPath(filepath.Join(homeDir, ".config", "gndb"))
+			if _, statErr := os.Stat(defaultPath); statErr == nil {
+				// Config file exists at default location, use it explicitly
+				v.SetConfigFile(defaultPath)
+			}
 		}
+		// If no explicit default path worked, viper will use defaults + env vars
 	}
 
 	// Read config file (if it exists)
 	configFileRead := false
+	usedConfigPath := ""
+
 	if err := v.ReadInConfig(); err != nil {
 		// If no config file found and no explicit path, continue with defaults + env vars
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -65,6 +71,7 @@ func Load(configPath string) (*config.Config, error) {
 		}
 	} else {
 		configFileRead = true
+		usedConfigPath = v.ConfigFileUsed()
 	}
 
 	// If no config file was read, start with defaults
@@ -98,7 +105,29 @@ func Load(configPath string) (*config.Config, error) {
 		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	return &cfg, nil
+	// Determine source
+	source := "defaults"
+	if configFileRead {
+		source = "file"
+	} else if hasEnvVars() {
+		source = "defaults+env"
+	}
+
+	return &LoadResult{
+		Config:     &cfg,
+		SourcePath: usedConfigPath,
+		Source:     source,
+	}, nil
+}
+
+// hasEnvVars checks if any GNDB_* environment variables are set.
+func hasEnvVars() bool {
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "GNDB_") {
+			return true
+		}
+	}
+	return false
 }
 
 // BindFlags binds cobra command flags to viper and returns updated config.

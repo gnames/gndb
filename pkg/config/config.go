@@ -58,56 +58,56 @@ import (
 // Config represents the complete GNdb configuration.
 type Config struct {
 	// Database contains PostgreSQL connection settings.
-	Database DatabaseConfig `mapstructure:"database"`
+	Database DatabaseConfig `mapstructure:"database" yaml:"database"`
 
 	// Import contains settings for SFGA data import operations.
-	Import ImportConfig `mapstructure:"import"`
+	Import ImportConfig `mapstructure:"import" yaml:"import"`
 
 	// Optimization contains settings for database restructure phase.
-	Optimization OptimizationConfig `mapstructure:"optimization"`
+	Optimization OptimizationConfig `mapstructure:"optimization" yaml:"optimization"`
 
 	// Logging contains application logging settings.
-	Logging LoggingConfig `mapstructure:"logging"`
+	Logging LoggingConfig `mapstructure:"logging" yaml:"logging"`
 }
 
 // DatabaseConfig contains PostgreSQL connection parameters.
 type DatabaseConfig struct {
 	// Host is the PostgreSQL server hostname or IP address.
-	Host string `mapstructure:"host"`
+	Host string `mapstructure:"host" yaml:"host"`
 
 	// Port is the PostgreSQL server port number.
-	Port int `mapstructure:"port"`
+	Port int `mapstructure:"port" yaml:"port"`
 
 	// User is the PostgreSQL database username.
-	User string `mapstructure:"user"`
+	User string `mapstructure:"user" yaml:"user"`
 
 	// Password is the PostgreSQL database password.
-	Password string `mapstructure:"password"`
+	Password string `mapstructure:"password" yaml:"password"`
 
 	// Database is the PostgreSQL database name to connect to.
-	Database string `mapstructure:"database"`
+	Database string `mapstructure:"database" yaml:"database"`
 
 	// SSLMode specifies the SSL connection mode.
 	// Valid values: "disable", "require", "verify-ca", "verify-full"
-	SSLMode string `mapstructure:"ssl_mode"`
+	SSLMode string `mapstructure:"ssl_mode" yaml:"ssl_mode"`
 
 	// MaxConnections is the maximum number of connections in the pgxpool.
 	// Used for concurrent data import operations with multiple goroutines.
 	// Higher values enable more parallelism but consume more database resources.
-	MaxConnections int `mapstructure:"max_connections"`
+	MaxConnections int `mapstructure:"max_connections" yaml:"max_connections"`
 
 	// MinConnections is the minimum number of connections maintained in the pool.
 	// Keeping connections warm reduces latency for new operations.
-	MinConnections int `mapstructure:"min_connections"`
+	MinConnections int `mapstructure:"min_connections" yaml:"min_connections"`
 
 	// MaxConnLifetime is the maximum duration (in minutes) a connection can be reused.
 	// After this time, connections are closed and recreated to prevent stale connections.
 	// Set to 0 for unlimited lifetime.
-	MaxConnLifetime int `mapstructure:"max_conn_lifetime"`
+	MaxConnLifetime int `mapstructure:"max_conn_lifetime" yaml:"max_conn_lifetime"`
 
 	// MaxConnIdleTime is the maximum duration (in minutes) a connection can be idle.
 	// Idle connections beyond this time are closed to free resources.
-	MaxConnIdleTime int `mapstructure:"max_conn_idle_time"`
+	MaxConnIdleTime int `mapstructure:"max_conn_idle_time" yaml:"max_conn_idle_time"`
 }
 
 // ImportConfig contains settings for SFGA data import.
@@ -115,7 +115,7 @@ type ImportConfig struct {
 	// BatchSize defines the number of records to insert per transaction
 	// during SFGA import. Applies to all record types.
 	// Larger batches are faster but use more memory. Tune based on available RAM.
-	BatchSize int `mapstructure:"batch_size"`
+	BatchSize int `mapstructure:"batch_size" yaml:"batch_size"`
 }
 
 // OptimizationConfig contains settings for database restructure phase.
@@ -123,23 +123,23 @@ type OptimizationConfig struct {
 	// ConcurrentIndexes determines whether indexes are created concurrently.
 	// - false: Faster index creation but locks tables (recommended for initial setup)
 	// - true: Slower but allows reads during index creation (for production)
-	ConcurrentIndexes bool `mapstructure:"concurrent_indexes"`
+	ConcurrentIndexes bool `mapstructure:"concurrent_indexes" yaml:"concurrent_indexes"`
 
 	// StatisticsTargets sets the statistics target for specific columns.
 	// Higher values (e.g., 1000) improve query planning for high-cardinality columns.
 	// Map key format: "table.column"
-	StatisticsTargets map[string]int `mapstructure:"statistics_targets"`
+	StatisticsTargets map[string]int `mapstructure:"statistics_targets" yaml:"statistics_targets"`
 }
 
 // LoggingConfig contains logging settings.
 type LoggingConfig struct {
 	// Level is the logging level.
 	// Valid values: "debug", "info", "warn", "error"
-	Level string `mapstructure:"level"`
+	Level string `mapstructure:"level" yaml:"level"`
 
 	// Format is the log output format.
 	// Valid values: "json", "text"
-	Format string `mapstructure:"format"`
+	Format string `mapstructure:"format" yaml:"format"`
 }
 
 // Validate checks that all required configuration fields are set correctly.
