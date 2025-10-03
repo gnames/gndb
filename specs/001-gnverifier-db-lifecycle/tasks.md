@@ -787,16 +787,24 @@ T013 (Create .envrc.example for direnv)
 
 ## Progress Summary
 
-**Completed** (T001-T012):
+**Completed** (T001-T013):
 - ✅ T001-T002: Project structure and configuration types
 - ✅ T003: Configuration loader (file + flags)
 - ✅ T004-T005: Schema models with DDL generation
 - ✅ T006-T010: Database operator and CLI (skipped - not implemented yet)
 - ✅ T011: Environment variable overrides for all config fields
 - ✅ T012: Auto-generate default config file on first run
+- ✅ T013: Create .envrc.example for direnv integration
 
-**Next** (T013):
-- [ ] T013: Create .envrc.example for direnv integration
+**Verification** (T012 - Config Generation):
+- ✅ First run of `gndb create` generates config at ~/.config/gndb/gndb.yaml
+- ✅ Subsequent runs use existing config (no overwrite)
+- ✅ Config has all values commented out with inline documentation
+- ✅ Config is valid YAML (empty sections with comments)
+- ✅ All 14 GNDB_* environment variables documented
+- ✅ MergeWithDefaults() fills in missing values automatically
+
+**Next**:
 
 **After T013**:
 - Migration operations (Atlas integration)
