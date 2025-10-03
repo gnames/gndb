@@ -1,7 +1,7 @@
-
 # Implementation Plan: GNverifier Database Lifecycle Management
 
-**Branch**: `001-gnverifier-db-lifecycle` | **Date**: 2025-10-02 | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-gnverifier-db-lifecycle` | **Date**: 2025-10-03 | **Spec**: [/Users/dimus/code/golang/gndb/specs/001-gnverifier-db-lifecycle/spec.md]
+
 **Input**: Feature specification from `/Users/dimus/code/golang/gndb/specs/001-gnverifier-db-lifecycle/spec.md`
 
 ## Execution Flow (/plan command scope)
@@ -31,221 +31,128 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-**Primary Requirement**: Enable local setup of GNverifier database lifecycle, from empty database through schema creation, migration, data population, and performance optimization for scientific name verification at 1000+ names/sec.
-
-**Technical Approach** (from research.md):
-- **Go models approach**: Use Go structs with GORM tags (matching gnidump's model.go) to define schema as single source of truth
-- **Schema creation**: GORM AutoMigrate for DDL generation (proven from gnidump)
-- **Connection pooling**: pgxpool.Pool for concurrent goroutine access during data population
-- **Queries**: Raw SQL with pgx v5 (GORM is slow/inflexible for queries)
-- **Migration**: Atlas framework with versioned migrations and integrity tracking
-- **Import**: Stream-based SFGA ingestion via sflib with batch inserts using PostgreSQL COPY protocol, concurrent workers using pgxpool
-- **Optimization**: Hybrid indexing (B-tree + GiST trigram), materialized views for denormalization, statistics tuning
+This project will enable a user to go through the GNverifier database lifecycle. It would start with empty database, create schema, migrate schema, create performance critical optimization of database as well as modification of data that will speed up name verification (reconciliation and reconciliation) as well as optimizing database data for vernacular names detection by languages and figuring out synonyms of input scientific names. After this project is complete it will allow users to setup GNverifier functionality locally, independent from main gnverifier service. It will be also used at the main service the same way. As a result users who have their own data-sources that are not included on the main site to create local GNverifier that is able to query these data-sources.
 
 ## Technical Context
-**Language/Version**: Go 1.21+  
-**Primary Dependencies**: 
-- pgx v5 with pgxpool (PostgreSQL driver - native protocol, 2-3x faster than database/sql, connection pooling for concurrent goroutines)
-- GORM v2 (ORM - ONLY for schema creation/migration, NOT for queries)
-- cobra (CLI framework with subcommand support)
-- viper (configuration management: YAML + flags + env)
-- atlasexec (Atlas Go SDK for migrations)
-- sflib (SFGA format import library)
-- gnparser (name parsing for GNames ecosystem)
-- testify/assert (testing framework)
-
-**Storage**: PostgreSQL 14+ (requires transactional DDL, COPY protocol, pg_trgm extension)
-
-**Testing**: go test with testify assertions, integration tests for I/O modules, contract tests for interfaces
-
-**Target Platform**: Linux/macOS CLI (cross-platform, no GUI dependencies)
-
-**Project Type**: Single Go project (pure logic in pkg/, impure I/O in internal/io/, CLI in cmd/)
-
-**Performance Goals**: 
-- 1000+ names/sec reconciliation throughput (primary use case)
-- <100ms p95 fuzzy match latency
-- 10K records/sec import speed
-- <2 hours index build time for 100M records
-
-**Constraints**: 
-- Read-only database post-setup (simplifies consistency model)
-- Transactional operations where possible; phase-level restart for recovery
-- 64GB RAM target for main service (local instances may use less)
-- <500GB database size for 100M name-strings
-
-**Scale/Scope**: 
-- 100M scientific name-strings with 200M occurrences (main service target)
-- 10M vernacular name-strings with 20M occurrences
-- Support for smaller local datasets with reduced hardware requirements
-
-**User-Provided Context**: 
-- Use Go models with GORM tags (matching gnidump's model.go) for schema creation
-- GORM used ONLY for database creation via AutoMigrate (single source of truth)
-- GORM NOT used for queries (too slow/inflexible) - use raw SQL with pgx instead
-- Schema changes only require updating Go models, not maintaining separate SQL DDL
-- Proven approach from gnidump (will be archived when gndb is functional)
+**Language/Version**: Go 1.25
+**Primary Dependencies**: pgx/v5, cobra, viper, gorm
+**Storage**: PostgreSQL
+**Testing**: go test
+**Target Platform**: Linux server, macOS CLI
+**Project Type**: single Go project
+**Performance Goals**: 1000 names/sec reconciliation
+**Constraints**: Offline-capable
+**Scale/Scope**: 100 million name-strings
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 **I. Modular Architecture**
-- [x] Each feature component is a separate module with single responsibility
-  - pkg/schema: Go model definitions and DDL generation
-  - pkg/migrate: Migration orchestration logic
-  - pkg/populate: SFGA import coordination
-  - pkg/restructure: Optimization logic (indexes, materialized views)
-  - internal/io/database: PostgreSQL operations
-  - internal/io/sfga: SFGA file I/O via sflib
-  - cmd/gndb: CLI subcommands
-- [x] Modules communicate only through interfaces, no direct implementation coupling
-  - DatabaseOperator interface defines DB ops, implemented by internal/io/database
-  - SFGAReader interface defines data source access, implemented by internal/io/sfga
-- [x] Module boundaries clearly defined and documented
-  - Architecture documented in constitution and enforced by import rules
+- [X] Each feature component is a separate module with single responsibility
+- [X] Modules communicate only through interfaces, no direct implementation coupling
+- [X] Module boundaries clearly defined and documented
 
 **II. Pure/Impure Code Separation**
-- [x] Pure logic separated from I/O and state-changing operations
-  - pkg/ contains pure business logic (model definitions, validation, coordination)
-  - internal/io/ contains all database and file system operations
-- [x] All database, file system, network operations isolated in `io` modules
-  - PostgreSQL queries/transactions in internal/io/database
-  - SFGA file reading in internal/io/sfga
-- [x] Pure functions do not import or depend on `io` modules
-  - pkg/ modules define interfaces; internal/io/ implements them
+- [X] Pure logic separated from I/O and state-changing operations
+- [X] All database, file system, network operations isolated in `io` modules
+- [X] Pure functions do not import or depend on `io` modules
 
 **III. Test-Driven Development** *(NON-NEGOTIABLE)*
-- [x] Tests written first and verified to fail before implementation
-  - Contract tests for all interfaces created in Phase 1 before implementation
-  - Integration tests for each CLI subcommand written before handlers
-- [x] Red-Green-Refactor workflow documented in task ordering
-  - tasks.md will follow TDD ordering: tests → implementation → refactor
-- [x] All features include passing tests before considered complete
-  - No task complete until tests pass; enforced in task definitions
+- [X] Tests written first and verified to fail before implementation
+- [X] Red-Green-Refactor workflow documented in task ordering
+- [X] All features include passing tests before considered complete
 
 **IV. CLI-First Interface**
-- [x] All functionality exposed via CLI commands using subcommands
-  - Four lifecycle subcommands: create, migrate, populate, restructure
-- [x] Database lifecycle phases separated: create, migrate, populate, restructure
-  - Each phase is independent subcommand with dedicated handler
-- [x] Subcommands are independently executable and composable
-  - Users can run phases in order or restart individual phases
-- [x] Structured output to stdout, errors to stderr
-  - JSON output for machine consumption, human-readable for interactive use
-- [x] No GUI, web, or graphical dependencies introduced
-  - Pure CLI tool using cobra framework
+- [X] All functionality exposed via CLI commands using subcommands
+- [X] Database lifecycle phases separated: create, migrate, populate, restructure
+- [X] Subcommands are independently executable and composable
+- [X] Structured output to stdout, errors to stderr
+- [X] No GUI, web, or graphical dependencies introduced
 
 **V. Open Source Readability**
-- [x] Public APIs documented with clear godoc comments
-  - All exported types, functions, and interfaces will have godoc
-- [x] Complex logic includes explanatory comments
-  - Schema generation, batch sizing, optimization strategies documented inline
-- [x] Names follow Go conventions and are self-documenting
-  - Idiomatic Go naming enforced (DatabaseOperator, not IDatabase)
+- [X] Public APIs documented with clear godoc comments
+- [X] Complex logic includes explanatory comments
+- [X] Names follow Go conventions and are self-documenting
 
 **VI. Configuration Management**
-- [x] YAML configuration file support included (gndb.yaml)
-  - viper loads gndb.yaml from current directory or ~/.config/gndb/
-- [x] CLI flags override file-based configuration settings
-  - cobra flags take precedence over viper config file values
-- [x] Precedence order enforced: flags > env vars > config file > defaults
-  - viper handles precedence automatically
-- [x] Configuration schema documented and validated at startup
-  - Config struct with validation tags; fail on missing required fields
-- [x] Fail-fast with clear errors for invalid configuration
-  - Startup validation before any operations begin
+- [X] YAML configuration file support included (gndb.yaml)
+- [X] CLI flags override file-based configuration settings
+- [X] Precedence order enforced: flags > env vars > config file > defaults
+- [X] Configuration schema documented and validated at startup
+- [X] Fail-fast with clear errors for invalid configuration
 
 ## Project Structure
 
 ### Documentation (this feature)
 ```
-specs/[###-feature]/
+specs/001-gnverifier-db-lifecycle/
 ├── plan.md              # This file (/plan command output)
 ├── research.md          # Phase 0 output (/plan command)
 ├── data-model.md        # Phase 1 output (/plan command)
 ├── quickstart.md        # Phase 1 output (/plan command)
 ├── contracts/           # Phase 1 output (/plan command)
+│   ├── DatabaseOperator.go
+│   ├── Importer.go
+│   ├── MigrationRunner.go
+│   ├── Optimizer.go
+│   └── SFGAReader.go
 └── tasks.md             # Phase 2 output (/tasks command - NOT created by /plan)
 ```
 
 ### Source Code (repository root)
 ```
 pkg/
-├── config/                      # Configuration types and validation (pure)
-│   ├── config.go                # Config struct, defaults, validation
-│   └── config_test.go           # Unit tests for validation logic
-├── schema/                      # Database schema models (pure)
-│   ├── models.go                # Go structs with GORM tags (matches gnidump)
-│   ├── gorm.go                  # GORM AutoMigrate wrapper
-│   ├── interfaces.go            # DatabaseOperator interface
-│   └── schema_test.go           # Tests for GORM migration
-├── migrate/                     # Migration orchestration (pure)
-│   ├── interfaces.go            # MigrationRunner interface
-│   ├── orchestrator.go          # Migration coordination logic
-│   └── orchestrator_test.go     # Unit tests
-├── populate/                    # Data population coordination (pure)
-│   ├── interfaces.go            # SFGAReader, Importer interfaces
-│   ├── coordinator.go           # Import orchestration, batching logic
-│   ├── validator.go             # SFGA version compatibility checks
-│   └── populate_test.go         # Unit tests
-└── restructure/                 # Optimization coordination (pure)
-    ├── interfaces.go            # Optimizer interface
-    ├── indexing.go              # Index creation logic
-    ├── materialized_views.go    # Materialized view definitions
-    └── restructure_test.go      # Unit tests
-
-internal/io/                     # Impure implementations
-├── config/                      # Configuration file/flag loading
-│   ├── loader.go                # viper integration, file reading
-│   └── loader_test.go           # Integration tests
-├── database/                    # PostgreSQL operations
-│   ├── operator.go              # Implements schema.DatabaseOperator
-│   ├── connection.go            # pgx connection pooling
-│   ├── migrations.go            # Atlas SDK integration
-│   └── database_test.go         # Integration tests (requires testcontainers)
-└── sfga/                        # SFGA file I/O
-    ├── reader.go                # Implements populate.SFGAReader
-    ├── streamer.go              # Channel-based streaming via sflib
-    └── sfga_test.go             # Integration tests
-
+├── config/
+│   ├── config.go
+│   └── config_test.go
+├── migrate/
+├── populate/
+├── restructure/
+└── schema/
+    ├── gorm.go
+    ├── models.go
+    └── schema_test.go
+internal/io/
+├── config/
+│   ├── generate.go
+│   ├── generate_test.go
+│   ├── loader.go
+│   └── loader_test.go
+├── database/
+│   ├── operator.go
+│   └── operator_test.go
+└── sfga/
 cmd/
 └── gndb/
-    ├── main.go                  # Root command, flag setup
-    ├── create.go                # `gndb create` subcommand
-    ├── migrate.go               # `gndb migrate` subcommand
-    ├── populate.go              # `gndb populate` subcommand
-    └── restructure.go           # `gndb restructure` subcommand
-
-migrations/                      # Atlas migration files
-├── atlas.sum                    # Merkle tree integrity tracking
-└── {timestamp}_{name}.sql       # Versioned SQL migrations
-
-testdata/                        # Test fixtures
-├── sample.sfga                  # Small SFGA file for testing
-└── expected_schema.sql          # Reference DDL for validation
+    ├── main.go
+    ├── create.go
+    ├── migrate.go
+    ├── populate.go
+    └── restructure.go
 ```
 
-**Structure Decision**: Single Go project following GNdb constitution:
-- **pkg/**: Pure business logic modules defining interfaces and orchestration
-- **internal/io/**: Impure implementations of pkg/ interfaces for database and file I/O
-- **cmd/gndb/**: CLI subcommands (create, migrate, populate, restructure) using cobra
-- **Go models approach**: pkg/schema/models.go defines database tables as Go structs with GORM tags (matching gnidump's model.go), enabling schema creation via AutoMigrate while queries use raw SQL with pgx for performance
+**Structure Decision**: The project is a single Go project, and the structure is already in place. The new feature will be implemented within the existing structure.
 
 ## Phase 0: Outline & Research
-✅ **Status**: COMPLETE (research.md already exists)
+1. **Extract unknowns from Technical Context** above:
+   - For each NEEDS CLARIFICATION → research task
+   - For each dependency → best practices task
+   - For each integration → patterns task
 
-**Completed Research Topics**:
-1. PostgreSQL schema design for 100M+ names → Hybrid indexing strategy (B-tree + GiST trigram)
-2. Atlas migration framework → Versioned migrations with integrity tracking
-3. SFGA format and sflib library → Stream-based import with batch inserts
-4. SFGA version compatibility → Enforce same version for initial ingest
-5. SFGA to PostgreSQL mapping → Direct table mapping with denormalization
-6. Performance optimizations → Three-phase restructure (indexes, materialized views, statistics)
-7. gnidump reference patterns → Pure/impure separation, interface-driven design
-8. Technology stack decisions → Go 1.21+, pgx, cobra, viper, Atlas, sflib
-9. Go models approach → Inspired by gnidump's model.go for schema creation and SQL mapping
+2. **Generate and dispatch research agents**:
+   ```
+   For each unknown in Technical Context:
+     Task: "Research {unknown} for {feature context}"
+   For each technology choice:
+     Task: "Find best practices for {tech} in {domain}"
+   ```
 
-**Output**: [research.md](./research.md) with all technical unknowns resolved
+3. **Consolidate findings** in `research.md` using format:
+   - Decision: [what was chosen]
+   - Rationale: [why chosen]
+   - Alternatives considered: [what else evaluated]
+
+**Output**: research.md with all NEEDS CLARIFICATION resolved
 
 ## Phase 1: Design & Contracts
 *Prerequisites: research.md complete*
@@ -310,25 +217,27 @@ testdata/                        # Test fixtures
 ## Complexity Tracking
 *Fill ONLY if Constitution Check has violations that must be justified*
 
-**No violations detected**. All constitutional principles are satisfied by the proposed architecture.
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| | | |
 
 
 ## Progress Tracking
 *This checklist is updated during execution flow*
 
 **Phase Status**:
-- [x] Phase 0: Research complete (/plan command)
-- [x] Phase 1: Design complete (/plan command)
-- [x] Phase 2: Task planning complete (/plan command - describe approach only)
+- [X] Phase 0: Research complete (/plan command)
+- [X] Phase 1: Design complete (/plan command)
+- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
 - [ ] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
 
 **Gate Status**:
-- [x] Initial Constitution Check: PASS
-- [x] Post-Design Constitution Check: PASS
-- [x] All NEEDS CLARIFICATION resolved
-- [x] Complexity deviations documented (none - all principles satisfied)
+- [X] Initial Constitution Check: PASS
+- [X] Post-Design Constitution Check: PASS
+- [X] All NEEDS CLARIFICATION resolved
+- [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v1.0.0 - See `.specify/memory/constitution.md`*
+*Based on Constitution v1.2.0 - See `.specify/memory/constitution.md`*
