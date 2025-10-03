@@ -790,8 +790,8 @@ $ gndb create  # Uses new host automatically
      * vernacular_strings
      * vernacular_string_indices
      * schema_versions
-   - Check pg_trgm extension enabled: `\dx`
    - Verify schema_versions table has entry
+   - Note: No PostgreSQL extensions needed (fuzzy matching handled by gnmatcher)
 
 4. Test --force flag:
    - Run: `gndb create --force`
@@ -813,8 +813,8 @@ $ gndb create  # Uses new host automatically
 - [ ] Documentation clearly states database must be created before `gndb create`
 - [ ] Successfully create test database and run `gndb create`
 - [ ] All 11 tables from data-model.md are created
-- [ ] pg_trgm extension is enabled
 - [ ] schema_versions table has entry with version "1.0.0"
+- [ ] No PostgreSQL extensions required (fuzzy matching is in gnmatcher)
 - [ ] `--force` flag successfully drops and recreates schema
 - [ ] README.md has clear quick start instructions
 - [ ] Workflow matches quickstart.md scenario 1
@@ -852,8 +852,6 @@ gndb create
 Connected to database: myuser@localhost:5432/gndb_test
 Creating schema using GORM AutoMigrate...
 ✓ Schema created successfully
-Enabling PostgreSQL extensions...
-✓ pg_trgm extension enabled
 ✓ Schema version set to 1.0.0
 
 Created 11 tables:

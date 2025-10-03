@@ -24,8 +24,10 @@ func getCreateCmd() *cobra.Command {
 This command:
   1. Connects to PostgreSQL using configuration settings
   2. Creates all base tables using GORM AutoMigrate
-  3. Enables required extensions (pg_trgm for fuzzy matching)
-  4. Records schema version
+  3. Records schema version
+
+Note: Fuzzy matching is handled by gnmatcher (external to database).
+This database stores canonical forms for exact lookups only.
 
 Use --force to drop existing tables before creating schema.
 
@@ -89,12 +91,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ Schema created successfully")
 
-	// Enable required extensions
-	fmt.Println("Enabling PostgreSQL extensions...")
-	if err := op.EnableExtension(ctx, "pg_trgm"); err != nil {
-		return fmt.Errorf("failed to enable pg_trgm extension: %w", err)
-	}
-	fmt.Println("✓ pg_trgm extension enabled")
+	// Note: No PostgreSQL extensions needed
+	// Fuzzy matching is handled by gnmatcher (bloom filters, suffix tries)
+	// This database only stores canonical forms for exact lookups
 
 	// Set schema version
 	version := "1.0.0"
