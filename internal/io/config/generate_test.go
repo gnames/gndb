@@ -61,29 +61,27 @@ func TestGenerateDefaultConfig(t *testing.T) {
 	// Since we can't easily mock the function, we'll create the config manually for testing
 	configPath := originalConfigPath
 
-	// Write a minimal config file to test
+	// Write config with all values commented out (matching new format)
 	configContent := `# GNdb Configuration File
+# This file was auto-generated. Uncomment and edit values as needed.
+
+# Database connection settings
 database:
-  host: localhost
-  port: 5432
-  user: postgres
-  password: postgres
-  database: gnames
-  ssl_mode: disable
-  max_connections: 20
-  min_connections: 2
-  max_conn_lifetime: 60
-  max_conn_idle_time: 10
+  # host: localhost  # PostgreSQL host address
+  # port: 5432  # PostgreSQL port
+
+# Data import settings
 import:
-  batch_size: 5000
+  # batch_size: 5000  # Number of records to insert per batch
+
+# Database optimization settings
 optimization:
-  concurrent_indexes: false
-  statistics_targets:
-    name_strings.canonical_simple: 1000
-    taxa.rank: 100
+  # concurrent_indexes: false  # Create indexes concurrently
+
+# Logging configuration
 logging:
-  level: info
-  format: text
+  # level: info  # Log level: debug, info, warn, error
+  # format: text  # Log format: text, json
 `
 	err = os.WriteFile(configPath, []byte(configContent), 0644)
 	require.NoError(t, err)
@@ -96,7 +94,7 @@ logging:
 	err = ValidateGeneratedConfig(configPath)
 	require.NoError(t, err)
 
-	// Verify content contains expected sections
+	// Verify content contains expected sections and commented defaults
 	content, err := os.ReadFile(configPath)
 	require.NoError(t, err)
 
@@ -105,8 +103,8 @@ logging:
 	assert.Contains(t, contentStr, "import:")
 	assert.Contains(t, contentStr, "optimization:")
 	assert.Contains(t, contentStr, "logging:")
-	assert.Contains(t, contentStr, "host: localhost")
-	assert.Contains(t, contentStr, "port: 5432")
+	assert.Contains(t, contentStr, "# host: localhost")
+	assert.Contains(t, contentStr, "# port: 5432")
 }
 
 func TestGenerateDefaultConfig_CreatesParentDirs(t *testing.T) {
