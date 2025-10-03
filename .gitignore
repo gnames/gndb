@@ -4,7 +4,8 @@ t
 t.json
 gndb
 .env
-.envrc  # direnv local environment - may contain secrets (use .envrc.example as template)
+# direnv local environment - may contain secrets (use .envrc.example as template)
+.envrc
 *.pprof
 *.trace
 *.test
