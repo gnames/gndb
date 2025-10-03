@@ -455,7 +455,141 @@ gndb create --host=override-db.example.com  # Uses override-db, not production-d
 
 ---
 
-## Task Execution Order (T006-T011)
+### T012: Generate Default Config File on First Run
+
+**Description**: Auto-generate a documented default config file (gndb.yaml) in the appropriate platform-specific directory on first run, and display config file location when gndb executes.
+
+**Actions**:
+1. Create `internal/io/config/generate.go` with config file generation logic:
+   - Function `GetConfigDir()` to determine platform-specific config directory:
+     * Linux/macOS: `~/.config/gndb/`
+     * Windows: `%APPDATA%\gndb\` (using `os.UserConfigDir()`)
+   - Function `GetDefaultConfigPath()` returns `<config-dir>/gndb.yaml`
+   - Function `GenerateDefaultConfig()` creates documented YAML file:
+     ```yaml
+     # GNdb Configuration File
+     # This file was auto-generated. Edit as needed.
+     #
+     # Configuration precedence (highest to lowest):
+     #   1. CLI flags (--host, --port, etc.)
+     #   2. Environment variables (GNDB_*)
+     #   3. This config file
+     #   4. Built-in defaults
+     #
+     # For all environment variables, see: go doc github.com/gnames/gndb/pkg/config
+
+     # Database connection settings
+     database:
+       host: localhost              # PostgreSQL host
+       port: 5432                   # PostgreSQL port
+       user: postgres               # PostgreSQL user
+       password: postgres           # PostgreSQL password (consider using GNDB_DATABASE_PASSWORD env var)
+       database: gnames             # Database name
+       ssl_mode: disable            # SSL mode: disable/require/verify-ca/verify-full
+
+       # Connection pool settings
+       max_connections: 20          # Maximum connections in pool
+       min_connections: 2           # Minimum connections in pool
+       max_conn_lifetime: 60        # Max connection lifetime (minutes)
+       max_conn_idle_time: 10       # Max idle time (minutes)
+
+     # Import settings
+     import:
+       batch_size: 5000             # Number of records per batch insert
+
+     # Optimization settings
+     optimization:
+       concurrent_indexes: false    # Create indexes concurrently (true for production)
+       statistics_targets:          # Statistics targets for high-cardinality columns
+         name_strings.canonical_simple: 1000
+         taxa.rank: 100
+
+     # Logging settings
+     logging:
+       level: info                  # Log level: debug/info/warn/error
+       format: text                 # Log format: json/text
+     ```
+   - Function creates parent directories if they don't exist
+
+2. Update `cmd/gndb/root.go` to auto-generate config on first run:
+   - In `PersistentPreRunE`, before calling `config.Load()`:
+     * Check if config file exists at default location
+     * If not found and no explicit `--config` flag, call `GenerateDefaultConfig()`
+     * Print message: "Generated default config at: <path>"
+   - After loading config successfully, print: "Using config from: <path>" (if from file)
+   - If using defaults (no file), print: "Using built-in defaults (no config file)"
+
+3. Create `internal/io/config/generate_test.go` with tests:
+   - `TestGetConfigDir()`: Verify correct platform-specific directory
+   - `TestGetDefaultConfigPath()`: Verify full path construction
+   - `TestGenerateDefaultConfig()`: Create temp dir, generate config, verify YAML valid
+   - `TestGenerateDefaultConfig_CreatesParentDirs()`: Verify directory creation
+   - `TestGenerateDefaultConfig_FileExists()`: Don't overwrite existing config
+
+4. Update `internal/io/config/loader.go`:
+   - Track which config source was used (file path, env vars, defaults)
+   - Return config source info for display in CLI
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/internal/io/config/generate.go` (new)
+- `/Users/dimus/code/golang/gndb/internal/io/config/generate_test.go` (new)
+- `/Users/dimus/code/golang/gndb/internal/io/config/loader.go` (update to track source)
+- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go` (update to generate and display config location)
+
+**Platform-Specific Config Directories**:
+- **Linux/macOS**: `~/.config/gndb/gndb.yaml`
+- **Windows**: `%APPDATA%\gndb\gndb.yaml`
+- Use `os.UserConfigDir()` (Go 1.13+) for cross-platform compatibility
+
+**Success Criteria**:
+- [ ] First run of `gndb` creates config file in platform-specific directory
+- [ ] Generated config file contains all fields with documentation comments
+- [ ] Config file uses default values from `pkg/config.Defaults()`
+- [ ] Existing config files are never overwritten
+- [ ] CLI displays config file location on startup
+- [ ] CLI distinguishes between file, env vars, and built-in defaults
+- [ ] All tests pass: `go test ./internal/io/config`
+- [ ] Cross-platform tested (Linux, macOS, Windows paths)
+
+**Dependencies**: Requires T011 (env var support for complete config system)
+
+**Parallel**: No (enhances existing config loader)
+
+**User Experience**:
+```bash
+# First run - auto-generates config
+$ gndb create
+Generated default config at: /home/user/.config/gndb/gndb.yaml
+Using config from: /home/user/.config/gndb/gndb.yaml
+[... rest of create output ...]
+
+# Subsequent runs - uses existing config
+$ gndb create
+Using config from: /home/user/.config/gndb/gndb.yaml
+[... rest of create output ...]
+
+# Explicit config path
+$ gndb create --config custom.yaml
+Using config from: custom.yaml
+[... rest of create output ...]
+
+# Environment variables only
+$ rm ~/.config/gndb/gndb.yaml
+$ GNDB_DATABASE_HOST=prod-db gndb create
+Using built-in defaults with environment variable overrides
+[... rest of create output ...]
+```
+
+**Generated Config File Quality**:
+- YAML syntax highlighted comments explaining each field
+- Security note about password (recommend env var)
+- Reference to full documentation
+- Grouped by logical sections (database, import, optimization, logging)
+- Example values for map fields (statistics_targets)
+
+---
+
+## Task Execution Order (T006-T012)
 
 ```
 T006 [P] (DatabaseOperator contract tests - MUST FAIL)
@@ -469,15 +603,19 @@ T009 (CLI root + create) ──────────┘
 T010 (Integration test - Scenario 1)
   ↓
 T011 (Environment variable overrides)
+  ↓
+T012 (Generate default config file on first run)
 ```
 
-## Dependencies (T006-T011)
+## Dependencies (T006-T012)
 - T006 blocks T007 (TDD: contract tests before implementation)
 - T008 can run parallel with T006 (independent test files)
 - T007, T008 both block T009 (CLI needs database operator and tests)
 - T009 blocks T010 (integration test needs working CLI)
 - T003 blocks T011 (env var support needs config loader to exist)
+- T011 blocks T012 (config generation needs env var support complete)
 - T011 enhances T009 (adds env var capability to existing CLI)
+- T012 enhances T009 (adds auto-generation of config files)
 
 ---
 
@@ -489,13 +627,14 @@ T011 (Environment variable overrides)
 - ✅ Schema models with GORM AutoMigrate
 - ✅ Connection pool configuration
 
-**Next** (T006-T011):
+**Next** (T006-T012):
 - [ ] Database operator with pgxpool
 - [ ] CLI root command and create subcommand
 - [ ] Integration test for schema creation
 - [ ] Environment variable config overrides
+- [ ] Auto-generate default config file on first run
 
-**After T011**:
+**After T012**:
 - Migration operations (Atlas integration)
 - SFGA import (populate phase)
 - Optimization (restructure phase)
@@ -513,4 +652,4 @@ T011 (Environment variable overrides)
 
 ---
 
-**Status**: Tasks T006-T010 defined. Ready for execution after T005 completion.
+**Status**: Tasks T006-T012 defined. Ready for execution after T005 completion.
