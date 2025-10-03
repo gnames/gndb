@@ -6,7 +6,8 @@ import (
 	"github.com/gnames/gndb/pkg/config"
 )
 
-// DatabaseOperator defines the interface for database operations.	ype DatabaseOperator interface {
+// DatabaseOperator defines the interface for database operations.
+type DatabaseOperator interface {
 	// Connect establishes a connection to the database.
 	Connect(context.Context, *config.DatabaseConfig) error
 

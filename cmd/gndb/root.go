@@ -17,35 +17,20 @@ func getRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "gndb",
 		Short: "GNdb manages GNverifier database lifecycle",
-		Long: `GNdb is a CLI tool for managing the complete lifecycle of the GNverifier
-PostgreSQL database, from schema creation through data population and optimization.
+		Long: `GNdb is a command-line tool for managing the lifecycle of a PostgreSQL
+database for GNverifier. It allows users to set up and maintain a local
+GNverifier instance with custom data sources.
 
-The tool provides four main phases:
-  - create: Create database schema and extensions
-  - migrate: Apply schema migrations
-  - populate: Import data from SFGA files
-  - restructure: Optimize with indexes and materialized views
+The tool supports the following functionalities:
 
-Configuration precedence (highest to lowest):
-  1. CLI flags (--host, --port, etc.)
-  2. Environment variables (GNDB_*)
-  3. Config file (gndb.yaml)
-  4. Built-in defaults
+- Database Schema Management: Create and migrate the database schema.
+- Data Population: Populate the database with nomenclature data.
+- Database Optimization: Optimize the database for fast name verification.
 
-Environment Variables:
-  All configuration can be set via GNDB_* environment variables.
-  Nested fields use underscores (database.host → GNDB_DATABASE_HOST).
+Configuration is managed through a gndb.yaml file, environment variables
+(with GNDB_ prefix), and command-line flags.
 
-  Examples:
-    GNDB_DATABASE_HOST              PostgreSQL host
-    GNDB_DATABASE_PORT              PostgreSQL port
-    GNDB_DATABASE_USER              PostgreSQL user
-    GNDB_DATABASE_PASSWORD          PostgreSQL password
-    GNDB_DATABASE_DATABASE          Database name
-    GNDB_IMPORT_BATCH_SIZE          Import batch size
-    GNDB_LOGGING_LEVEL              Log level (debug/info/warn/error)
-
-  See 'go doc github.com/gnames/gndb/pkg/config' for complete list.`,
+For more information, see the project's README file.`,
 		Version: Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Auto-generate config file on first run if it doesn't exist
@@ -97,8 +82,12 @@ Environment Variables:
 	rootCmd.Flags().BoolP("version", "V", false, "version for gndb")
 
 	// Add subcommands
-	rootCmd.AddCommand(getCreateCmd())
-	// TODO: Add migrate, populate, restructure commands in future tasks
+	rootCmd.AddCommand(
+		getCreateCmd(),
+		getMigrateCmd(),
+		getPopulateCmd(),
+		getRestructureCmd(),
+	)
 
 	return rootCmd
 }
