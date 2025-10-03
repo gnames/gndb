@@ -38,103 +38,12 @@ func TestDefaults(t *testing.T) {
 	require.NoError(t, err, "default config should be valid")
 }
 
-func TestValidate_MissingRequiredFields(t *testing.T) {
+func TestValidate_InvalidValues(t *testing.T) {
 	tests := []struct {
 		name   string
 		config *config.Config
 		errMsg string
 	}{
-		{
-			name: "missing database host",
-			config: &config.Config{
-				Database: config.DatabaseConfig{
-					Port:            5432,
-					User:            "postgres",
-					Database:        "gnames",
-					MaxConnections:  20,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
-			},
-			errMsg: "database.host is required",
-		},
-		{
-			name: "missing database port",
-			config: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "localhost",
-					User:            "postgres",
-					Database:        "gnames",
-					MaxConnections:  20,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
-			},
-			errMsg: "database.port is required",
-		},
-		{
-			name: "missing database user",
-			config: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "localhost",
-					Port:            5432,
-					Database:        "gnames",
-					MaxConnections:  20,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
-			},
-			errMsg: "database.user is required",
-		},
-		{
-			name: "missing database name",
-			config: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "localhost",
-					Port:            5432,
-					User:            "postgres",
-					MaxConnections:  20,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
-			},
-			errMsg: "database.database is required",
-		},
-		{
-			name: "invalid batch size",
-			config: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "localhost",
-					Port:            5432,
-					User:            "postgres",
-					Database:        "gnames",
-					MaxConnections:  20,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 0,
-				},
-			},
-			errMsg: "import.batch_size must be positive",
-		},
 		{
 			name: "invalid logging format",
 			config: &config.Config{
@@ -156,25 +65,6 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 				},
 			},
 			errMsg: "logging.format must be 'json' or 'text'",
-		},
-		{
-			name: "invalid max_connections zero",
-			config: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "localhost",
-					Port:            5432,
-					User:            "postgres",
-					Database:        "gnames",
-					MaxConnections:  0,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
-			},
-			errMsg: "database.max_connections must be at least 1",
 		},
 		{
 			name: "invalid min_connections exceeds max",
@@ -214,6 +104,25 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			},
 			errMsg: "database.max_conn_lifetime cannot be negative",
 		},
+		{
+			name: "invalid negative batch_size",
+			config: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
+				},
+				Import: config.ImportConfig{
+					BatchSize: -100,
+				},
+			},
+			errMsg: "import.batch_size cannot be negative",
+		},
 	}
 
 	for _, tt := range tests {
@@ -221,6 +130,134 @@ func TestValidate_MissingRequiredFields(t *testing.T) {
 			err := tt.config.Validate()
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errMsg)
+		})
+	}
+}
+
+func TestMergeWithDefaults(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *config.Config
+		expected *config.Config
+	}{
+		{
+			name:   "empty config gets all defaults",
+			config: &config.Config{},
+			expected: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Password:        "postgres",
+					Database:        "gnames",
+					SSLMode:         "disable",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 5000,
+				},
+				Optimization: config.OptimizationConfig{
+					ConcurrentIndexes: false,
+				},
+				Logging: config.LoggingConfig{
+					Level:  "info",
+					Format: "text",
+				},
+			},
+		},
+		{
+			name: "partial config gets missing defaults",
+			config: &config.Config{
+				Database: config.DatabaseConfig{
+					Host: "custom-host",
+					Port: 3333,
+				},
+			},
+			expected: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "custom-host",
+					Port:            3333,
+					User:            "postgres",
+					Password:        "postgres",
+					Database:        "gnames",
+					SSLMode:         "disable",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 5000,
+				},
+				Optimization: config.OptimizationConfig{
+					ConcurrentIndexes: false,
+				},
+				Logging: config.LoggingConfig{
+					Level:  "info",
+					Format: "text",
+				},
+			},
+		},
+		{
+			name: "complete config unchanged",
+			config: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "custom-host",
+					Port:            3333,
+					User:            "custom-user",
+					Password:        "custom-pass",
+					Database:        "custom-db",
+					SSLMode:         "require",
+					MaxConnections:  50,
+					MinConnections:  5,
+					MaxConnLifetime: 120,
+					MaxConnIdleTime: 30,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 10000,
+				},
+				Optimization: config.OptimizationConfig{
+					ConcurrentIndexes: true,
+				},
+				Logging: config.LoggingConfig{
+					Level:  "debug",
+					Format: "json",
+				},
+			},
+			expected: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "custom-host",
+					Port:            3333,
+					User:            "custom-user",
+					Password:        "custom-pass",
+					Database:        "custom-db",
+					SSLMode:         "require",
+					MaxConnections:  50,
+					MinConnections:  5,
+					MaxConnLifetime: 120,
+					MaxConnIdleTime: 30,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 10000,
+				},
+				Optimization: config.OptimizationConfig{
+					ConcurrentIndexes: true,
+				},
+				Logging: config.LoggingConfig{
+					Level:  "debug",
+					Format: "json",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.config.MergeWithDefaults()
+			assert.Equal(t, tt.expected, tt.config)
 		})
 	}
 }

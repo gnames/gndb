@@ -69,7 +69,7 @@ func GenerateDefaultConfig() (string, error) {
 	// Get default configuration
 	defaults := config.Defaults()
 
-	// Create documented YAML content using yaml.Marshal for proper encoding
+	// Create documented YAML content with default values and inline comments
 	yamlContent := `# GNdb Configuration File
 # This file was auto-generated. Edit as needed.
 #
@@ -81,27 +81,37 @@ func GenerateDefaultConfig() (string, error) {
 #
 # For all environment variables, see: go doc github.com/gnames/gndb/pkg/config
 
+# Database connection settings
 database:
-  host: ` + defaults.Database.Host + `
-  port: ` + fmt.Sprintf("%d", defaults.Database.Port) + `
-  user: ` + defaults.Database.User + `
-  password: ` + defaults.Database.Password + `
-  database: ` + defaults.Database.Database + `
-  ssl_mode: ` + defaults.Database.SSLMode + `
-  max_connections: ` + fmt.Sprintf("%d", defaults.Database.MaxConnections) + `
-  min_connections: ` + fmt.Sprintf("%d", defaults.Database.MinConnections) + `
-  max_conn_lifetime: ` + fmt.Sprintf("%d", defaults.Database.MaxConnLifetime) + `
-  max_conn_idle_time: ` + fmt.Sprintf("%d", defaults.Database.MaxConnIdleTime) + `
+  host: ` + defaults.Database.Host + `  # PostgreSQL host address
+  port: ` + fmt.Sprintf("%d", defaults.Database.Port) + `  # PostgreSQL port
+  user: ` + defaults.Database.User + `  # Database user name
+  password: ` + defaults.Database.Password + `  # Database password
+  database: ` + defaults.Database.Database + `  # Database name
+  ssl_mode: ` + defaults.Database.SSLMode + `  # SSL mode: disable, require, verify-ca, verify-full
+  max_connections: ` + fmt.Sprintf("%d", defaults.Database.MaxConnections) + `  # Maximum number of connections in the pool
+  min_connections: ` + fmt.Sprintf("%d", defaults.Database.MinConnections) + `  # Minimum number of connections in the pool
+  max_conn_lifetime: ` + fmt.Sprintf("%d", defaults.Database.MaxConnLifetime) + `  # Maximum connection lifetime in minutes (0 = unlimited)
+  max_conn_idle_time: ` + fmt.Sprintf("%d", defaults.Database.MaxConnIdleTime) + `  # Maximum connection idle time in minutes (0 = unlimited)
 
+# Data import settings
 import:
-  batch_size: ` + fmt.Sprintf("%d", defaults.Import.BatchSize) + `
+  batch_size: ` + fmt.Sprintf("%d", defaults.Import.BatchSize) + `  # Number of records to insert per batch
 
+# Database optimization settings
 optimization:
-  concurrent_indexes: ` + fmt.Sprintf("%t", defaults.Optimization.ConcurrentIndexes) + `
+  concurrent_indexes: ` + fmt.Sprintf("%t", defaults.Optimization.ConcurrentIndexes) + `  # Create indexes concurrently (requires PostgreSQL 11+)
 
+  # Advanced: Statistics targets for specific columns (uncomment and edit as needed)
+  # Note: Keys with dots are not supported via environment variables
+  # statistics_targets:
+  #   name_strings.canonical_simple: 10000
+  #   name_strings.canonical_full: 1000
+
+# Logging configuration
 logging:
-  level: ` + defaults.Logging.Level + `
-  format: ` + defaults.Logging.Format + `
+  level: ` + defaults.Logging.Level + `  # Log level: debug, info, warn, error
+  format: ` + defaults.Logging.Format + `  # Log format: text, json
 `
 
 	// Write config file

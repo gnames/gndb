@@ -100,6 +100,9 @@ func Load(configPath string) (*LoadResult, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Merge with defaults to fill in missing values
+	cfg.MergeWithDefaults()
+
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid configuration: %w", err)

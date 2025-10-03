@@ -142,35 +142,22 @@ type LoggingConfig struct {
 	Format string `mapstructure:"format" yaml:"format"`
 }
 
-// Validate checks that all required configuration fields are set correctly.
+// Validate checks that configuration values are sensible.
+// Does NOT require fields to be non-empty - missing values will be filled with defaults.
 func (c *Config) Validate() error {
-	// Validate database connection parameters
-	if c.Database.Host == "" {
-		return fmt.Errorf("database.host is required")
-	}
-	if c.Database.Port == 0 {
-		return fmt.Errorf("database.port is required")
-	}
-	if c.Database.User == "" {
-		return fmt.Errorf("database.user is required")
-	}
-	if c.Database.Database == "" {
-		return fmt.Errorf("database.database is required")
+	// Validate batch size is positive if set
+	if c.Import.BatchSize < 0 {
+		return fmt.Errorf("import.batch_size cannot be negative")
 	}
 
-	// Validate batch size is positive
-	if c.Import.BatchSize <= 0 {
-		return fmt.Errorf("import.batch_size must be positive")
-	}
-
-	// Validate connection pool settings
-	if c.Database.MaxConnections < 1 {
-		return fmt.Errorf("database.max_connections must be at least 1")
+	// Validate connection pool settings if set
+	if c.Database.MaxConnections < 0 {
+		return fmt.Errorf("database.max_connections cannot be negative")
 	}
 	if c.Database.MinConnections < 0 {
 		return fmt.Errorf("database.min_connections cannot be negative")
 	}
-	if c.Database.MinConnections > c.Database.MaxConnections {
+	if c.Database.MaxConnections > 0 && c.Database.MinConnections > c.Database.MaxConnections {
 		return fmt.Errorf("database.min_connections cannot exceed max_connections")
 	}
 	if c.Database.MaxConnLifetime < 0 {
@@ -180,12 +167,65 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("database.max_conn_idle_time cannot be negative")
 	}
 
-	// Validate logging format
+	// Validate logging format if set
 	if c.Logging.Format != "" && c.Logging.Format != "json" && c.Logging.Format != "text" {
 		return fmt.Errorf("logging.format must be 'json' or 'text'")
 	}
 
 	return nil
+}
+
+// MergeWithDefaults fills in any missing values with defaults.
+func (c *Config) MergeWithDefaults() {
+	defaults := Defaults()
+
+	// Merge database config
+	if c.Database.Host == "" {
+		c.Database.Host = defaults.Database.Host
+	}
+	if c.Database.Port == 0 {
+		c.Database.Port = defaults.Database.Port
+	}
+	if c.Database.User == "" {
+		c.Database.User = defaults.Database.User
+	}
+	if c.Database.Password == "" {
+		c.Database.Password = defaults.Database.Password
+	}
+	if c.Database.Database == "" {
+		c.Database.Database = defaults.Database.Database
+	}
+	if c.Database.SSLMode == "" {
+		c.Database.SSLMode = defaults.Database.SSLMode
+	}
+	if c.Database.MaxConnections == 0 {
+		c.Database.MaxConnections = defaults.Database.MaxConnections
+	}
+	if c.Database.MinConnections == 0 {
+		c.Database.MinConnections = defaults.Database.MinConnections
+	}
+	if c.Database.MaxConnLifetime == 0 {
+		c.Database.MaxConnLifetime = defaults.Database.MaxConnLifetime
+	}
+	if c.Database.MaxConnIdleTime == 0 {
+		c.Database.MaxConnIdleTime = defaults.Database.MaxConnIdleTime
+	}
+
+	// Merge import config
+	if c.Import.BatchSize == 0 {
+		c.Import.BatchSize = defaults.Import.BatchSize
+	}
+
+	// Merge optimization config - ConcurrentIndexes defaults to false, which is the zero value
+	// so we don't need to check it
+
+	// Merge logging config
+	if c.Logging.Level == "" {
+		c.Logging.Level = defaults.Logging.Level
+	}
+	if c.Logging.Format == "" {
+		c.Logging.Format = defaults.Logging.Format
+	}
 }
 
 // Defaults returns a Config with sensible default values.
