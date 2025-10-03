@@ -163,7 +163,7 @@ func (p *PgxOperator) ExecuteDDL(ctx context.Context, ddl string) error {
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	if _, err := tx.Exec(ctx, ddl); err != nil {
 		return fmt.Errorf("failed to execute DDL: %w", err)
@@ -186,7 +186,7 @@ func (p *PgxOperator) ExecuteDDLBatch(ctx context.Context, ddlStatements []strin
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	for i, ddl := range ddlStatements {
 		if _, err := tx.Exec(ctx, ddl); err != nil {
@@ -295,7 +295,7 @@ func (p *PgxOperator) RefreshMaterializedView(ctx context.Context, viewName stri
 		return fmt.Errorf("not connected to database")
 	}
 
-	sql := fmt.Sprintf("REFRESH MATERIALIZED VIEW")
+	sql := "REFRESH MATERIALIZED VIEW"
 	if concurrently {
 		sql += " CONCURRENTLY"
 	}
