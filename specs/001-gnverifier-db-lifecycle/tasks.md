@@ -751,7 +751,145 @@ $ gndb create  # Uses new host automatically
 
 ---
 
-## Task Execution Order (T006-T013)
+### T014: Test and Verify Schema Creation Workflow
+
+**Description**: Test the complete schema creation workflow, verify that `gndb create` works correctly, and document the prerequisite that the PostgreSQL database must be created manually before running the command.
+
+**Context**: The `gndb create` command creates tables/schema inside an existing database - it does NOT create the database itself. Users must create the database first using `createdb` or similar tools.
+
+**Actions**:
+1. Document database creation prerequisite:
+   - Add section to README.md or docs/quickstart.md
+   - Explain that PostgreSQL database must exist before running `gndb create`
+   - Provide example: `createdb gnames_test`
+
+2. Test schema creation workflow:
+   - Create a test database: `createdb gndb_test`
+   - Set up `.envrc` with test database credentials:
+     ```bash
+     export GNDB_DATABASE_DATABASE=gndb_test
+     export GNDB_DATABASE_USER=<your_user>
+     export GNDB_DATABASE_PASSWORD=<your_password>
+     ```
+   - Run: `direnv allow .`
+   - Run: `gndb create`
+   - Verify all tables created successfully
+
+3. Verify schema contents:
+   - Connect to database: `psql gndb_test`
+   - Check tables exist: `\dt`
+   - Verify expected tables from data-model.md:
+     * data_sources
+     * name_strings
+     * canonicals
+     * canonical_fulls
+     * canonical_stems
+     * name_string_indices
+     * words
+     * word_name_strings
+     * vernacular_strings
+     * vernacular_string_indices
+     * schema_versions
+   - Check pg_trgm extension enabled: `\dx`
+   - Verify schema_versions table has entry
+
+4. Test --force flag:
+   - Run: `gndb create --force`
+   - Verify it drops existing tables and recreates schema
+   - Confirm data is cleared (expected behavior)
+
+5. Document the workflow in README.md:
+   - Add "Quick Start" section with step-by-step instructions
+   - Include prerequisite: create database first
+   - Show example with .envrc or direct flags
+   - Link to full configuration documentation
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/README.md` (update or create)
+- `/Users/dimus/code/golang/gndb/docs/quickstart.md` (update if exists)
+- Test database: `gndb_test` (local PostgreSQL)
+
+**Success Criteria**:
+- [ ] Documentation clearly states database must be created before `gndb create`
+- [ ] Successfully create test database and run `gndb create`
+- [ ] All 11 tables from data-model.md are created
+- [ ] pg_trgm extension is enabled
+- [ ] schema_versions table has entry with version "1.0.0"
+- [ ] `--force` flag successfully drops and recreates schema
+- [ ] README.md has clear quick start instructions
+- [ ] Workflow matches quickstart.md scenario 1
+
+**Dependencies**: Requires T001-T005 (schema models and operator are already implemented)
+
+**Parallel**: No (verification and documentation task)
+
+**Prerequisites for Users**:
+```bash
+# 1. Install PostgreSQL (if not already installed)
+brew install postgresql@15  # macOS
+# or
+sudo apt install postgresql-15  # Ubuntu
+
+# 2. Start PostgreSQL service
+brew services start postgresql@15  # macOS
+# or  
+sudo systemctl start postgresql  # Ubuntu
+
+# 3. Create the database
+createdb gndb_test
+
+# 4. Configure gndb (option A: using .envrc)
+cp .envrc.example .envrc
+vim .envrc  # Edit GNDB_DATABASE_DATABASE=gndb_test
+direnv allow .
+
+# 5. Create schema
+gndb create
+```
+
+**Expected Output**:
+```
+Connected to database: myuser@localhost:5432/gndb_test
+Creating schema using GORM AutoMigrate...
+✓ Schema created successfully
+Enabling PostgreSQL extensions...
+✓ pg_trgm extension enabled
+✓ Schema version set to 1.0.0
+
+Created 11 tables:
+  - canonicals
+  - canonical_fulls
+  - canonical_stems
+  - data_sources
+  - name_string_indices
+  - name_strings
+  - schema_versions
+  - vernacular_string_indices
+  - vernacular_strings
+  - word_name_strings
+  - words
+
+✓ Database schema creation complete!
+
+Next steps:
+  - Run 'gndb populate' to import data from SFGA files
+  - Run 'gndb restructure' to create indexes and optimize
+```
+
+**Testing Checklist**:
+- [ ] Test with fresh database (no existing tables)
+- [ ] Test with `--force` flag on existing schema
+- [ ] Test with different database names
+- [ ] Test with environment variables vs config file
+- [ ] Test error handling (database doesn't exist)
+- [ ] Test error handling (insufficient permissions)
+- [ ] Verify schema_versions table populated
+- [ ] Verify all foreign keys created
+- [ ] Verify all indexes created by GORM
+
+---
+
+## Task Execution Order (T006-T014)
 
 ```
 T006 [P] (DatabaseOperator contract tests - MUST FAIL)
@@ -769,9 +907,11 @@ T011 (Environment variable overrides)
 T012 (Generate default config file on first run)
   ↓
 T013 (Create .envrc.example for direnv)
+  ↓
+T014 (Test and verify schema creation workflow)
 ```
 
-## Dependencies (T006-T013)
+## Dependencies (T006-T014)
 - T006 blocks T007 (TDD: contract tests before implementation)
 - T008 can run parallel with T006 (independent test files)
 - T007, T008 both block T009 (CLI needs database operator and tests)
@@ -782,6 +922,8 @@ T013 (Create .envrc.example for direnv)
 - T011 enhances T009 (adds env var capability to existing CLI)
 - T012 enhances T009 (adds auto-generation of config files)
 - T013 documents T011 (provides direnv integration example)
+- T013 blocks T014 (testing needs .envrc setup for configuration)
+- T014 verifies T001-T013 (validates entire config and schema creation system)
 
 ---
 
@@ -804,9 +946,10 @@ T013 (Create .envrc.example for direnv)
 - ✅ All 14 GNDB_* environment variables documented
 - ✅ MergeWithDefaults() fills in missing values automatically
 
-**Next**:
+**Next** (T014):
+- [ ] T014: Test and verify schema creation workflow
 
-**After T013**:
+**After T014**:
 - Migration operations (Atlas integration)
 - SFGA import (populate phase)
 - Optimization (restructure phase)
