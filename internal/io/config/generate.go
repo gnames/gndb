@@ -70,6 +70,8 @@ func GenerateDefaultConfig() (string, error) {
 	defaults := config.Defaults()
 
 	// Create documented YAML content with all defaults commented out
+	// NOTE: Do NOT include section headers like "database:" because they create empty structs
+	// that prevent environment variables from working with viper's Unmarshal.
 	yamlContent := `# GNdb Configuration File
 # This file was auto-generated. Uncomment and edit values as needed.
 #
@@ -82,36 +84,39 @@ func GenerateDefaultConfig() (string, error) {
 # For all environment variables, see: go doc github.com/gnames/gndb/pkg/config
 
 # Database connection settings
-database:
-  # host: ` + defaults.Database.Host + `  # PostgreSQL host address
-  # port: ` + fmt.Sprintf("%d", defaults.Database.Port) + `  # PostgreSQL port
-  # user: ` + defaults.Database.User + `  # Database user name
-  # password: ` + defaults.Database.Password + `  # Database password
-  # database: ` + defaults.Database.Database + `  # Database name
-  # ssl_mode: ` + defaults.Database.SSLMode + `  # SSL mode: disable, require, verify-ca, verify-full
-  # max_connections: ` + fmt.Sprintf("%d", defaults.Database.MaxConnections) + `  # Maximum number of connections in the pool
-  # min_connections: ` + fmt.Sprintf("%d", defaults.Database.MinConnections) + `  # Minimum number of connections in the pool
-  # max_conn_lifetime: ` + fmt.Sprintf("%d", defaults.Database.MaxConnLifetime) + `  # Maximum connection lifetime in minutes (0 = unlimited)
-  # max_conn_idle_time: ` + fmt.Sprintf("%d", defaults.Database.MaxConnIdleTime) + `  # Maximum connection idle time in minutes (0 = unlimited)
+# Uncomment the "database:" line and the settings you want to override:
+# database:
+#   host: ` + defaults.Database.Host + `  # PostgreSQL host address
+#   port: ` + fmt.Sprintf("%d", defaults.Database.Port) + `  # PostgreSQL port
+#   user: ` + defaults.Database.User + `  # Database user name
+#   password: ` + defaults.Database.Password + `  # Database password
+#   database: ` + defaults.Database.Database + `  # Database name
+#   ssl_mode: ` + defaults.Database.SSLMode + `  # SSL mode: disable, require, verify-ca, verify-full
+#   max_connections: ` + fmt.Sprintf("%d", defaults.Database.MaxConnections) + `  # Maximum number of connections in the pool
+#   min_connections: ` + fmt.Sprintf("%d", defaults.Database.MinConnections) + `  # Minimum number of connections in the pool
+#   max_conn_lifetime: ` + fmt.Sprintf("%d", defaults.Database.MaxConnLifetime) + `  # Maximum connection lifetime in minutes (0 = unlimited)
+#   max_conn_idle_time: ` + fmt.Sprintf("%d", defaults.Database.MaxConnIdleTime) + `  # Maximum connection idle time in minutes (0 = unlimited)
 
 # Data import settings
-import:
-  # batch_size: ` + fmt.Sprintf("%d", defaults.Import.BatchSize) + `  # Number of records to insert per batch
+# Uncomment the "import:" line and the settings you want to override:
+# import:
+#   batch_size: ` + fmt.Sprintf("%d", defaults.Import.BatchSize) + `  # Number of records to insert per batch
 
 # Database optimization settings
-optimization:
-  # concurrent_indexes: ` + fmt.Sprintf("%t", defaults.Optimization.ConcurrentIndexes) + `  # Create indexes concurrently (requires PostgreSQL 11+)
-
-  # Advanced: Statistics targets for specific columns (uncomment and edit as needed)
-  # Note: Keys with dots are not supported via environment variables
-  # statistics_targets:
-  #   name_strings.canonical_simple: 10000
-  #   name_strings.canonical_full: 1000
+# Uncomment the "optimization:" line and the settings you want to override:
+# optimization:
+#   concurrent_indexes: ` + fmt.Sprintf("%t", defaults.Optimization.ConcurrentIndexes) + `  # Create indexes concurrently (requires PostgreSQL 11+)
+#   # Advanced: Statistics targets for specific columns (uncomment and edit as needed)
+#   # Note: Keys with dots are not supported via environment variables
+#   # statistics_targets:
+#   #   name_strings.canonical_simple: 10000
+#   #   name_strings.canonical_full: 1000
 
 # Logging configuration
-logging:
-  # level: ` + defaults.Logging.Level + `  # Log level: debug, info, warn, error
-  # format: ` + defaults.Logging.Format + `  # Log format: text, json
+# Uncomment the "logging:" line and the settings you want to override:
+# logging:
+#   level: ` + defaults.Logging.Level + `  # Log level: debug, info, warn, error
+#   format: ` + defaults.Logging.Format + `  # Log format: text, json
 `
 
 	// Write config file

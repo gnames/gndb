@@ -37,6 +37,24 @@ func Load(configPath string) (*LoadResult, error) {
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
+	// Set defaults BEFORE reading config - this allows env vars to work with AutomaticEnv()
+	// Even if config file exists, defaults ensure viper knows which keys to check for env vars
+	defaults := config.Defaults()
+	v.SetDefault("database.host", defaults.Database.Host)
+	v.SetDefault("database.port", defaults.Database.Port)
+	v.SetDefault("database.user", defaults.Database.User)
+	v.SetDefault("database.password", defaults.Database.Password)
+	v.SetDefault("database.database", defaults.Database.Database)
+	v.SetDefault("database.ssl_mode", defaults.Database.SSLMode)
+	v.SetDefault("database.max_connections", defaults.Database.MaxConnections)
+	v.SetDefault("database.min_connections", defaults.Database.MinConnections)
+	v.SetDefault("database.max_conn_lifetime", defaults.Database.MaxConnLifetime)
+	v.SetDefault("database.max_conn_idle_time", defaults.Database.MaxConnIdleTime)
+	v.SetDefault("import.batch_size", defaults.Import.BatchSize)
+	v.SetDefault("optimization.concurrent_indexes", defaults.Optimization.ConcurrentIndexes)
+	v.SetDefault("logging.level", defaults.Logging.Level)
+	v.SetDefault("logging.format", defaults.Logging.Format)
+
 	if configPath != "" {
 		// Use explicit config path
 		v.SetConfigFile(configPath)
@@ -72,26 +90,6 @@ func Load(configPath string) (*LoadResult, error) {
 	} else {
 		configFileRead = true
 		usedConfigPath = v.ConfigFileUsed()
-	}
-
-	// If no config file was read, start with defaults
-	if !configFileRead {
-		// Set default values in viper so env vars can override them
-		defaults := config.Defaults()
-		v.SetDefault("database.host", defaults.Database.Host)
-		v.SetDefault("database.port", defaults.Database.Port)
-		v.SetDefault("database.user", defaults.Database.User)
-		v.SetDefault("database.password", defaults.Database.Password)
-		v.SetDefault("database.database", defaults.Database.Database)
-		v.SetDefault("database.ssl_mode", defaults.Database.SSLMode)
-		v.SetDefault("database.max_connections", defaults.Database.MaxConnections)
-		v.SetDefault("database.min_connections", defaults.Database.MinConnections)
-		v.SetDefault("database.max_conn_lifetime", defaults.Database.MaxConnLifetime)
-		v.SetDefault("database.max_conn_idle_time", defaults.Database.MaxConnIdleTime)
-		v.SetDefault("import.batch_size", defaults.Import.BatchSize)
-		v.SetDefault("optimization.concurrent_indexes", defaults.Optimization.ConcurrentIndexes)
-		v.SetDefault("logging.level", defaults.Logging.Level)
-		v.SetDefault("logging.format", defaults.Logging.Format)
 	}
 
 	// Unmarshal into Config struct
