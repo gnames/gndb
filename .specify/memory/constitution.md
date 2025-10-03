@@ -78,6 +78,10 @@ Follow-up TODOs: None
 
 **Rationale**: Consistent configuration management across features prevents user confusion, enables automation, and supports both interactive and scripted usage patterns.
 
+### VII. Development principles.
+
+Follow KISS and Do Not Repeat Yourself principles. Keep code without unnecessary repetitions including documentation. Write documentation concise and clear, oriented for human reading as well as LLM.
+
 ## Development Workflow
 
 ### Testing Requirements
