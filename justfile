@@ -6,6 +6,9 @@ default: install
 
 # Run all tests (skip integration tests requiring database)
 test:
+    @echo "Cleaning up test database (gndb_test)..."
+    @dropdb --if-exists gndb_test 2>/dev/null || true
+    @createdb gndb_test 2>/dev/null || true
     go test -short -count=1 ./...
 
 # Run all tests including integration tests (requires PostgreSQL)
