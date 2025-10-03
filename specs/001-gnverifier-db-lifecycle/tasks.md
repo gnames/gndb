@@ -887,7 +887,159 @@ Next steps:
 
 ---
 
-## Task Execution Order (T006-T014)
+### T015: Test Sources.yaml Configuration Loading and Validation
+
+**Description**: Implement comprehensive tests for the sources.yaml configuration loader in `pkg/populate/sources.go`, validating filename parsing, YAML loading, URL detection, and all validation rules per the sources-yaml-spec.md.
+
+**Context**: The sources.yaml configuration is the primary interface for users to specify which SFGA data sources to import. This task ensures the implementation correctly handles all supported formats, validates user input, and provides helpful error messages.
+
+**Actions**:
+1. Create `pkg/populate/sources_test.go` with comprehensive test coverage:
+   
+   **Filename Parsing Tests** (`TestParseFilename`):
+   - Test minimal format: `1001.sql` → ID=1001, no version/date
+   - Test full format: `0001_col_2025-10-03_v1.2.3.sql` → ID=1, version=1.2.3, date=2025-10-03
+   - Test with compression: `0012_gbif_2025-01-15_v2.0.sql.zip`
+   - Test sqlite format: `1005_custom_source.sqlite`
+   - Test with path: `/path/to/data/0003_worms_2024-12-01_v3.1.4.sql.zip`
+   - Test with URL: `https://example.com/data/0025_mydata.sql`
+   - Test version without dots: `0007_source_v10.sql`
+   - Test date only: `0100_data_2025-05-01.sql`
+   
+   **URL Detection Tests** (`TestIsValidURL`):
+   - Test http URL: `http://example.com/data.sql` → true
+   - Test https URL: `https://example.com/data.sql` → true
+   - Test local path: `/path/to/file.sql` → false
+   - Test relative path: `data/file.sql` → false
+   - Test current dir: `./file.sql` → false
+   - Test just filename: `file.sql` → false
+   - Test invalid protocol: `ftp://example.com/data.sql` → false
+   
+   **Minimal Config Loading** (`TestLoadSourcesConfig_Minimal`):
+   - Create temp directory with test SFGA file `1001.sql`
+   - Create minimal YAML: `data_sources: [{file: 1001.sql}]`
+   - Verify ID extracted from filename
+   - Verify local file validation (file exists)
+   
+   **Full Config Loading** (`TestLoadSourcesConfig_FullConfig`):
+   - Test all fields: id, title, title_short, description, URLs, type, curation flags
+   - Test outlink configuration (is_outlink_ready, outlink_url, outlink_id_field)
+   - Verify all fields populated correctly
+   - Test with URL (no file existence check)
+   
+   **Multiple Data Sources** (`TestLoadSourcesConfig_MultipleDataSources`):
+   - Load config with 3 sources (2 local, 1 URL)
+   - Verify all IDs extracted correctly
+   - Verify mix of local and URL sources
+   
+   **Validation Error Tests** (`TestLoadSourcesConfig_ValidationErrors`):
+   - Missing file field → error
+   - Invalid file format (not .sql/.sqlite) → error
+   - No ID in filename and no ID in YAML → error
+   - Invalid data_source_type → error
+   - is_outlink_ready=true but no outlink_url → error
+   - outlink_url without {} placeholder → error
+   - Invalid outlink_id_field → error
+   
+   **File Not Found** (`TestLoadSourcesConfig_FileNotFound`):
+   - Attempt to load non-existent config file → error
+   
+   **Generate Example Config** (`TestGenerateExampleConfig`):
+   - Generate example sources.yaml to temp directory
+   - Verify file created successfully
+   - Verify generated YAML is valid (can be loaded)
+   - Test error when file already exists (no overwrite)
+   
+   **ID Extraction Edge Cases** (`TestIDExtraction_EdgeCases`):
+   - ID from filename only (4 digits)
+   - Leading zeros preserved: `0001_col.sql` → ID=1
+   - Four digit ID: `9999_test.sql` → ID=9999
+   - Test that ID must be in filename (not just YAML)
+
+2. Export private functions for testing:
+   - Change `parseFilename` → `ParseFilename` (exported)
+   - Change `isValidURL` → `IsValidURL` (exported)
+   - Update internal calls to use new names
+
+3. Update validation logic in `sources.go`:
+   - Ensure file format validation checks for .sql, .sqlite, .sql.zip, .sqlite.zip
+   - Ensure ID validation requires 4-digit format in filename
+   - Ensure outlink validation checks all required fields when is_outlink_ready=true
+   - Ensure data_source_type only allows "taxonomic" or "nomenclatural"
+
+4. Run test suite and fix any issues:
+   - Run: `go test ./pkg/populate -v`
+   - Fix any failing tests
+   - Ensure 100% coverage of validation logic
+   - Ensure all error messages are clear and actionable
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/pkg/populate/sources_test.go` (new - comprehensive test suite)
+- `/Users/dimus/code/golang/gndb/pkg/populate/sources.go` (update - export functions, fix validation)
+
+**Success Criteria**:
+- [x] All filename parsing edge cases tested (8+ test cases)
+- [x] URL detection tests cover all protocols and path types
+- [x] Minimal, full, and multiple source configs tested
+- [x] All validation errors tested with expected error messages
+- [x] Example config generation tested
+- [x] ID extraction edge cases covered (leading zeros, ranges)
+- [x] ParseFilename and IsValidURL exported and tested
+- [x] All tests pass: `go test ./pkg/populate -v`
+- [x] Test coverage > 90% for sources.go (achieved 94.4%)
+- [x] Error messages are clear and actionable
+
+**Dependencies**: Requires sources.go implementation (already complete)
+
+**Parallel**: No (tests existing implementation)
+
+**Test Organization**:
+```
+pkg/populate/
+├── sources.go          # Implementation (already complete)
+└── sources_test.go     # Comprehensive test suite (new)
+```
+
+**Example Test Output**:
+```
+$ go test ./pkg/populate -v
+=== RUN   TestParseFilename
+=== RUN   TestParseFilename/minimal_format
+=== RUN   TestParseFilename/full_format_with_all_metadata
+=== RUN   TestParseFilename/with_zip_compression
+... (all test cases)
+--- PASS: TestParseFilename (0.00s)
+=== RUN   TestIsValidURL
+--- PASS: TestIsValidURL (0.00s)
+=== RUN   TestLoadSourcesConfig_Minimal
+--- PASS: TestLoadSourcesConfig_Minimal (0.01s)
+... (all tests)
+PASS
+coverage: 95.2% of statements
+ok      github.com/gnames/gndb/pkg/populate     0.123s
+```
+
+**Validation Rules to Test**:
+1. **File field**: Required, must end with .sql/.sqlite (with optional .zip)
+2. **ID extraction**: Must be 4-digit prefix in filename OR explicit in YAML
+3. **ID format**: Must be 0000-9999 (convention: <1000 official, ≥1000 custom)
+4. **URL validation**: Only http:// and https:// protocols allowed
+5. **Local file validation**: File must exist on filesystem
+6. **data_source_type**: If provided, must be "taxonomic" or "nomenclatural"
+7. **Outlink validation**: If is_outlink_ready=true, must have outlink_url with {} and valid outlink_id_field
+8. **outlink_id_field**: Must be one of: record_id, local_id, global_id, name_id, canonical, canonical_full
+
+**Testing Best Practices**:
+- Use `t.TempDir()` for temporary directories (auto-cleanup)
+- Use `require.NoError()` for setup, `assert.Error()` for expected failures
+- Test error messages contain expected substring (not exact match)
+- Use table-driven tests for multiple similar cases
+- Create actual test files on filesystem for local file tests
+- Use real URLs for URL tests (no file existence check for URLs)
+
+---
+
+## Task Execution Order (T006-T015)
 
 ```
 T006 [P] (DatabaseOperator contract tests - MUST FAIL)
@@ -907,9 +1059,11 @@ T012 (Generate default config file on first run)
 T013 (Create .envrc.example for direnv)
   ↓
 T014 (Test and verify schema creation workflow)
+  ↓
+T015 (Test sources.yaml configuration loading)
 ```
 
-## Dependencies (T006-T014)
+## Dependencies (T006-T015)
 - T006 blocks T007 (TDD: contract tests before implementation)
 - T008 can run parallel with T006 (independent test files)
 - T007, T008 both block T009 (CLI needs database operator and tests)
@@ -922,12 +1076,13 @@ T014 (Test and verify schema creation workflow)
 - T013 documents T011 (provides direnv integration example)
 - T013 blocks T014 (testing needs .envrc setup for configuration)
 - T014 verifies T001-T013 (validates entire config and schema creation system)
+- T015 is independent (tests sources.yaml implementation - populate phase preparation)
 
 ---
 
 ## Progress Summary
 
-**Completed** (T001-T013):
+**Completed** (T001-T014):
 - ✅ T001-T002: Project structure and configuration types
 - ✅ T003: Configuration loader (file + flags)
 - ✅ T004-T005: Schema models with DDL generation
@@ -935,17 +1090,20 @@ T014 (Test and verify schema creation workflow)
 - ✅ T011: Environment variable overrides for all config fields
 - ✅ T012: Auto-generate default config file on first run
 - ✅ T013: Create .envrc.example for direnv integration
+- ✅ T014: Test and verify schema creation workflow
 
-**Verification** (T012 - Config Generation):
-- ✅ First run of `gndb create` generates config at ~/.config/gndb/gndb.yaml
-- ✅ Subsequent runs use existing config (no overwrite)
-- ✅ Config has all values commented out with inline documentation
-- ✅ Config is valid YAML (empty sections with comments)
-- ✅ All 14 GNDB_* environment variables documented
-- ✅ MergeWithDefaults() fills in missing values automatically
+**Verification** (T014 - Schema Creation):
+- ✅ Database must be created manually before `gndb create` (documented)
+- ✅ All 11 tables created successfully
+- ✅ schema_versions table populated
+- ✅ --force flag works (drops and recreates)
+- ✅ README.md Quick Start added
 
-**Next** (T014):
-- [ ] T014: Test and verify schema creation workflow
+**Completed** (T015):
+- ✅ T015: Test sources.yaml configuration loading and validation
+  - Test coverage: 94.4%
+  - All validation rules tested
+  - Filename parsing, URL detection, error handling verified
 
 **After T014**:
 - Migration operations (Atlas integration)
