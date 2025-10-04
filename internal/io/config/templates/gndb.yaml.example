@@ -1,0 +1,45 @@
+# GNdb Configuration File
+# This file was auto-generated. Uncomment and edit values as needed.
+#
+# Configuration precedence (highest to lowest):
+#   1. CLI flags (--host, --port, etc.)
+#   2. Environment variables (GNDB_*)
+#   3. This config file
+#   4. Built-in defaults
+#
+# For all environment variables, see: go doc github.com/gnames/gndb/pkg/config
+
+# Database connection settings
+# Uncomment the "database:" line and the settings you want to override:
+# database:
+#   host: localhost  # PostgreSQL host address
+#   port: 5432  # PostgreSQL port
+#   user: postgres  # Database user name
+#   password: postgres  # Database password
+#   database: gnames  # Database name
+#   ssl_mode: disable  # SSL mode: disable, require, verify-ca, verify-full
+#   max_connections: 10  # Maximum number of connections in the pool
+#   min_connections: 2  # Minimum number of connections in the pool
+#   max_conn_lifetime: 0  # Maximum connection lifetime in minutes (0 = unlimited)
+#   max_conn_idle_time: 0  # Maximum connection idle time in minutes (0 = unlimited)
+
+# Data import settings
+# Uncomment the "import:" line and the settings you want to override:
+# import:
+#   batch_size: 5000  # Number of records to insert per batch
+
+# Database optimization settings
+# Uncomment the "optimization:" line and the settings you want to override:
+# optimization:
+#   concurrent_indexes: false  # Create indexes concurrently (requires PostgreSQL 11+)
+#   # Advanced: Statistics targets for specific columns (uncomment and edit as needed)
+#   # Note: Keys with dots are not supported via environment variables
+#   # statistics_targets:
+#   #   name_strings.canonical_simple: 10000
+#   #   name_strings.canonical_full: 1000
+
+# Logging configuration
+# Uncomment the "logging:" line and the settings you want to override:
+# logging:
+#   level: info  # Log level: debug, info, warn, error
+#   format: text  # Log format: text, json
