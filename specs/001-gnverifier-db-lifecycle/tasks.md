@@ -1124,3 +1124,95 @@ T015 (Test sources.yaml configuration loading)
 ---
 
 **Status**: Tasks T006-T012 defined. Ready for execution after T005 completion.
+
+---
+
+## Phase 3.2: Logging Infrastructure
+
+### T016: Implement Structured Logging with slog
+
+**Description**: Add structured logging using Go's built-in `log/slog` package with configuration-based setup
+
+**Actions**:
+1. Create `pkg/logger/logger.go` with:
+   - `New(cfg *config.LoggingConfig) *slog.Logger` function that:
+     - Creates slog.TextHandler if format is "text"
+     - Creates slog.JSONHandler if format is "json"
+     - Sets log level based on cfg.Level (debug, info, warn, error)
+     - Writes to os.Stdout for structured output
+   - `ParseLevel(level string) slog.Level` helper function
+   - Default to Info level and Text format if invalid config
+
+2. Create `pkg/logger/logger_test.go` with:
+   - Test: Text format produces human-readable output
+   - Test: JSON format produces valid JSON lines
+   - Test: Log level filtering works (debug messages hidden at info level)
+   - Test: Invalid level defaults to Info
+   - Test: Invalid format defaults to Text
+   - Test: Logger includes timestamp and level in output
+
+3. Integrate into CLI (`cmd/gndb/root.go`):
+   - Initialize logger after config loading
+   - Pass logger to commands via context or command struct
+   - Replace any fmt.Printf with logger.Info/Debug calls
+   - Use logger.Error for error messages before returning errors
+
+4. Update configuration validation:
+   - Add valid level check: debug, info, warn, error (case-insensitive)
+   - Keep existing format validation: json, text
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/pkg/logger/logger.go`
+- `/Users/dimus/code/golang/gndb/pkg/logger/logger_test.go`
+- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go` (update)
+- `/Users/dimus/code/golang/gndb/pkg/config/config.go` (update validation)
+
+**Success Criteria**:
+- [ ] Logger respects config.LoggingConfig settings
+- [ ] Text format outputs readable logs to stdout
+- [ ] JSON format outputs valid JSON lines
+- [ ] Log levels filter correctly (debug < info < warn < error)
+- [ ] Invalid config values default gracefully
+- [ ] All tests pass: `go test ./pkg/logger`
+- [ ] CLI uses logger instead of fmt.Printf
+- [ ] No breaking changes to existing config structure
+
+**Parallel**: [P] - New package, minimal changes to existing code
+
+**Dependencies**: 
+- Requires T002 (config package with LoggingConfig)
+- Enhances T009 (CLI will use structured logging)
+- No database dependencies
+
+**Testing Example**:
+```go
+// Test JSON format
+cfg := &config.LoggingConfig{Level: "info", Format: "json"}
+logger := logger.New(cfg)
+// Capture output, verify valid JSON with level, timestamp, message fields
+```
+
+**Integration Notes**:
+- slog is built into Go 1.21+, no external dependencies
+- Follows Go standard library patterns
+- Structured output helps with log aggregation tools
+- Debug level useful for troubleshooting data import issues
+
+---
+
+## Updated Task Execution Order (T001-T016)
+
+```
+T001-T005 (Setup & Schema)
+  ↓
+T006-T010 (Database & CLI - not yet implemented)
+  ↓
+T011-T015 (Config enhancements & testing)
+  ↓
+T016 [P] (Logging - can run parallel with T017+ when added)
+```
+
+---
+
+**Status**: Task T016 added for slog structured logging integration.
+
