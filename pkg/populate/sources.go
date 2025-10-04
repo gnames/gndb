@@ -6,6 +6,7 @@
 package populate
 
 import (
+	_ "embed"
 	"fmt"
 	"net/url"
 	"os"
@@ -16,6 +17,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+//go:embed templates/sources.yaml.example
+var exampleConfigTemplate string
 
 // SourcesConfig represents the complete sources.yaml configuration file.
 type SourcesConfig struct {
@@ -261,110 +265,12 @@ func IsValidURL(str string) bool {
 
 // GenerateExampleConfig creates an example configuration file with all official sources.
 func GenerateExampleConfig(path string) error {
-	example := `# sources.yaml - Data Source Configuration for gndb populate
-#
-# This file defines which SFGA data sources to import.
-# See: specs/001-gnverifier-db-lifecycle/sources-yaml-spec.md
-#
-# Usage:
-#   gndb populate --config sources.yaml
-#   gndb populate --config sources.yaml --sources 1,3,5
-#   gndb populate --config sources.yaml --sources main      # ID < 1000 only
-#   gndb populate --config sources.yaml --exclude main      # ID >= 1000 only
-
-# ============================================================================
-# Data Sources
-# ============================================================================
-
-data_sources:
-  # Example: Official source (minimal configuration)
-  - file: https://opendata.globalnames.org/sfga/latest/0001_col.sqlite.zip
-    title_short: "CoL"
-
-  # Example: Official source from local path
-  # - file: /data/0042_itis_2024-06-15_v2024.6.sqlite.zip
-  #   title_short: "ITIS"
-
-  # Example: Custom source with full configuration
-  # - file: /data/1001_my-herbarium_2025-10-03_v1.0.sql.zip
-  #   title: "My Institution Herbarium"
-  #   title_short: "MyHerb"
-  #   description: "Regional plant collection with taxonomic data"
-  #   home_url: "https://myinst.org/herbarium"
-  #   data_url: "https://myinst.org/herbarium/download"
-  #   data_source_type: "taxonomic"
-  #   is_curated: true
-  #   has_classification: true
-  #   is_outlink_ready: true
-  #   outlink_url: "https://myinst.org/specimen/{}"
-  #   outlink_id_field: "record_id"
-
-  # Example: Minimal custom source
-  # - file: /data/1002.sql
-  #   title_short: "LocalList"
-
-# ============================================================================
-# Import Settings (optional)
-# ============================================================================
-
-import:
-  batch_size: 5000              # Records per batch insert (default: 5000)
-  concurrent_jobs: 4            # Parallel processing jobs (default: 4)
-  prefer_flat_classification: false  # Use flat vs hierarchical (default: false)
-
-# ============================================================================
-# Logging Settings (optional)
-# ============================================================================
-
-logging:
-  show_progress: true           # Show progress bars (default: true)
-  log_level: "info"             # debug, info, warn, error (default: info)
-
-# ============================================================================
-# Official Data Sources (commented out - uncomment as needed)
-# ============================================================================
-# ID convention: < 1000 = official, >= 1000 = custom (not enforced)
-#
-# Official sources from https://opendata.globalnames.org/sfga/latest/
-#
-# - file: https://opendata.globalnames.org/sfga/latest/0001_col.sqlite.zip
-#   title_short: "CoL"
-#
-# - file: https://opendata.globalnames.org/sfga/latest/0003_itis.sqlite.zip
-#   title_short: "ITIS"
-#
-# - file: https://opendata.globalnames.org/sfga/latest/0009_worms.sqlite.zip
-#   title_short: "WoRMS"
-#
-# ... (add more official sources as needed)
-
-# ============================================================================
-# Template for Custom Data Sources
-# ============================================================================
-# Copy and customize this template for your own data sources (ID >= 1000):
-#
-# - file: /data/1000_{name}_{date}_v{version}.(sql|sqlite)[.zip]
-#   id: 1000                      # >= 1000 for custom sources
-#   title: "Full Title"
-#   title_short: "ShortName"      # Required for display
-#   description: "Detailed description"
-#   home_url: "https://example.org"
-#   data_url: "https://example.org/download"
-#   data_source_type: "taxonomic"  # or "nomenclatural"
-#   is_curated: false
-#   is_auto_curated: false
-#   has_classification: false
-#   is_outlink_ready: false
-#   outlink_url: "https://example.org/{}"
-#   outlink_id_field: "record_id"
-`
-
 	// Check if file already exists
 	if _, err := os.Stat(path); err == nil {
 		return fmt.Errorf("config file already exists: %s", path)
 	}
 
-	if err := os.WriteFile(path, []byte(example), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(exampleConfigTemplate), 0644); err != nil {
 		return fmt.Errorf("failed to write example config: %w", err)
 	}
 
