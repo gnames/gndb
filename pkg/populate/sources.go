@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed templates/sources.yaml.example
+//go:embed templates/sources.yaml
 var exampleConfigTemplate string
 
 // SourcesConfig represents the complete sources.yaml configuration file.

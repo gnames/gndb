@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-//go:embed templates/gndb.yaml.example
+//go:embed templates/gndb.yaml
 var configTemplate string
 
 // GetConfigDir returns the platform-specific configuration directory for GNdb.
