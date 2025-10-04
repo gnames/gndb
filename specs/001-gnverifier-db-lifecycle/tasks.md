@@ -1216,3 +1216,115 @@ T016 [P] (Logging - can run parallel with T017+ when added)
 
 **Status**: Task T016 added for slog structured logging integration.
 
+
+---
+
+### T017: Fix Database Tests to Use Configuration System Properly
+
+**Description**: Update database integration tests to use the full configuration loading system instead of manual environment variable reading, allowing tests to respect config.yaml and .envrc settings
+
+**Actions**:
+1. Update `internal/io/database/operator_test.go`:
+   - Replace `getTestConfig()` implementation to use `internal/io/config.Load()`
+   - Load config from default location or GNDB_CONFIG_PATH env var
+   - Merge with defaults using `cfg.MergeWithDefaults()`
+   - Override database name to "gndb_test" for safety
+   - Preserve backward compatibility with environment variables through config system
+
+2. Add helper function:
+   - `loadTestConfig() *config.DatabaseConfig` that:
+     - Calls `config.Load("")` to load from default locations
+     - Handles "config not found" error gracefully (use defaults)
+     - Merges with defaults
+     - Forces database name to "gndb_test"
+     - Returns DatabaseConfig ready for testing
+
+3. Update test documentation:
+   - Document that tests use full config system
+   - Show example config.yaml for test database
+   - Show example .envrc for test database
+   - Keep Docker instructions as fallback option
+
+4. Ensure test isolation:
+   - Tests should not interfere with production config
+   - Always use "gndb_test" database regardless of config
+   - Support both config file and environment variable approaches
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/internal/io/database/operator_test.go` (update)
+
+**Success Criteria**:
+- [ ] Tests load config using `config.Load()` system
+- [ ] Config.yaml settings are respected (host, port, user, password)
+- [ ] Environment variables override config.yaml values
+- [ ] Database name is always forced to "gndb_test"
+- [ ] Tests pass with config from .envrc
+- [ ] Tests pass with config from config.yaml
+- [ ] Tests pass with Docker defaults (no config)
+- [ ] Test documentation updated with examples
+- [ ] All database tests pass: `go test ./internal/io/database/...`
+
+**Parallel**: N/A - Updates existing test file
+
+**Dependencies**:
+- Requires T003 (config loader implementation)
+- Requires T011 (environment variable support)
+- Enhances existing database operator tests
+
+**Current Issue**:
+The current `getTestConfig()` manually reads environment variables (GNDB_DATABASE_USER, GNDB_DATABASE_PASSWORD) but doesn't use the full config loading system. This means:
+- It doesn't respect config.yaml settings
+- It doesn't benefit from the precedence system (flags > env > config > defaults)
+- It duplicates config loading logic
+
+**Proposed Solution**:
+```go
+func loadTestConfig() *config.DatabaseConfig {
+	// Load config using the standard config system
+	// Empty string means use default locations
+	result, err := config.Load("")
+	
+	var cfg *config.Config
+	if err != nil {
+		// No config file found, use defaults
+		cfg = config.Defaults()
+	} else {
+		cfg = result.Config
+	}
+	
+	// Ensure defaults are merged
+	cfg.MergeWithDefaults()
+	
+	// Always use test database for safety
+	cfg.Database.Database = "gndb_test"
+	
+	return &cfg.Database
+}
+```
+
+**Testing Scenarios**:
+1. **With .envrc**: Export GNDB_DATABASE_USER and GNDB_DATABASE_PASSWORD → tests use those values
+2. **With config.yaml**: Set database.user and database.password → tests use config values
+3. **With Docker defaults**: No config, no env vars → tests use defaults (postgres/test)
+4. **Precedence test**: Set both config.yaml and env vars → env vars win
+
+---
+
+## Updated Task Execution Order (T001-T017)
+
+```
+T001-T005 (Setup & Schema)
+  ↓
+T006-T010 (Database & CLI - not yet implemented)
+  ↓
+T011-T015 (Config enhancements & testing)
+  ↓
+T016 (Logging - COMPLETED)
+  ↓
+T017 (Fix database tests to use config system properly)
+```
+
+---
+
+**Status**: Task T017 added to fix database integration tests configuration handling.
+
