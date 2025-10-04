@@ -27,6 +27,8 @@
 # Uncomment the "import:" line and the settings you want to override:
 # import:
 #   batch_size: 5000  # Number of records to insert per batch
+#   concurrent_jobs: 4  # Parallel processing jobs (default: 4)
+#   prefer_flat_classification: false  # Use flat vs hierarchical (default: false)
 
 # Database optimization settings
 # Uncomment the "optimization:" line and the settings you want to override:
@@ -43,3 +45,4 @@
 # logging:
 #   level: info  # Log level: debug, info, warn, error
 #   format: text  # Log format: text, json
+#   show_progress: true  # Show progress bars (default: true)

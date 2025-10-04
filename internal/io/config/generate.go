@@ -43,22 +43,46 @@ func GetDefaultConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(configDir, "gndb.yaml"), nil
+	return filepath.Join(configDir, "config.yaml"), nil
 }
 
-// GenerateDefaultConfig creates a documented default config file at the platform-specific location.
-// Returns the path where the config was created, or error if generation fails.
-// Does NOT overwrite existing config files.
+// GetDefaultSourcesPath returns the full path to the default sources file.
+func GetDefaultSourcesPath() (string, error) {
+	configDir, err := GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configDir, "sources.yaml"), nil
+}
+
+// GenerateDefaultConfig creates documented default config and sources files at the platform-specific location.
+// Returns the config path where files were created, or error if generation fails.
+// Does NOT overwrite existing files.
 func GenerateDefaultConfig() (string, error) {
 	configPath, err := GetDefaultConfigPath()
 	if err != nil {
 		return "", err
 	}
 
+	sourcesPath, err := GetDefaultSourcesPath()
+	if err != nil {
+		return "", err
+	}
+
 	// Check if config file already exists
+	configExists := false
 	if _, err := os.Stat(configPath); err == nil {
-		// File exists, don't overwrite
-		return "", fmt.Errorf("config file already exists at %s", configPath)
+		configExists = true
+	}
+
+	sourcesExists := false
+	if _, err := os.Stat(sourcesPath); err == nil {
+		sourcesExists = true
+	}
+
+	// If both exist, return error
+	if configExists && sourcesExists {
+		return "", fmt.Errorf("config files already exist at %s", filepath.Dir(configPath))
 	}
 
 	// Create parent directories if they don't exist
@@ -67,15 +91,26 @@ func GenerateDefaultConfig() (string, error) {
 		return "", fmt.Errorf("failed to create config directory: %w", err)
 	}
 
-	// Write config file from embedded template
-	if err := os.WriteFile(configPath, []byte(templates.ConfigYAML), 0644); err != nil {
-		return "", fmt.Errorf("failed to write config file: %w", err)
+	// Write config.yaml if it doesn't exist
+	if !configExists {
+		if err := os.WriteFile(configPath, []byte(templates.ConfigYAML), 0644); err != nil {
+			return "", fmt.Errorf("failed to write config file: %w", err)
+		}
 	}
 
-	// Ensure file is synced to disk (in case viper reads immediately after)
-	// This shouldn't be necessary but adding as defensive measure
-	file, err := os.Open(configPath)
-	if err == nil {
+	// Write sources.yaml if it doesn't exist
+	if !sourcesExists {
+		if err := os.WriteFile(sourcesPath, []byte(templates.SourcesYAML), 0644); err != nil {
+			return "", fmt.Errorf("failed to write sources file: %w", err)
+		}
+	}
+
+	// Ensure files are synced to disk
+	if file, err := os.Open(configPath); err == nil {
+		file.Sync()
+		file.Close()
+	}
+	if file, err := os.Open(sourcesPath); err == nil {
 		file.Sync()
 		file.Close()
 	}

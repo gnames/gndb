@@ -1,87 +1,219 @@
 # sources.yaml - Data Source Configuration for gndb populate
 #
 # This file defines which SFGA data sources to import.
+# Default location: {ConfigDir}/gndb/sources.yaml (same directory as config.yaml)
 # See: specs/001-gnverifier-db-lifecycle/sources-yaml-spec.md
 #
 # Usage:
-#   gndb populate --config sources.yaml
-#   gndb populate --config sources.yaml --sources 1,3,5
-#   gndb populate --config sources.yaml --sources main      # ID < 1000 only
-#   gndb populate --config sources.yaml --exclude main      # ID >= 1000 only
+#   gndb populate                 # Uses default {ConfigDir}/gndb/sources.yaml
+#   gndb populate --sources 1,3,5 # Import only specific IDs
+#   gndb populate --sources main  # ID < 1000 only
+#   gndb populate --exclude main  # ID >= 1000 only
+#   gndb populate --sources-config /path/to/custom-sources.yaml  # Edge case: custom location
+#
+# Configuration settings (batch_size, concurrent_jobs, logging, etc.) are in config.yaml
 
 # ============================================================================
 # Data Sources
 # ============================================================================
 
 data_sources:
-  # Example: Official source (minimal configuration)
-  - file: https://opendata.globalnames.org/sfga/latest/0001_col.sqlite.zip
-    title_short: "CoL"
+  # Catalogue of Life
+  - id: 1
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "Catalogue of Life"
+    home_url: "https://www.catalogueoflife.org/"
+    data_url: "http://www.catalogueoflife.org/DCA_Export/archive.php"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
+    outlink_id_field: "record_id"
 
-  # Example: Official source from local path
-  # - file: /data/0042_itis_2024-06-15_v2024.6.sqlite.zip
-  #   title_short: "ITIS"
+  # Wikispecies
+  - id: 2
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "Wikispecies"
+    home_url: "https://species.wikimedia.org/wiki/Main_Page"
+    data_url: "http://dumps.wikimedia.org/specieswiki/latest/specieswiki-latest-pages-articles.xml.bz2"
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url: "http://species.wikimedia.org/wiki/{}"
+    outlink_id_field: "canonical_full"
 
-  # Example: Custom source with full configuration
-  # - file: /data/1001_my-herbarium_2025-10-03_v1.0.sql.zip
-  #   title: "My Institution Herbarium"
-  #   title_short: "MyHerb"
-  #   description: "Regional plant collection with taxonomic data"
-  #   home_url: "https://myinst.org/herbarium"
-  #   data_url: "https://myinst.org/herbarium/download"
-  #   data_source_type: "taxonomic"
-  #   is_curated: true
-  #   has_classification: true
-  #   is_outlink_ready: true
-  #   outlink_url: "https://myinst.org/specimen/{}"
-  #   outlink_id_field: "record_id"
+  # ITIS
+  - id: 3
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title: "Integrated Taxonomic Information System"
+    title_short: "ITIS"
+    home_url: "https://www.itis.gov/"
+    data_url: "https://www.itis.gov/downloads/itisMySQLTables.tar.gz"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value={}#null"
+    outlink_id_field: "record_id"
 
-  # Example: Minimal custom source
-  # - file: /data/1002.sql
-  #   title_short: "LocalList"
+  # NCBI
+  - id: 4
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title: "National Center for Biotechnology Information"
+    title_short: "NCBI"
+    home_url: "https://www.ncbi.nlm.nih.gov/"
+    data_url: "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"
+    is_outlink_ready: true
+    outlink_url: "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name={}&lvl=0&srchmode=1&keep=1&unlock"
+    outlink_id_field: "canonical"
 
-# ============================================================================
-# Import Settings (optional)
-# ============================================================================
+  # GRIN Plant Taxonomy
+  - id: 6
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title: "USDA National Plant Germplasm System"
+    title_short: "GRIN Plant Taxonomy"
+    home_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/abouttaxonomy"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/taxonomydetail?id={}"
+    outlink_id_field: "record_id"
 
-import:
-  batch_size: 5000              # Records per batch insert (default: 5000)
-  concurrent_jobs: 4            # Parallel processing jobs (default: 4)
-  prefer_flat_classification: false  # Use flat vs hierarchical (default: false)
+  # WoRMS
+  - id: 9
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "WoRMS"
+    home_url: "https://marinespecies.org"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.marinespecies.org/aphia.php?p=taxdetails&id={}"
+    outlink_id_field: "record_id"
 
-# ============================================================================
-# Logging Settings (optional)
-# ============================================================================
+  # EOL
+  - id: 12
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "EOL"
+    home_url: "https://eol.org"
+    data_url: "https://eol.org/data/provider_ids.csv.gz"
+    is_auto_curated: true
+    is_outlink_ready: true
+    outlink_url: "https://eol.org/pages/{}"
+    outlink_id_field: "name_id"
 
-logging:
-  show_progress: true           # Show progress bars (default: true)
-  log_level: "info"             # debug, info, warn, error (default: info)
+  # VASCAN
+  - id: 147
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "VASCAN"
+    is_curated: true
+    has_classification: true
 
-# ============================================================================
-# Official Data Sources (commented out - uncomment as needed)
-# ============================================================================
-# ID convention: < 1000 = official, >= 1000 = custom (not enforced)
-#
-# Official sources from https://opendata.globalnames.org/sfga/latest/
-#
-# - file: https://opendata.globalnames.org/sfga/latest/0001_col.sqlite.zip
-#   title_short: "CoL"
-#
-# - file: https://opendata.globalnames.org/sfga/latest/0003_itis.sqlite.zip
-#   title_short: "ITIS"
-#
-# - file: https://opendata.globalnames.org/sfga/latest/0009_worms.sqlite.zip
-#   title_short: "WoRMS"
-#
-# ... (add more official sources as needed)
+  # IPNI
+  - id: 167
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "IPNI"
+    home_url: "https://www.ipni.org/"
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url: "https://www.ipni.org/n/{}"
+    outlink_id_field: "name_id"
 
+  # Arctos
+  - id: 170
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "Arctos"
+    home_url: "https://arctosdb.org/"
+    is_auto_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://arctos.database.museum/name/{}"
+    outlink_id_field: "canonical_full"
+
+  # PaleoBioDB
+  - id: 172
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "PaleoBioDB"
+    home_url: "https://paleobiodb.org/#/"
+    is_curated: true
+    has_classification: true
+
+  # iNaturalist
+  - id: 180
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "iNaturalist"
+    home_url: "https://inaturalist.org/"
+    data_url: "https://www.inaturalist.org/taxa/inaturalist-taxonomy.dwca.zip"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.inaturalist.org/taxa/{}"
+    outlink_id_field: "record_id"
+
+  # World Flora Online
+  - id: 196
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "World Flora Online"
+    home_url: "https://worldfloraonline.org"
+    description: "An Online Flora of All Known Plants"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://list.worldfloraonline.org/{}"
+    outlink_id_field: "name_id"
+
+  # MycoBank
+  - id: 203
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "MycoBank"
+    home_url: "https://www.mycobank.org"
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url: "https://www.mycobank.org/page/Name details page/{}"
+    outlink_id_field: "name_id"
+
+  # Ruhoff 1980
+  - id: 206
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "Ruhoff 1980"
+    home_url: "https://doi.org/10.5479/si.00810282.294"
+    is_auto_curated: true
+
+  # LPSN
+  - id: 208
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "LPSN"
+    home_url: "https://lpsn.dsmz.de/"
+    data_url: "https://lpsn.dsmz.de/downloads"
+    is_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "{}"
+    outlink_id_field: "local_id"
+
+  # TAXREF
+  - id: 210
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "TAXREF"
+    home_url: "https://inpn.mnhn.fr/programme/referentiel-taxonomique-taxref"
+    data_url: "https://ipt.gbif.fr/resource?r=taxref"
+    is_curated: true
+    has_classification: true
+
+  # World Plants
+  - id: 211
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "World Plants"
+
+  # World Ferns
+  - id: 212
+    parent_url: http://opendata.globalnames.org/sfga/latest/
+    title_short: "World Ferns"
 # ============================================================================
 # Template for Custom Data Sources
 # ============================================================================
 # Copy and customize this template for your own data sources (ID >= 1000):
 #
-# - file: /data/1000_{name}_{date}_v{version}.(sql|sqlite)[.zip]
-#   id: 1000                      # >= 1000 for custom sources
+# - id: 1000
+#   parent_dir: ~/data/
+#   parent_url: (an alternative to parent_dir)
 #   title: "Full Title"
 #   title_short: "ShortName"      # Required for display
 #   description: "Detailed description"

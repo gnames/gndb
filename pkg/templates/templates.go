@@ -8,7 +8,7 @@ import _ "embed"
 //go:embed sources.yaml
 var SourcesYAML string
 
-// ConfigYAML contains the default gndb.yaml template for application configuration.
+// ConfigYAML contains the default config.yaml template for application configuration.
 //
-//go:embed gndb.yaml
+//go:embed config.yaml
 var ConfigYAML string

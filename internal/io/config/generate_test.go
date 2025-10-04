@@ -36,8 +36,8 @@ func TestGetDefaultConfigPath(t *testing.T) {
 	configPath, err := GetDefaultConfigPath()
 	require.NoError(t, err)
 
-	// Verify it ends with gndb.yaml
-	assert.True(t, strings.HasSuffix(configPath, "gndb.yaml"))
+	// Verify it ends with config.yaml
+	assert.True(t, strings.HasSuffix(configPath, "config.yaml"))
 
 	// Verify it contains gndb directory
 	assert.Contains(t, configPath, "gndb")
