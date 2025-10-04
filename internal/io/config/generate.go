@@ -1,17 +1,14 @@
 package config
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gndb/pkg/templates"
 	"gopkg.in/yaml.v3"
 )
-
-//go:embed templates/gndb.yaml
-var configTemplate string
 
 // GetConfigDir returns the platform-specific configuration directory for GNdb.
 // - Linux/macOS: ~/.config/gndb/
@@ -71,7 +68,7 @@ func GenerateDefaultConfig() (string, error) {
 	}
 
 	// Write config file from embedded template
-	if err := os.WriteFile(configPath, []byte(configTemplate), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(templates.ConfigYAML), 0644); err != nil {
 		return "", fmt.Errorf("failed to write config file: %w", err)
 	}
 

@@ -6,7 +6,6 @@
 package populate
 
 import (
-	_ "embed"
 	"fmt"
 	"net/url"
 	"os"
@@ -15,11 +14,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gnames/gndb/pkg/templates"
 	"gopkg.in/yaml.v3"
 )
-
-//go:embed templates/sources.yaml
-var exampleConfigTemplate string
 
 // SourcesConfig represents the complete sources.yaml configuration file.
 type SourcesConfig struct {
@@ -270,7 +267,7 @@ func GenerateExampleConfig(path string) error {
 		return fmt.Errorf("config file already exists: %s", path)
 	}
 
-	if err := os.WriteFile(path, []byte(exampleConfigTemplate), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(templates.SourcesYAML), 0644); err != nil {
 		return fmt.Errorf("failed to write example config: %w", err)
 	}
 
