@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/gnames/gndb/internal/io/database"
@@ -13,24 +14,33 @@ import (
 
 // Note: These are integration tests that require PostgreSQL.
 // For local testing, ensure PostgreSQL is running:
-// docker run -d --name gndb-test -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:15
+//
+// Option 1: Use Docker with default credentials:
+//   docker run -d --name gndb-test -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:15
+//
+// Option 2: Use .envrc or environment variables:
+//   export GNDB_DATABASE_USER=your_user
+//   export GNDB_DATABASE_PASSWORD=your_password
 //
 // Skip these tests in CI without testcontainers support using:
-// go test -short (these tests will be skipped)
+//   go test -short (these tests will be skipped)
 
 func getTestConfig() *config.DatabaseConfig {
-	return &config.DatabaseConfig{
-		Host:            "localhost",
-		Port:            5432,
-		User:            "postgres",
-		Password:        "test",
-		Database:        "gndb_test",
-		SSLMode:         "disable",
-		MaxConnections:  10,
-		MinConnections:  2,
-		MaxConnLifetime: 60,
-		MaxConnIdleTime: 10,
+	// Start with defaults
+	cfg := config.Defaults()
+
+	// Override with environment variables if present
+	if user := os.Getenv("GNDB_DATABASE_USER"); user != "" {
+		cfg.Database.User = user
 	}
+	if password := os.Getenv("GNDB_DATABASE_PASSWORD"); password != "" {
+		cfg.Database.Password = password
+	}
+
+	// Always use test database
+	cfg.Database.Database = "gndb_test"
+
+	return &cfg.Database
 }
 
 func TestPgxOperator_Connect(t *testing.T) {

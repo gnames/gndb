@@ -171,6 +171,12 @@ func TestRootCommand_ValidArgs(t *testing.T) {
 
 // TestCreateCommand_RequiresConfig verifies create command loads config
 func TestCreateCommand_RequiresConfig(t *testing.T) {
+	// Clear environment variables to ensure test isolation
+	t.Setenv("GNDB_DATABASE_HOST", "")
+	t.Setenv("GNDB_DATABASE_USER", "")
+	t.Setenv("GNDB_DATABASE_PASSWORD", "")
+	t.Setenv("GNDB_DATABASE_DATABASE", "")
+
 	cmd := getRootCmd()
 
 	// create command should fail without a valid database connection
