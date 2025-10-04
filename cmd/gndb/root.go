@@ -2,15 +2,18 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/gnames/gndb/internal/io/config"
 	pkgconfig "github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gndb/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
 var (
 	cfgFile string
 	cfg     *pkgconfig.Config
+	log     *slog.Logger
 )
 
 func getRootCmd() *cobra.Command {
@@ -60,14 +63,17 @@ For more information, see the project's README file.`,
 			}
 			cfg = result.Config
 
-			// Display config source
+			// Initialize logger with config
+			log = logger.New(&cfg.Logging)
+
+			// Display config source using logger
 			switch result.Source {
 			case "file":
-				fmt.Printf("Using config from: %s\n", result.SourcePath)
+				log.Info("config loaded", "source", "file", "path", result.SourcePath)
 			case "defaults+env":
-				fmt.Println("Using built-in defaults with environment variable overrides")
+				log.Info("config loaded", "source", "defaults with environment overrides")
 			case "defaults":
-				fmt.Println("Using built-in defaults (no config file)")
+				log.Info("config loaded", "source", "built-in defaults")
 			}
 
 			return nil
@@ -95,4 +101,9 @@ For more information, see the project's README file.`,
 // getConfig returns the loaded configuration (for use in subcommands)
 func getConfig() *pkgconfig.Config {
 	return cfg
+}
+
+// getLogger returns the initialized logger (for use in subcommands)
+func getLogger() *slog.Logger {
+	return log
 }

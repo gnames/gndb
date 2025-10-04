@@ -53,6 +53,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 )
 
 // Config represents the complete GNdb configuration.
@@ -170,6 +171,14 @@ func (c *Config) Validate() error {
 	// Validate logging format if set
 	if c.Logging.Format != "" && c.Logging.Format != "json" && c.Logging.Format != "text" {
 		return fmt.Errorf("logging.format must be 'json' or 'text'")
+	}
+
+	// Validate logging level if set (case-insensitive)
+	if c.Logging.Level != "" {
+		level := strings.ToLower(c.Logging.Level)
+		if level != "debug" && level != "info" && level != "warn" && level != "warning" && level != "error" {
+			return fmt.Errorf("logging.level must be 'debug', 'info', 'warn', or 'error'")
+		}
 	}
 
 	return nil

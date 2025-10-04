@@ -67,6 +67,28 @@ func TestValidate_InvalidValues(t *testing.T) {
 			errMsg: "logging.format must be 'json' or 'text'",
 		},
 		{
+			name: "invalid logging level",
+			config: &config.Config{
+				Database: config.DatabaseConfig{
+					Host:            "localhost",
+					Port:            5432,
+					User:            "postgres",
+					Database:        "gnames",
+					MaxConnections:  20,
+					MinConnections:  2,
+					MaxConnLifetime: 60,
+					MaxConnIdleTime: 10,
+				},
+				Import: config.ImportConfig{
+					BatchSize: 5000,
+				},
+				Logging: config.LoggingConfig{
+					Level: "invalid",
+				},
+			},
+			errMsg: "logging.level must be 'debug', 'info', 'warn', or 'error'",
+		},
+		{
 			name: "invalid min_connections exceeds max",
 			config: &config.Config{
 				Database: config.DatabaseConfig{

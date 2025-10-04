@@ -1168,14 +1168,14 @@ T015 (Test sources.yaml configuration loading)
 - `/Users/dimus/code/golang/gndb/pkg/config/config.go` (update validation)
 
 **Success Criteria**:
-- [ ] Logger respects config.LoggingConfig settings
-- [ ] Text format outputs readable logs to stdout
-- [ ] JSON format outputs valid JSON lines
-- [ ] Log levels filter correctly (debug < info < warn < error)
-- [ ] Invalid config values default gracefully
-- [ ] All tests pass: `go test ./pkg/logger`
-- [ ] CLI uses logger instead of fmt.Printf
-- [ ] No breaking changes to existing config structure
+- [x] Logger respects config.LoggingConfig settings
+- [x] Text format outputs readable logs to stdout
+- [x] JSON format outputs valid JSON lines
+- [x] Log levels filter correctly (debug < info < warn < error)
+- [x] Invalid config values default gracefully
+- [x] All tests pass: `go test ./pkg/logger`
+- [x] CLI uses logger instead of fmt.Printf
+- [x] No breaking changes to existing config structure
 
 **Parallel**: [P] - New package, minimal changes to existing code
 
