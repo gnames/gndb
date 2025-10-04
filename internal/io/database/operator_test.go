@@ -2,42 +2,61 @@ package database_test
 
 import (
 	"context"
-	"os"
 	"testing"
 
+	"github.com/gnames/gndb/internal/io/config"
 	"github.com/gnames/gndb/internal/io/database"
-	"github.com/gnames/gndb/pkg/config"
+	pkgconfig "github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // Note: These are integration tests that require PostgreSQL.
-// For local testing, ensure PostgreSQL is running:
 //
-// Option 1: Use Docker with default credentials:
-//   docker run -d --name gndb-test -e POSTGRES_PASSWORD=test -p 5432:5432 postgres:15
+// Configuration is loaded using the full config system:
+//   1. Environment variables (GNDB_DATABASE_* via .envrc)
+//   2. Config file (~/.config/gndb/config.yaml)
+//   3. Built-in defaults (postgres/postgres/gndb_test)
 //
-// Option 2: Use .envrc or environment variables:
+// Configuration examples:
+//
+// Option 1: Use .envrc (recommended for local development):
 //   export GNDB_DATABASE_USER=your_user
 //   export GNDB_DATABASE_PASSWORD=your_password
+//   # Database name is always forced to "gndb_test" for safety
+//
+// Option 2: Use config.yaml:
+//   database:
+//     user: your_user
+//     password: your_password
+//   # Database name is always forced to "gndb_test" for safety
+//
+// Option 3: Use Docker with default credentials:
+//   docker run -d --name gndb-test -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:15
+//   # Tests will use defaults: postgres/postgres/gndb_test
 //
 // Skip these tests in CI without testcontainers support using:
 //   go test -short (these tests will be skipped)
 
-func getTestConfig() *config.DatabaseConfig {
-	// Start with defaults
-	cfg := config.Defaults()
+func getTestConfig() *pkgconfig.DatabaseConfig {
+	// Load config using the standard config system
+	// Empty string means use default locations
+	result, err := config.Load("")
 
-	// Override with environment variables if present
-	if user := os.Getenv("GNDB_DATABASE_USER"); user != "" {
-		cfg.Database.User = user
-	}
-	if password := os.Getenv("GNDB_DATABASE_PASSWORD"); password != "" {
-		cfg.Database.Password = password
+	var cfg *pkgconfig.Config
+	if err != nil {
+		// No config file found, use defaults
+		cfg = pkgconfig.Defaults()
+	} else {
+		cfg = result.Config
 	}
 
-	// Always use test database
+	// Ensure defaults are merged
+	cfg.MergeWithDefaults()
+
+	// Always use test database for safety
+	// This prevents accidentally running tests against production database
 	cfg.Database.Database = "gndb_test"
 
 	return &cfg.Database
