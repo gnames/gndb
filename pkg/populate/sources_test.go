@@ -247,7 +247,7 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 			setupFunc: func(tmpDir string) string {
 				// Create file without ID in name
 				testFile := filepath.Join(tmpDir, "noID.sql")
-				os.WriteFile(testFile, []byte("-- test"), 0644)
+				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
 				return fmt.Sprintf(`data_sources:
   - file: %s
 `, testFile)
@@ -267,7 +267,7 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 			name: "invalid data_source_type",
 			setupFunc: func(tmpDir string) string {
 				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				os.WriteFile(testFile, []byte("-- test"), 0644)
+				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
 				return fmt.Sprintf(`data_sources:
   - file: %s
     data_source_type: invalid
@@ -279,7 +279,7 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 			name: "outlink_ready without outlink_url",
 			setupFunc: func(tmpDir string) string {
 				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				os.WriteFile(testFile, []byte("-- test"), 0644)
+				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
 				return fmt.Sprintf(`data_sources:
   - file: %s
     is_outlink_ready: true
@@ -291,7 +291,7 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 			name: "outlink_url without placeholder",
 			setupFunc: func(tmpDir string) string {
 				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				os.WriteFile(testFile, []byte("-- test"), 0644)
+				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
 				return fmt.Sprintf(`data_sources:
   - file: %s
     is_outlink_ready: true
@@ -304,7 +304,7 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 			name: "invalid outlink_id_field",
 			setupFunc: func(tmpDir string) string {
 				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				os.WriteFile(testFile, []byte("-- test"), 0644)
+				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
 				return fmt.Sprintf(`data_sources:
   - file: %s
     is_outlink_ready: true

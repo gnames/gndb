@@ -32,7 +32,8 @@ func TestNew_TextFormat(t *testing.T) {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	assert.Nil(t, err)
 	output := buf.String()
 
 	// Verify text format characteristics
@@ -60,12 +61,11 @@ func TestNew_JSONFormat(t *testing.T) {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	assert.Nil(t, err)
 	output := buf.String()
-
-	// Verify JSON format
 	var logEntry map[string]interface{}
-	err := json.Unmarshal([]byte(output), &logEntry)
+	err = json.Unmarshal([]byte(output), &logEntry)
 	require.NoError(t, err, "Output should be valid JSON")
 
 	assert.Equal(t, "test message", logEntry["msg"])
@@ -139,7 +139,8 @@ func TestNew_LogLevelFiltering(t *testing.T) {
 			os.Stdout = old
 
 			var buf bytes.Buffer
-			io.Copy(&buf, r)
+			_, err := io.Copy(&buf, r)
+			assert.Nil(t, err)
 			output := buf.String()
 
 			if tt.shouldLog {
@@ -174,7 +175,8 @@ func TestNew_InvalidLevelDefaultsToInfo(t *testing.T) {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	assert.Nil(t, err)
 	output := buf.String()
 
 	assert.NotContains(t, output, "debug message", "Debug should be hidden at default Info level")
@@ -200,7 +202,8 @@ func TestNew_InvalidFormatDefaultsToText(t *testing.T) {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	assert.Nil(t, err)
 	output := buf.String()
 
 	// Should be text format, not JSON
@@ -209,7 +212,7 @@ func TestNew_InvalidFormatDefaultsToText(t *testing.T) {
 
 	// Should NOT be valid JSON
 	var logEntry map[string]interface{}
-	err := json.Unmarshal([]byte(output), &logEntry)
+	err = json.Unmarshal([]byte(output), &logEntry)
 	assert.Error(t, err, "Output should not be valid JSON when format is invalid")
 }
 
@@ -232,7 +235,8 @@ func TestNew_EmptyFormatDefaultsToText(t *testing.T) {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	assert.Nil(t, err)
 	output := buf.String()
 
 	// Should be text format
@@ -259,11 +263,12 @@ func TestNew_LoggerIncludesTimestamp(t *testing.T) {
 	os.Stdout = old
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	assert.Nil(t, err)
 	output := buf.String()
 
 	var logEntry map[string]interface{}
-	err := json.Unmarshal([]byte(output), &logEntry)
+	err = json.Unmarshal([]byte(output), &logEntry)
 	require.NoError(t, err)
 
 	// Verify timestamp exists

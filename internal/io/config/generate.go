@@ -107,11 +107,11 @@ func GenerateDefaultConfig() (string, error) {
 
 	// Ensure files are synced to disk
 	if file, err := os.Open(configPath); err == nil {
-		file.Sync()
+		_ = file.Sync()
 		file.Close()
 	}
 	if file, err := os.Open(sourcesPath); err == nil {
-		file.Sync()
+		_ = file.Sync()
 		file.Close()
 	}
 

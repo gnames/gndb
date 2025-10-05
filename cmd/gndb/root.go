@@ -102,8 +102,3 @@ For more information, see the project's README file.`,
 func getConfig() *pkgconfig.Config {
 	return cfg
 }
-
-// getLogger returns the initialized logger (for use in subcommands)
-func getLogger() *slog.Logger {
-	return log
-}
