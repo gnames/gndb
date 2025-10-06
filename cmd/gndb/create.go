@@ -91,45 +91,26 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println("✓ Schema created successfully")
 
+	// Set collation for string columns (critical for correct sorting)
+	fmt.Println("Setting collation for string columns...")
+	if err := op.SetCollation(ctx); err != nil {
+		return fmt.Errorf("failed to set collation: %w", err)
+	}
+	fmt.Println("✓ Collation set successfully")
+
 	// Note: No PostgreSQL extensions needed
 	// Fuzzy matching is handled by gnmatcher (bloom filters, suffix tries)
 	// This database only stores canonical forms for exact lookups
 
-	// Set schema version
-	version := "1.0.0"
-	if err := op.SetSchemaVersion(ctx, version, "Initial schema created with GORM"); err != nil {
-		return fmt.Errorf("failed to set schema version: %w", err)
-	}
-	fmt.Printf("✓ Schema version set to %s\n", version)
-
 	// Verify all tables were created
+	tables, err := op.ListTables(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list tables: %w", err)
+	}
+
 	models := schema.AllModels()
 	fmt.Printf("\nCreated %d tables:\n", len(models))
-
-	// Get table names from GORM
-	sqlDB, err := db.DB()
-	if err != nil {
-		return fmt.Errorf("failed to get underlying DB: %w", err)
-	}
-	defer sqlDB.Close()
-
-	// Query for table names
-	rows, err := sqlDB.Query(`
-		SELECT tablename
-		FROM pg_tables
-		WHERE schemaname = 'public'
-		ORDER BY tablename
-	`)
-	if err != nil {
-		return fmt.Errorf("failed to query tables: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var tableName string
-		if err := rows.Scan(&tableName); err != nil {
-			return fmt.Errorf("failed to scan table name: %w", err)
-		}
+	for _, tableName := range tables {
 		fmt.Printf("  - %s\n", tableName)
 	}
 

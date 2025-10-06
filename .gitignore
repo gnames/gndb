@@ -1,8 +1,8 @@
 debug.test
 coverage.txt
+/bin/
 t
 t.json
-gndb
 .env
 # direnv local environment - may contain secrets (use .envrc.example as template)
 .envrc
@@ -17,4 +17,3 @@ bench*.txt
 binding/*.so
 binding/*.h
 *out
-gndb

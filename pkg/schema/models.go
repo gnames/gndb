@@ -284,10 +284,3 @@ type VernacularStringIndex struct {
 	// is preferred.
 	Preferred bool
 }
-
-// SchemaVersion tracks database schema migrations.
-type SchemaVersion struct {
-	Version     string    `gorm:"type:text;primary_key"`
-	Description string    `gorm:"type:text"`
-	AppliedAt   time.Time `gorm:"type:timestamp;default:CURRENT_TIMESTAMP"`
-}

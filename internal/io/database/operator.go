@@ -201,54 +201,6 @@ func (p *PgxOperator) ExecuteDDLBatch(ctx context.Context, ddlStatements []strin
 	return nil
 }
 
-// GetSchemaVersion returns the current schema version.
-func (p *PgxOperator) GetSchemaVersion(ctx context.Context) (string, error) {
-	if p.pool == nil {
-		return "", fmt.Errorf("not connected to database")
-	}
-
-	// Check if schema_versions table exists
-	exists, err := p.TableExists(ctx, "schema_versions")
-	if err != nil {
-		return "", err
-	}
-	if !exists {
-		return "", nil
-	}
-
-	query := `SELECT version FROM schema_versions ORDER BY applied_at DESC LIMIT 1`
-
-	var version string
-	err = p.pool.QueryRow(ctx, query).Scan(&version)
-	if err != nil {
-		// No rows is not an error - just means no version set yet
-		if err.Error() == "no rows in result set" {
-			return "", nil
-		}
-		return "", fmt.Errorf("failed to get schema version: %w", err)
-	}
-
-	return version, nil
-}
-
-// SetSchemaVersion inserts or updates the current schema version.
-func (p *PgxOperator) SetSchemaVersion(ctx context.Context, version, description string) error {
-	if p.pool == nil {
-		return fmt.Errorf("not connected to database")
-	}
-
-	query := `
-		INSERT INTO schema_versions (version, description, applied_at)
-		VALUES ($1, $2, NOW())
-	`
-
-	if _, err := p.pool.Exec(ctx, query, version, description); err != nil {
-		return fmt.Errorf("failed to set schema version: %w", err)
-	}
-
-	return nil
-}
-
 // EnableExtension enables a PostgreSQL extension.
 func (p *PgxOperator) EnableExtension(ctx context.Context, extensionName string) error {
 	if p.pool == nil {
@@ -350,4 +302,77 @@ func (p *PgxOperator) GetTableSize(ctx context.Context, tableName string) (int64
 	}
 
 	return size, nil
+}
+
+// ListTables returns all table names in the public schema.
+func (p *PgxOperator) ListTables(ctx context.Context) ([]string, error) {
+	if p.pool == nil {
+		return nil, fmt.Errorf("not connected to database")
+	}
+
+	query := `
+		SELECT tablename
+		FROM pg_tables
+		WHERE schemaname = 'public'
+		ORDER BY tablename
+	`
+
+	rows, err := p.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tables: %w", err)
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			return nil, fmt.Errorf("failed to scan table name: %w", err)
+		}
+		tables = append(tables, tableName)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating table rows: %w", err)
+	}
+
+	return tables, nil
+}
+
+// SetCollation sets "C" collation on specified varchar columns.
+// This is critical for correct sorting and comparison of scientific names.
+func (p *PgxOperator) SetCollation(ctx context.Context) error {
+	if p.pool == nil {
+		return fmt.Errorf("not connected to database")
+	}
+
+	type columnDef struct {
+		table, column string
+		varchar       int
+	}
+	columns := []columnDef{
+		{"name_strings", "name", 500},
+		{"canonicals", "name", 255},
+		{"canonical_fulls", "name", 255},
+		{"canonical_stems", "name", 255},
+		{"words", "normalized", 255},
+		{"words", "modified", 255},
+		{"vernacular_strings", "name", 255},
+	}
+
+	qStr := `ALTER TABLE %s ALTER COLUMN %s TYPE VARCHAR(%d) COLLATE "C"`
+
+	for _, col := range columns {
+		q := fmt.Sprintf(qStr, col.table, col.column, col.varchar)
+		if _, err := p.pool.Exec(ctx, q); err != nil {
+			return fmt.Errorf("failed to set collation on %s.%s: %w", col.table, col.column, err)
+		}
+	}
+
+	return nil
+}
+
+// Pool returns the underlying pgxpool.Pool for advanced operations.
+func (p *PgxOperator) Pool() *pgxpool.Pool {
+	return p.pool
 }

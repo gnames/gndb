@@ -31,7 +31,9 @@ test-race:
 
 # Build the gndb binary
 build:
-    go build -o gndb ./cmd/gndb
+    @mkdir -p bin
+    go build -o bin/gndb ./cmd/gndb
+    @echo "✅ gndb built to bin/gndb"
 
 # Install gndb to ~/go/bin
 install:
@@ -40,7 +42,7 @@ install:
 
 # Clean build artifacts
 clean:
-    rm -f gndb coverage.out coverage.html
+    rm -rf bin coverage.out coverage.html
     go clean
 
 # Format all Go code

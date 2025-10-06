@@ -17,7 +17,6 @@ func AllModels() []interface{} {
 		&WordNameString{},
 		&VernacularString{},
 		&VernacularStringIndex{},
-		&SchemaVersion{},
 	}
 }
 
