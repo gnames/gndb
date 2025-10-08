@@ -1,141 +1,99 @@
 # Feature Specification: GNverifier Database Lifecycle Management
 
-**Feature Branch**: `001-this-project-will`
-**Created**: 2025-10-01
-**Status**: Draft
-**Input**: User description: "this project will enable a user to go through the GNverifier database lifecycle. It would start with empty database, create schema, migrate schema, create performance critical optimization of database as well as modification of data that will speed up name verification (reconciliation and reconciliation) as well as optimizing database data for vernacular names detection by languages and figuring out synonyms of input scientific names. After this project is complete it will allow users to setup GNverifier functionality locally, independent from main gnverifier service. It will be also used at the main service the same way. As a result users who have their own data-sources that are not included on the main site to create local GNverifier that is able to query these data-sources."
+**Branch**: `001-gnverifier-db-lifecycle` | **Created**: 2025-10-01 | **Status**: Active
 
 ## User Scenarios & Testing
 
 ### Primary User Story
-A researcher or organization has biodiversity nomenclature data sources that are not included in the main GNverifier service. They want to set up a local GNverifier instance to verify and reconcile scientific names against their custom data sources.
+Researchers/organizations set up local GNverifier instances with custom biodiversity data sources. The CLI manages complete database lifecycle: create schema, migrate, populate from SFGA files, optimize for fast name verification/vernacular lookup/synonym resolution.
 
-The user starts with an empty database and progresses through the complete lifecycle: creating the initial schema, applying migrations as the schema evolves, populating the database with their data sources, and running optimizations that enable fast name verification, vernacular name detection by language, and synonym resolution.
-
-**Important**: The main GNverifier service uses this exact same tooling and process. There is no distinction between "main service" and "local setup" - both use identical database lifecycle management. The main service simply operates on the canonical public data sources, while local instances can use custom data sources.
+Both main service and local instances use identical tooling - only data sources differ.
 
 ### Acceptance Scenarios
 
-1. **Given** an empty database, **When** the user runs the create schema command, **Then** the database contains all necessary tables, indexes, and constraints for GNverifier functionality
+1. `gndb create` on empty database → creates all tables, indexes, constraints
+2. `gndb migrate` on existing database → updates schema to latest version, no data loss
+3. `gndb populate <sfga-files>` → imports names/taxon data, ready for queries
+4. `gndb optimize` → applies indexes, materialized views for fast name verification
+5. Queries (name verification, vernacular lookup, synonyms) → performance matches main service
+6. Local instance operates independently, no connection to main service required
 
-2. **Given** an existing database with an older schema version, **When** the user runs the migrate command, **Then** the database schema is updated to the latest version without data loss
+### Edge Cases & Recovery
+- **Interrupted operations**: Restart phase from beginning
+- **Corrupt data**: Re-populate from source SFGA files
+- **Optimize re-run**: Always rebuilds from scratch (drops existing, recreates with latest algorithms)
+- **Insufficient disk space**: Fails with error; user resolves, restarts phase
+- **Non-empty database on create**: Prompts user confirmation to drop existing data
+- **Encoding/locale**: Schema includes necessary collation at table/column level
 
-3. **Given** a database with schema in place, **When** the user runs the populate command with their data sources, **Then** the database is populated with nomenclature data ready for verification queries
+**Recovery Model**: Database is read-only post-setup (convention). Corruption → restart lifecycle from SFGA files.
 
-4. **Given** a populated database, **When** the user runs the restructure/optimize command, **Then** performance-critical optimizations are applied (indexes, materialized views, denormalization) that enable fast name verification
+## Clarifications (2025-10-08)
 
-5. **Given** a fully set up local GNverifier database, **When** the user queries for scientific name verification, vernacular names by language, or synonyms, **Then** results are returned with performance comparable to the main GNverifier service
-
-6. **Given** a local GNverifier instance, **When** the user wants to use it independently, **Then** no connection to the main GNverifier service is required
-
-### Edge Cases
-- What happens when the schema migration is interrupted mid-process?
-  * System restarts the entire process from the beginning
-- How does the system handle corrupt or invalid data during population?
-  * System restarts from the beginning; database can be completely restored by repopulating from the same data files
-- What happens if the database is corrupted by any unfortunate event?
-  * System restarts the entire lifecycle from the beginning
-- What happens if optimization commands are run multiple times?
-  * Idempotent operations - can be safely re-run
-- How does the system handle insufficient disk space during population?
-  * Process fails; user must resolve space issues and restart from beginning
-- What happens when attempting to create schema on a non-empty database?
-  * System asks user if current data should be destroyed; if yes, nukes old data and rebuilds tables and indexes; if no, aborts operation
-- How does the system handle different database encoding or locale settings?
-  * Database schema includes necessary locale and collation data at table or column level as required for proper nomenclature handling
-
-**Recovery Model**: After database setup is complete, the database is read-only for query operations. Any corruption or failed lifecycle phase is resolved by restarting the entire process from scratch using the original data files.
-
-## Clarifications
-
-### Session 2025-10-08
-- Q: What is the primary purpose of the DatabaseOperator component? → A: Provides only basic database managerial commands (Connect, Close, TableExists, DropAllTables) and exposes the underlying database connection object; high-level components receive the connection and implement their SQL operations internally to avoid interface bloat with mixed semantics
-- Q: Who is responsible for tracking and executing schema version migrations? → A: GORM AutoMigrate handles all migrations automatically
-- Q: How should lifecycle phases be exposed to users? → A: CLI commands expose phases; library API provides minimal interfaces (e.g., Populator with Populate() method); implementation details handled by concrete types
-- Q: What is the expected behavior when restructure/optimize is run on an already-optimized database? → A: Drop existing optimizations and recreate from scratch to ensure algorithm improvements are applied
-- Q: Should the system enforce read-only mode after optimization completes? → A: Usage convention only - not enforced by system, documented as operational practice
+- **DatabaseOperator**: Provides basic operations (Connect, Close, TableExists, DropAllTables) + exposes pgxpool; high-level components use pool for specialized SQL
+- **Schema migrations**: GORM AutoMigrate handles automatically
+- **User interface**: CLI commands (create/migrate/populate/optimize); library interfaces minimal
+- **Optimize behavior**: Always drop/recreate to apply algorithm improvements
+- **Read-only enforcement**: Convention only, not enforced
 
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: System MUST support creating a complete GNverifier database schema from an empty database via GORM AutoMigrate
-- **FR-002**: System MUST support schema migrations to update existing databases to newer schema versions using GORM AutoMigrate
-- **FR-003**: System MUST support populating the database with user-provided nomenclature data sources
-- **FR-004**: System MUST apply performance optimizations that enable fast scientific name verification; optimization operations are idempotent and always rebuild from scratch (drop existing optimizations and recreate) to ensure algorithm improvements are applied even when data hasn't changed
-- **FR-005**: System MUST optimize data for vernacular name detection organized by language
-- **FR-006**: System MUST optimize data for synonym resolution of scientific names
-- **FR-007**: System MUST enable local GNverifier instances to operate independently without connecting to the main service
-- **FR-008**: System MUST support the same database lifecycle operations used by the main GNverifier service
-- **FR-009**: System MUST allow users with custom data sources not included in the main service to create functional local instances
-- **FR-010**: System MUST expose database lifecycle phases (create, migrate, populate, restructure) as separate, independent CLI commands (e.g., `gndb create`, `gndb migrate`, `gndb populate`, `gndb optimize`)
-- **FR-011**: System MUST validate database state before executing each lifecycle phase [NEEDS CLARIFICATION: specific validation rules for each phase to be determined during planning]
-- **FR-012**: System MUST provide feedback on progress for long-running operations [NEEDS CLARIFICATION: progress indicators, logging level, output format to be determined during planning]
-- **FR-013**: System MUST handle errors gracefully using transactions where possible; recovery is achieved by restarting the whole process or individual phases (e.g., reimporting a specific data source removes corrupted data and starts fresh)
-- **FR-014**: System MUST support configuration via YAML file and CLI flags per constitutional requirements
-- **FR-015**: System MUST validate input data sources before population; all data source files MUST be normalized to SFGA format (https://github.com/sfborg/sfga)
-- **FR-016**: System MUST ensure all data sources in the initial ingest use the same version of SFGA format
-- **FR-017**: System MUST support subsequent data updates that may use different SFGA format versions by using the compatible version of sflib library (https://github.com/sfborg/sflib) for import
-- **FR-018**: System MUST document that databases are read-only for query operations after setup completes (convention, not enforced)
+**Lifecycle Commands**:
+- **FR-001**: `gndb create` - Create schema via GORM AutoMigrate
+- **FR-002**: `gndb migrate` - Update schema via GORM AutoMigrate
+- **FR-003**: `gndb populate <sfga-files>` - Import names/taxon data from SFGA sources
+- **FR-004**: `gndb optimize` - Apply indexes/materialized views; always rebuilds from scratch
+
+**Optimization Targets**:
+- **FR-005**: Fast scientific name verification (1000 names/sec)
+- **FR-006**: Vernacular name detection by language
+- **FR-007**: Synonym resolution
+
+**Deployment**:
+- **FR-008**: Local instances operate independently (no main service connection)
+- **FR-009**: Identical lifecycle for main service and local instances
+
+**Data & Config**:
+- **FR-010**: SFGA format required (github.com/sfborg/sfga); sflib for import (github.com/sfborg/sflib)
+- **FR-011**: Initial ingest: single SFGA version; updates: version-compatible via sflib
+- **FR-012**: YAML config (gndb.yaml) + CLI flags; precedence: flags > env > file > defaults
+
+**Operations**:
+- **FR-013**: Phase validation before execution (rules in research.md)
+- **FR-014**: Human-friendly progress to stdout; structured logs (JSON) for monitoring/debugging
+- **FR-015**: Graceful error handling; recovery via phase restart
+- **FR-016**: Read-only convention post-setup (not enforced)
 
 ### Performance Requirements
 
-- **PR-001**: System MUST support reconciliation throughput of at least 1000 names per second (most performant use case, without synonym detection or vernacular name search)
-- **PR-002**: Database MUST be optimized to support vernacular name queries (performance target lower priority than pure name reconciliation)
-- **PR-003**: Database MUST be optimized to support synonym resolution queries (performance target lower priority than pure name reconciliation)
-- **PR-004**: Database population MUST handle at least 100 million scientific name-strings with 200 million name-string occurrences across data sources, and 10 million vernacular name-strings with 20 million occurrences (main service target; local users with slower hardware, less memory, and smaller datasets may use significantly smaller volumes)
+- **PR-001**: 1000 names/sec reconciliation (primary use case)
+- **PR-002**: Vernacular/synonym queries optimized (lower priority than reconciliation)
+- **PR-003**: Scale: 100M name-strings, 200M occurrences, 10M vernacular, 20M occurrences (main service; local instances may be smaller)
 
 ### Key Entities
 
-- **Database Schema**: Represents the structure of tables, indexes, constraints, and relationships required for GNverifier functionality; managed by GORM AutoMigrate
-- **DatabaseOperator**: Provides basic database managerial interface (Connect, Close, TableExists, DropAllTables) and exposes underlying connection; does not contain high-level lifecycle operations to avoid interface bloat
-- **Lifecycle Phase Components**: High-level components (SchemaManager, Populator, Optimizer) that receive database connection from DatabaseOperator and implement their specialized SQL operations internally
-- **CLI Commands**: User-facing commands exposing lifecycle phases (`gndb create`, `gndb migrate`, `gndb populate`, `gndb optimize`)
-- **Nomenclature Data Source**: External data containing scientific names, vernacular names, synonyms, and taxonomic information
-- **Scientific Name**: A formal biological name to be verified, reconciled, or resolved
-- **Vernacular Name**: Common names in various languages associated with scientific names
-- **Synonym**: Alternative, currently not accepted scientific names that refer to the same taxonomic entity
-- **Optimization Artifact**: Performance-enhancing database structures (indexes, materialized views, denormalized tables) created during restructure phase; always rebuilt from scratch when optimization runs
+**Architecture**:
+- **DatabaseOperator**: Basic ops (Connect, Close, TableExists, DropAllTables) + exposes pgxpool
+- **SchemaManager**: Schema create/migrate via GORM AutoMigrate
+- **Populator**: Import names/taxon data from SFGA using sflib, bulk insert via pgx CopyFrom
+- **Optimizer**: Create indexes/materialized views; always rebuilds from scratch
 
-### Dependencies and Assumptions
+**Data**:
+- **Scientific Name**: Formal biological name for verification/reconciliation
+- **Vernacular Name**: Common names by language
+- **Synonym**: Alternative names for same taxon
+- **SFGA Data Source**: SQLite files with names/taxon data (github.com/sfborg/sfga)
 
-**Dependencies**:
-- PostgreSQL database system for GNverifier data storage
-- SQLite for SFGA format data source files
-- Access to user-provided nomenclature data sources in SFGA format
-- sflib library (https://github.com/sfborg/sflib) for data import
-- Configuration file (gndb.yaml) or equivalent configuration source
+### Dependencies & Assumptions
+
+**Dependencies**: PostgreSQL, pgxpool, GORM, sflib, SFGA files, Cobra (CLI), Viper (config)
 
 **Assumptions**:
-- Users have appropriate database permissions (CREATE, ALTER, INSERT, etc.)
-- Sufficient disk space for database and optimization artifacts
-- Data sources are normalized to SFGA format before ingestion
-- Users understand basic database lifecycle concepts
-- For initial ingest, all data sources use the same SFGA format version
-- Name detection, resolution, and reconciliation logic are out of scope (handled by other components); this project focuses on database lifecycle and optimization
-- Validation rules for lifecycle phases and progress feedback formats will be defined during planning and implementation based on discovered requirements
+- User has DB permissions (CREATE, ALTER, INSERT)
+- Sufficient disk space
+- SFGA-normalized data sources
+- Initial ingest: single SFGA version; updates: version-compatible
+- Name verification logic out of scope (other components)
 
-## Review & Acceptance Checklist
-
-### Content Quality
-- [x] No implementation details (languages, frameworks, APIs)
-- [x] Focused on user value and business needs
-- [x] Written for non-technical stakeholders
-- [x] All mandatory sections completed
-
-### Requirement Completeness
-- [ ] No [NEEDS CLARIFICATION] markers remain
-- [x] Requirements are testable and unambiguous (except marked items)
-- [x] Success criteria are measurable
-- [x] Scope is clearly bounded
-- [x] Dependencies and assumptions identified
-
-## Execution Status
-
-- [x] User description parsed
-- [x] Key concepts extracted
-- [x] Ambiguities marked
-- [x] User scenarios defined
-- [x] Requirements generated
-- [x] Entities identified
-- [ ] Review checklist passed (pending clarifications)

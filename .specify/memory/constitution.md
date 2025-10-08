@@ -1,15 +1,15 @@
 <!--
 SYNC IMPACT REPORT
-Version: 1.1.0 → 1.2.0
-Change Type: MINOR (principle expanded with material guidance)
-Modified Principles: IV. CLI-First Interface (expanded with subcommand architecture)
-Added Sections: None
+Version: 1.2.0 → 1.3.0
+Change Type: MINOR (new principle added)
+Modified Principles: None
+Added Sections: VIII. Contributor-First Minimalism (NON-NEGOTIABLE)
 Removed Sections: None
 Templates Status:
-  ⚠ .specify/templates/plan-template.md (requires update - add subcommand check)
+  ✅ .specify/templates/plan-template.md (add check for minimalism principle)
   ✅ .specify/templates/spec-template.md (validated - no conflicts)
   ✅ .specify/templates/tasks-template.md (validated - no conflicts)
-Follow-up TODOs: None
+Follow-up TODOs: Update plan-template.md Constitution Check section to include Principle VIII
 -->
 
 # GNdb Constitution
@@ -82,6 +82,38 @@ Follow-up TODOs: None
 
 Follow KISS and Do Not Repeat Yourself principles. Keep code without unnecessary repetitions including documentation. Write documentation concise and clear, oriented for human reading as well as LLM.
 
+### VIII. Contributor-First Minimalism (NON-NEGOTIABLE)
+
+This project is designed for hybrid human-LLM collaboration and rapid contributor onboarding.
+
+**Code**:
+- Write the simplest code that solves the problem
+- Avoid abstractions until the third duplication (Rule of Three)
+- No "just in case" code - implement what's needed now
+- Prefer explicit over implicit, clear over clever
+- Each function should fit on one screen when practical
+
+**Documentation**:
+- Godoc comments: state purpose in 1-2 sentences, skip the obvious
+- No redundant prose ("This function does X" when function is named DoX)
+- Code should be self-documenting through naming
+- Comments explain "why", not "what"
+
+**Tests**:
+- Test behavior, not implementation details
+- Minimal setup code - inline when possible
+- Test names serve as specification (e.g., `TestPopulate_EmptyDatabase_CreatesRecords`)
+- One clear assertion per test when practical
+
+**Forbidden**:
+- Overly generic abstractions without concrete use cases
+- "Framework" patterns (e.g., custom middleware stacks, plugin systems)
+- Verbose doc comments that restate the code
+- Complex test fixtures for simple scenarios
+- Helper functions used once or twice
+
+**Rationale**: Contributors (human or LLM) should understand a module in <5 minutes. Every abstraction is a tax on comprehension. Optimize for change velocity, not architectural purity. This enables rapid onboarding and sustained contributor engagement.
+
 ## Development Workflow
 
 ### Testing Requirements
@@ -147,4 +179,4 @@ This constitution supersedes all other development practices and patterns. Amend
 - Complexity introduced MUST solve real problems, not imagined ones
 - When in doubt, choose simplicity over sophistication
 
-**Version**: 1.2.0 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-01
+**Version**: 1.3.0 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-08
