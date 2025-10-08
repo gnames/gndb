@@ -14,8 +14,8 @@ import (
 func TestAllModels(t *testing.T) {
 	models := schema.AllModels()
 
-	// Should return 11 models
-	require.Len(t, models, 11, "AllModels should return all 11 schema models")
+	// Should return 10 models
+	require.Len(t, models, 10, "AllModels should return all 10 schema models")
 
 	// Verify each model is present
 	modelTypes := make(map[string]bool)
@@ -41,8 +41,6 @@ func TestAllModels(t *testing.T) {
 			modelTypes["VernacularString"] = true
 		case *schema.VernacularStringIndex:
 			modelTypes["VernacularStringIndex"] = true
-		case *schema.SchemaVersion:
-			modelTypes["SchemaVersion"] = true
 		}
 	}
 
@@ -50,7 +48,7 @@ func TestAllModels(t *testing.T) {
 	expectedModels := []string{
 		"DataSource", "NameString", "Canonical", "CanonicalFull",
 		"CanonicalStem", "NameStringIndex", "Word", "WordNameString",
-		"VernacularString", "VernacularStringIndex", "SchemaVersion",
+		"VernacularString", "VernacularStringIndex",
 	}
 	for _, name := range expectedModels {
 		assert.True(t, modelTypes[name], "Model %s should be in AllModels", name)
@@ -71,7 +69,7 @@ func TestMigrate(t *testing.T) {
 	tables := []string{
 		"data_sources", "name_strings", "canonicals", "canonical_fulls",
 		"canonical_stems", "name_string_indices", "words", "word_name_strings",
-		"vernacular_strings", "vernacular_string_indices", "schema_versions",
+		"vernacular_strings", "vernacular_string_indices",
 	}
 
 	for _, tableName := range tables {
@@ -254,18 +252,4 @@ func TestVernacularStringIndexSchema(t *testing.T) {
 		has := db.Migrator().HasColumn(&schema.VernacularStringIndex{}, col)
 		assert.True(t, has, "Column %s should exist in vernacular_string_indices", col)
 	}
-}
-
-// TestSchemaVersionSchema tests SchemaVersion GORM schema
-func TestSchemaVersionSchema(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	err = db.AutoMigrate(&schema.SchemaVersion{})
-	require.NoError(t, err)
-
-	assert.True(t, db.Migrator().HasTable("schema_versions"))
-	assert.True(t, db.Migrator().HasColumn(&schema.SchemaVersion{}, "version"))
-	assert.True(t, db.Migrator().HasColumn(&schema.SchemaVersion{}, "description"))
-	assert.True(t, db.Migrator().HasColumn(&schema.SchemaVersion{}, "applied_at"))
 }

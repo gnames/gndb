@@ -212,12 +212,11 @@ func TestPgxOperator_CreateSchema_WithGORM(t *testing.T) {
 	models := schema.AllModels()
 
 	// Use GORM to generate schema (this is what we'll actually use)
-	// For now, just verify we can create schema_versions table
+	// For now, just verify we can create a test table
 	ddl := `
-		CREATE TABLE IF NOT EXISTS schema_versions (
-			version TEXT PRIMARY KEY,
-			description TEXT,
-			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		CREATE TABLE IF NOT EXISTS test_schema_table (
+			id SERIAL PRIMARY KEY,
+			name TEXT
 		)
 	`
 
@@ -226,7 +225,7 @@ func TestPgxOperator_CreateSchema_WithGORM(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify table exists
-	exists, err := op.TableExists(ctx, "schema_versions")
+	exists, err := op.TableExists(ctx, "test_schema_table")
 	require.NoError(t, err)
 	assert.True(t, exists)
 
@@ -235,7 +234,7 @@ func TestPgxOperator_CreateSchema_WithGORM(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify table still exists after force recreation
-	exists, err = op.TableExists(ctx, "schema_versions")
+	exists, err = op.TableExists(ctx, "test_schema_table")
 	require.NoError(t, err)
 	assert.True(t, exists)
 
@@ -262,57 +261,6 @@ func TestPgxOperator_EnableExtension(t *testing.T) {
 	// Enabling again should be idempotent
 	err = op.EnableExtension(ctx, "pg_trgm")
 	assert.NoError(t, err, "EnableExtension should be idempotent")
-}
-
-func TestPgxOperator_SchemaVersion(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	op := database.NewPgxOperator()
-	ctx := context.Background()
-
-	err := op.Connect(ctx, getTestConfig())
-	require.NoError(t, err)
-	defer op.Close()
-
-	// Create schema_versions table
-	ddl := `
-		CREATE TABLE IF NOT EXISTS schema_versions (
-			version TEXT PRIMARY KEY,
-			description TEXT,
-			applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		)
-	`
-	_ = op.ExecuteDDL(ctx, "DROP TABLE IF EXISTS schema_versions CASCADE")
-	err = op.ExecuteDDL(ctx, ddl)
-	require.NoError(t, err)
-
-	// Get version when table is empty
-	version, err := op.GetSchemaVersion(ctx)
-	require.NoError(t, err)
-	assert.Empty(t, version, "Version should be empty initially")
-
-	// Set version
-	err = op.SetSchemaVersion(ctx, "1.0.0", "Initial schema")
-	require.NoError(t, err)
-
-	// Get version
-	version, err = op.GetSchemaVersion(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, "1.0.0", version)
-
-	// Set another version
-	err = op.SetSchemaVersion(ctx, "1.1.0", "Added indexes")
-	require.NoError(t, err)
-
-	// Get latest version
-	version, err = op.GetSchemaVersion(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, "1.1.0", version, "Should return most recent version")
-
-	// Clean up
-	_ = op.ExecuteDDL(ctx, "DROP TABLE schema_versions")
 }
 
 func TestPgxOperator_DropAllTables(t *testing.T) {

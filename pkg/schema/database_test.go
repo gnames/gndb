@@ -40,14 +40,6 @@ func (m *MockDatabaseOperator) ExecuteDDLBatch(ctx context.Context, ddlStatement
 	panic("not implemented: ExecuteDDLBatch")
 }
 
-func (m *MockDatabaseOperator) GetSchemaVersion(ctx context.Context) (string, error) {
-	panic("not implemented: GetSchemaVersion")
-}
-
-func (m *MockDatabaseOperator) SetSchemaVersion(ctx context.Context, version, description string) error {
-	panic("not implemented: SetSchemaVersion")
-}
-
 func (m *MockDatabaseOperator) EnableExtension(ctx context.Context, extensionName string) error {
 	panic("not implemented: EnableExtension")
 }
@@ -157,26 +149,6 @@ func TestDatabaseOperator_ExecuteDDLBatch(t *testing.T) {
 	}, "ExecuteDDLBatch should panic when not implemented")
 }
 
-func TestDatabaseOperator_GetSchemaVersion(t *testing.T) {
-	mock := &MockDatabaseOperator{}
-	ctx := context.Background()
-
-	// Contract: GetSchemaVersion returns string and error
-	assert.Panics(t, func() {
-		_, _ = mock.GetSchemaVersion(ctx)
-	}, "GetSchemaVersion should panic when not implemented")
-}
-
-func TestDatabaseOperator_SetSchemaVersion(t *testing.T) {
-	mock := &MockDatabaseOperator{}
-	ctx := context.Background()
-
-	// Contract: SetSchemaVersion accepts version and description
-	assert.Panics(t, func() {
-		_ = mock.SetSchemaVersion(ctx, "1.0.0", "Initial schema")
-	}, "SetSchemaVersion should panic when not implemented")
-}
-
 func TestDatabaseOperator_EnableExtension(t *testing.T) {
 	mock := &MockDatabaseOperator{}
 	ctx := context.Background()
@@ -261,8 +233,6 @@ func TestDatabaseOperator_AllMethodsExist(t *testing.T) {
 		DropAllTables(context.Context) error
 		ExecuteDDL(context.Context, string) error
 		ExecuteDDLBatch(context.Context, []string) error
-		GetSchemaVersion(context.Context) (string, error)
-		SetSchemaVersion(context.Context, string, string) error
 		EnableExtension(context.Context, string) error
 		VacuumAnalyze(context.Context, []string) error
 		CreateIndexConcurrently(context.Context, string) error
