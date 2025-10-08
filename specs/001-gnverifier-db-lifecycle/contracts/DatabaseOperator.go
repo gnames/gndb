@@ -4,34 +4,34 @@ import (
 	"context"
 
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DatabaseOperator defines the interface for database operations.
+// DatabaseOperator defines the interface for basic database management operations.
+// It provides connection lifecycle management and exposes the pgxpool.Pool for
+// high-level lifecycle components (SchemaManager, Populator, Optimizer) to execute
+// their specialized SQL operations internally.
+//
+// Design rationale:
+// - Keeps interface minimal to avoid bloat with mixed semantics
+// - Pool() enables components to use performance-critical features (CopyFrom for bulk inserts)
+// - Schema creation and migration are handled by GORM AutoMigrate via SchemaManager
 type DatabaseOperator interface {
-	// Connect establishes a connection to the database.
+	// Connect establishes a connection pool to the database.
 	Connect(context.Context, *config.DatabaseConfig) error
 
-	// Close closes the database connection.
+	// Close closes the database connection pool.
 	Close() error
 
-	// CreateSchema creates the database schema.
-	CreateSchema(ctx context.Context, ddlStatements []string, force bool) error
+	// Pool returns the underlying pgxpool.Pool for high-level components to execute
+	// specialized SQL operations. Components use this for transactions, bulk inserts
+	// (CopyFrom), and custom queries.
+	Pool() *pgxpool.Pool
 
 	// TableExists checks if a table exists in the database.
 	TableExists(ctx context.Context, tableName string) (bool, error)
 
 	// DropAllTables drops all tables in the public schema.
+	// Used by create command when user confirms overwriting existing data.
 	DropAllTables(ctx context.Context) error
-
-	// ExecuteDDL executes a single DDL statement.
-	ExecuteDDL(ctx context.Context, ddl string) error
-
-	// ExecuteDDLBatch executes a batch of DDL statements.
-	ExecuteDDLBatch(ctx context.Context, ddlStatements []string) error
-
-	// GetSchemaVersion returns the current schema version.
-	GetSchemaVersion(ctx context.Context) (string, error)
-
-	// SetSchemaVersion sets the current schema version.
-	SetSchemaVersion(ctx context.Context, version, description string) error
 }

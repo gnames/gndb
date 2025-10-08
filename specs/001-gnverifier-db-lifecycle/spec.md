@@ -46,20 +46,29 @@ The user starts with an empty database and progresses through the complete lifec
 
 **Recovery Model**: After database setup is complete, the database is read-only for query operations. Any corruption or failed lifecycle phase is resolved by restarting the entire process from scratch using the original data files.
 
+## Clarifications
+
+### Session 2025-10-08
+- Q: What is the primary purpose of the DatabaseOperator component? → A: Provides only basic database managerial commands (Connect, Close, TableExists, DropAllTables) and exposes the underlying database connection object; high-level components receive the connection and implement their SQL operations internally to avoid interface bloat with mixed semantics
+- Q: Who is responsible for tracking and executing schema version migrations? → A: GORM AutoMigrate handles all migrations automatically
+- Q: How should lifecycle phases be exposed to users? → A: CLI commands expose phases; library API provides minimal interfaces (e.g., Populator with Populate() method); implementation details handled by concrete types
+- Q: What is the expected behavior when restructure/optimize is run on an already-optimized database? → A: Drop existing optimizations and recreate from scratch to ensure algorithm improvements are applied
+- Q: Should the system enforce read-only mode after optimization completes? → A: Usage convention only - not enforced by system, documented as operational practice
+
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: System MUST support creating a complete GNverifier database schema from an empty database
-- **FR-002**: System MUST support schema migrations to update existing databases to newer schema versions.
+- **FR-001**: System MUST support creating a complete GNverifier database schema from an empty database via GORM AutoMigrate
+- **FR-002**: System MUST support schema migrations to update existing databases to newer schema versions using GORM AutoMigrate
 - **FR-003**: System MUST support populating the database with user-provided nomenclature data sources
-- **FR-004**: System MUST apply performance optimizations that enable fast scientific name verification
+- **FR-004**: System MUST apply performance optimizations that enable fast scientific name verification; optimization operations are idempotent and always rebuild from scratch (drop existing optimizations and recreate) to ensure algorithm improvements are applied even when data hasn't changed
 - **FR-005**: System MUST optimize data for vernacular name detection organized by language
 - **FR-006**: System MUST optimize data for synonym resolution of scientific names
 - **FR-007**: System MUST enable local GNverifier instances to operate independently without connecting to the main service
 - **FR-008**: System MUST support the same database lifecycle operations used by the main GNverifier service
 - **FR-009**: System MUST allow users with custom data sources not included in the main service to create functional local instances
-- **FR-010**: System MUST organize database lifecycle phases as separate, independent operations (create, migrate, populate, restructure)
+- **FR-010**: System MUST expose database lifecycle phases (create, migrate, populate, restructure) as separate, independent CLI commands (e.g., `gndb create`, `gndb migrate`, `gndb populate`, `gndb optimize`)
 - **FR-011**: System MUST validate database state before executing each lifecycle phase [NEEDS CLARIFICATION: specific validation rules for each phase to be determined during planning]
 - **FR-012**: System MUST provide feedback on progress for long-running operations [NEEDS CLARIFICATION: progress indicators, logging level, output format to be determined during planning]
 - **FR-013**: System MUST handle errors gracefully using transactions where possible; recovery is achieved by restarting the whole process or individual phases (e.g., reimporting a specific data source removes corrupted data and starts fresh)
@@ -67,6 +76,7 @@ The user starts with an empty database and progresses through the complete lifec
 - **FR-015**: System MUST validate input data sources before population; all data source files MUST be normalized to SFGA format (https://github.com/sfborg/sfga)
 - **FR-016**: System MUST ensure all data sources in the initial ingest use the same version of SFGA format
 - **FR-017**: System MUST support subsequent data updates that may use different SFGA format versions by using the compatible version of sflib library (https://github.com/sfborg/sflib) for import
+- **FR-018**: System MUST document that databases are read-only for query operations after setup completes (convention, not enforced)
 
 ### Performance Requirements
 
@@ -77,14 +87,15 @@ The user starts with an empty database and progresses through the complete lifec
 
 ### Key Entities
 
-- **Database Schema**: Represents the structure of tables, indexes, constraints, and relationships required for GNverifier functionality
-- **Schema Version**: Tracks the current version of the database schema to support migrations
+- **Database Schema**: Represents the structure of tables, indexes, constraints, and relationships required for GNverifier functionality; managed by GORM AutoMigrate
+- **DatabaseOperator**: Provides basic database managerial interface (Connect, Close, TableExists, DropAllTables) and exposes underlying connection; does not contain high-level lifecycle operations to avoid interface bloat
+- **Lifecycle Phase Components**: High-level components (SchemaManager, Populator, Optimizer) that receive database connection from DatabaseOperator and implement their specialized SQL operations internally
+- **CLI Commands**: User-facing commands exposing lifecycle phases (`gndb create`, `gndb migrate`, `gndb populate`, `gndb optimize`)
 - **Nomenclature Data Source**: External data containing scientific names, vernacular names, synonyms, and taxonomic information
 - **Scientific Name**: A formal biological name to be verified, reconciled, or resolved
 - **Vernacular Name**: Common names in various languages associated with scientific names
 - **Synonym**: Alternative, currently not accepted scientific names that refer to the same taxonomic entity
-- **Optimization Artifact**: Performance-enhancing database structures (indexes, materialized views, denormalized tables) created during restructure phase
-- **Migration**: A versioned change to the database schema
+- **Optimization Artifact**: Performance-enhancing database structures (indexes, materialized views, denormalized tables) created during restructure phase; always rebuilt from scratch when optimization runs
 
 ### Dependencies and Assumptions
 

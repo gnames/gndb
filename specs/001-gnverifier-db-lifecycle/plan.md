@@ -1,7 +1,7 @@
+
 # Implementation Plan: GNverifier Database Lifecycle Management
 
-**Branch**: `001-gnverifier-db-lifecycle` | **Date**: 2025-10-03 | **Spec**: [/Users/dimus/code/golang/gndb/specs/001-gnverifier-db-lifecycle/spec.md]
-
+**Branch**: `001-gnverifier-db-lifecycle` | **Date**: 2025-10-08 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/Users/dimus/code/golang/gndb/specs/001-gnverifier-db-lifecycle/spec.md`
 
 ## Execution Flow (/plan command scope)
@@ -31,18 +31,19 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-This project will enable a user to go through the GNverifier database lifecycle. It would start with empty database, create schema, migrate schema, create performance critical optimization of database as well as modification of data that will speed up name verification (reconciliation and reconciliation) as well as optimizing database data for vernacular names detection by languages and figuring out synonyms of input scientific names. After this project is complete it will allow users to setup GNverifier functionality locally, independent from main gnverifier service. It will be also used at the main service the same way. As a result users who have their own data-sources that are not included on the main site to create local GNverifier that is able to query these data-sources.
+Enable users to manage the complete GNverifier database lifecycle locally: create schema, migrate, populate with custom data sources, and optimize for fast name verification. The DatabaseOperator interface provides basic database managerial commands and exposes pgxpool connections; high-level components (SchemaManager, Populator, Optimizer) receive these connections and implement specialized SQL operations internally.
 
 ## Technical Context
 **Language/Version**: Go 1.25
-**Primary Dependencies**: pgx/v5, cobra, viper, gorm
-**Storage**: PostgreSQL
-**Testing**: go test
+**Primary Dependencies**: pgx/v5 (pgxpool for connection pooling), GORM (AutoMigrate for schema management), cobra (CLI), viper (config), sflib (SFGA data import)
+**Storage**: PostgreSQL (primary), SQLite (SFGA format data sources)
+**Testing**: go test (unit tests for pure logic, integration tests for io modules)
 **Target Platform**: Linux server, macOS CLI
-**Project Type**: single Go project
-**Performance Goals**: 1000 names/sec reconciliation
-**Constraints**: Offline-capable
-**Scale/Scope**: 100 million name-strings
+**Project Type**: single (Go CLI application)
+**Performance Goals**: 1000 names/sec reconciliation throughput
+**Constraints**: Offline-capable, idempotent optimization (rebuild from scratch)
+**Scale/Scope**: 100M scientific name-strings, 200M occurrences, 10M vernacular names, 20M occurrences
+**User Input**: DatabaseOperator interface must provide pgxpool database connections to high-level lifecycle components
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -92,46 +93,57 @@ specs/001-gnverifier-db-lifecycle/
 ├── quickstart.md        # Phase 1 output (/plan command)
 ├── contracts/           # Phase 1 output (/plan command)
 │   ├── DatabaseOperator.go
-│   ├── Importer.go
-│   ├── MigrationRunner.go
-│   ├── Optimizer.go
-│   └── SFGAReader.go
+│   ├── SchemaManager.go
+│   ├── Populator.go
+│   └── Optimizer.go
 └── tasks.md             # Phase 2 output (/tasks command - NOT created by /plan)
 ```
 
 ### Source Code (repository root)
 ```
 pkg/
-├── config/
+├── config/              # Configuration types and validation (pure)
 │   ├── config.go
 │   └── config_test.go
-├── migrate/
-├── populate/
-├── restructure/
-└── schema/
-    ├── gorm.go
-    ├── models.go
-    └── schema_test.go
-internal/io/
-├── config/
-│   ├── generate.go
-│   ├── generate_test.go
-│   ├── loader.go
-│   └── loader_test.go
-├── database/
-│   ├── operator.go
+├── database/            # Database operation interfaces (pure)
+│   ├── operator.go      # DatabaseOperator interface
 │   └── operator_test.go
-└── sfga/
-cmd/
-└── gndb/
-    ├── main.go
-    ├── create.go
-    ├── migrate.go
-    ├── populate.go
-    └── restructure.go
+├── lifecycle/           # Lifecycle phase interfaces (pure)
+│   ├── schema.go        # SchemaManager interface
+│   ├── populator.go     # Populator interface
+│   ├── optimizer.go     # Optimizer interface
+│   └── *_test.go
+└── model/               # Data model definitions (pure)
+    ├── datasource.go
+    ├── namestring.go
+    └── *_test.go
+
+internal/io/             # Impure implementations
+├── database/
+│   ├── operator.go      # DatabaseOperator implementation using pgxpool
+│   └── operator_test.go # Integration tests
+├── schema/
+│   ├── manager.go       # SchemaManager implementation using GORM
+│   └── manager_test.go
+├── populate/
+│   ├── importer.go      # Populator implementation using sflib
+│   └── importer_test.go
+├── optimize/
+│   ├── optimizer.go     # Optimizer implementation
+│   └── optimizer_test.go
+└── config/
+    ├── loader.go        # Config file/flag loading
+    └── loader_test.go
+
+cmd/gndb/
+├── main.go              # Root command setup
+├── create.go            # Create subcommand
+├── migrate.go           # Migrate subcommand
+├── populate.go          # Populate subcommand
+└── optimize.go          # Optimize subcommand
 ```
 
-**Structure Decision**: The project is a single Go project, and the structure is already in place. The new feature will be implemented within the existing structure.
+**Structure Decision**: Single Go project structure following constitutional pure/impure separation. DatabaseOperator (pkg/database) defines the interface for basic database operations and connection management. Implementations in internal/io/database provide pgxpool-based connections. High-level lifecycle components (SchemaManager, Populator, Optimizer) receive database connections and execute specialized SQL internally.
 
 ## Phase 0: Outline & Research
 1. **Extract unknowns from Technical Context** above:
@@ -193,17 +205,43 @@ cmd/
 **Task Generation Strategy**:
 - Load `.specify/templates/tasks-template.md` as base
 - Generate tasks from Phase 1 design docs (contracts, data model, quickstart)
-- Each contract → contract test task [P]
-- Each entity → model creation task [P] 
-- Each user story → integration test task
-- Implementation tasks to make tests pass
+- Follow TDD workflow strictly (RED-GREEN-REFACTOR):
+  1. Contract test tasks (verify interface compliance, must fail initially) [P]
+  2. Implementation tasks to make contract tests pass
+  3. Integration test tasks (end-to-end lifecycle scenarios)
+  4. CLI subcommand tasks (create, migrate, populate, optimize)
+  5. Configuration and validation tasks
+  6. Documentation updates (CLAUDE.md)
+
+**Key Task Categories**:
+1. **DatabaseOperator**:
+   - Contract test for Pool() method
+   - pgxpool implementation with connection management
+   - Integration tests for TableExists, DropAllTables
+2. **SchemaManager**:
+   - Contract test for Create/Migrate methods
+   - GORM AutoMigrate implementation
+   - Integration tests with test database
+3. **Populator**:
+   - Contract test for Populate method
+   - sflib integration for SFGA reading
+   - pgx CopyFrom for bulk inserts
+   - Progress logging
+4. **Optimizer**:
+   - Contract test for Optimize method
+   - Idempotent drop/recreate logic
+   - Index and materialized view creation
+5. **CLI Subcommands**:
+   - create, migrate, populate, optimize commands
+   - Configuration loading (viper)
+   - Error handling and user prompts
 
 **Ordering Strategy**:
-- TDD order: Tests before implementation 
-- Dependency order: Pure modules → io implementations → CLI
-- Mark [P] for parallel execution (independent files)
+- TDD order: Contract tests → implementations → integration tests → CLI
+- Dependency order: pkg/config → pkg/database → pkg/lifecycle → internal/io/* → cmd/gndb
+- Mark [P] for parallel execution (independent contracts/tests)
 
-**Estimated Output**: 20-30 numbered, ordered tasks in tasks.md
+**Estimated Output**: 25-35 numbered, ordered tasks in tasks.md
 
 **IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
 
@@ -219,7 +257,8 @@ cmd/
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| | | |
+| [e.g., Breaking modular arch] | [current need] | [why simpler approach insufficient] |
+| [e.g., Mixing pure/impure] | [specific problem] | [why separation impractical] |
 
 
 ## Progress Tracking
@@ -228,7 +267,7 @@ cmd/
 **Phase Status**:
 - [X] Phase 0: Research complete (/plan command)
 - [X] Phase 1: Design complete (/plan command)
-- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
+- [X] Phase 2: Task planning complete (/plan command - describe approach only)
 - [ ] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
@@ -236,8 +275,8 @@ cmd/
 **Gate Status**:
 - [X] Initial Constitution Check: PASS
 - [X] Post-Design Constitution Check: PASS
-- [X] All NEEDS CLARIFICATION resolved
-- [ ] Complexity deviations documented
+- [X] All NEEDS CLARIFICATION resolved (FR-011, FR-012 documented in research.md)
+- [X] Complexity deviations documented (None - design follows all constitutional principles)
 
 ---
-*Based on Constitution v1.2.0 - See `.specify/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `.specify/memory/constitution.md`*

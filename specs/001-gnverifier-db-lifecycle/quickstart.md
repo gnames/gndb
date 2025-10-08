@@ -4,7 +4,7 @@ This quickstart guide demonstrates the end-to-end lifecycle of creating, populat
 
 ## Prerequisites
 
-*   Go 1.21 or later
+*   Go 1.25 or later
 *   PostgreSQL 14 or later
 *   `just` command-line tool
 
@@ -42,7 +42,17 @@ gndb create --force
 
 The `--force` flag will drop any existing tables in the database before creating the new schema.
 
-### 3.2. Populate Database
+### 3.2. Migrate Schema (Optional)
+
+If the schema needs to be updated to a newer version:
+
+```bash
+gndb migrate
+```
+
+Note: GORM AutoMigrate handles schema versioning automatically.
+
+### 3.3. Populate Database
 
 Populate the database with data from a sample SFGA file:
 
@@ -50,13 +60,15 @@ Populate the database with data from a sample SFGA file:
 gndb populate testdata/sfga.sqlite
 ```
 
-### 3.3. Restructure Database
+### 3.4. Optimize Database
 
-Optimize the database for performance:
+Apply performance optimizations (indexes, materialized views):
 
 ```bash
-gndb restructure
+gndb optimize
 ```
+
+Note: This command is idempotent and always rebuilds optimizations from scratch to ensure algorithm improvements are applied.
 
 ## 4. Verification
 
