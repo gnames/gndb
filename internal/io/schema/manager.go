@@ -10,6 +10,7 @@ import (
 	"github.com/gnames/gndb/pkg/database"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/gnames/gndb/pkg/schema"
+	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -27,25 +28,21 @@ func NewManager(op database.Operator) lifecycle.SchemaManager {
 // Create creates the initial database schema using GORM AutoMigrate.
 // Also applies collation settings for correct scientific name sorting.
 func (m *Manager) Create(ctx context.Context, cfg *config.Config) error {
-	// Build DSN for GORM
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Host,
-		cfg.Database.Port,
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.Database,
-		cfg.Database.SSLMode,
-	)
+	pool := m.operator.Pool()
+	if pool == nil {
+		return fmt.Errorf("database not connected")
+	}
+
+	db := stdlib.OpenDBFromPool(pool)
 
 	// Connect with GORM
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: db}), &gorm.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to connect with GORM: %w", err)
 	}
 
 	// Run GORM AutoMigrate to create schema
-	if err := schema.Migrate(db); err != nil {
+	if err := schema.Migrate(gormDB); err != nil {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
@@ -59,25 +56,21 @@ func (m *Manager) Create(ctx context.Context, cfg *config.Config) error {
 
 // Migrate updates the database schema to the latest version using GORM AutoMigrate.
 func (m *Manager) Migrate(ctx context.Context, cfg *config.Config) error {
-	// Build DSN for GORM
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Host,
-		cfg.Database.Port,
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.Database,
-		cfg.Database.SSLMode,
-	)
+	pool := m.operator.Pool()
+	if pool == nil {
+		return fmt.Errorf("database not connected")
+	}
+
+	db := stdlib.OpenDBFromPool(pool)
 
 	// Connect with GORM
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	gormDB, err := gorm.Open(postgres.New(postgres.Config{Conn: db}), &gorm.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to connect with GORM: %w", err)
 	}
 
 	// Run GORM AutoMigrate
-	if err := schema.Migrate(db); err != nil {
+	if err := schema.Migrate(gormDB); err != nil {
 		return fmt.Errorf("failed to migrate schema: %w", err)
 	}
 

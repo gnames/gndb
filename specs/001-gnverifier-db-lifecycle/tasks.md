@@ -18,172 +18,28 @@
 
 ### T016: [P] Write Contract Test for database.Operator Interface ✅
 
-**Description**: Test that PgxOperator implements database.Operator interface
-
-**Actions**:
-1. Create `pkg/database/operator_test.go`
-2. Write contract compliance test verifying interface implementation
-3. Test MUST fail initially (interface mismatch)
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/database/operator_test.go`
-
-**Success Criteria**:
-- [x] Test exists and passes (interface already matches from refactor)
-- [x] All 5 methods verified: Connect, Close, Pool, TableExists, DropAllTables
-
-**Result**: PASS - PgxOperator already implements interface correctly
-
-**Parallel**: [P] - Independent test file
-
----
-
 ### T017: Update PgxOperator to Implement pkg/database.Operator ✅
 
-**Description**: Verify PgxOperator implements new interface (already trimmed to 5 methods in refactor)
+### T018: [P] Write Contract Test for lifecycle.SchemaManager ✅
 
-**Actions**:
-1. Verify `internal/io/database/operator.go` matches interface signature
-2. Run contract test from T016
-3. Fix any import/signature issues
+### T019: Verify SchemaManager Implementation ✅
 
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/database/operator.go`
+### T020: [P] Write Contract Test for lifecycle.Optimizer ✅
 
-**Success Criteria**:
-- [x] Contract test passes
-- [x] Interface fully implemented with 5 methods
+### T021: Verify Optimizer Implementation ✅
 
-**Result**: PASS - PgxOperator correctly implements database.Operator interface
-
-**Note**: Full build will succeed after T022 fixes create.go to remove SetCollation/ListTables calls
-
-**Dependencies**: T016
-
----
-
-### T018: [P] Write Contract Test for lifecycle.SchemaManager
-
-**Description**: Test that schema.Manager implements lifecycle.SchemaManager interface
-
-**Actions**:
-1. Create `pkg/lifecycle/schema_test.go`
-2. Write contract compliance test
-3. Test MUST fail initially
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/lifecycle/schema_test.go`
-
-**Success Criteria**:
-- [ ] Test exists and fails
-
-**Parallel**: [P]
-
----
-
-### T019: Verify SchemaManager Implementation
-
-**Description**: Ensure internal/io/schema.Manager correctly implements interface
-
-**Actions**:
-1. Run test from T018
-2. Verify implementation matches interface
-3. Fix any issues
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/schema/manager.go`
-
-**Success Criteria**:
-- [ ] Contract test passes
-
-**Dependencies**: T018
-
----
-
-### T020: [P] Write Contract Test for lifecycle.Optimizer
-
-**Description**: Test that OptimizerImpl implements lifecycle.Optimizer interface
-
-**Actions**:
-1. Create `pkg/lifecycle/optimizer_test.go`
-2. Write contract compliance test
-3. Test MUST fail initially
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/lifecycle/optimizer_test.go`
-
-**Success Criteria**:
-- [ ] Test exists and fails
-
-**Parallel**: [P]
-
----
-
-### T021: Verify Optimizer Implementation
-
-**Description**: Ensure OptimizerImpl correctly implements interface
-
-**Actions**:
-1. Run test from T020
-2. Verify implementation
-3. Fix any issues
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/optimize/optimizer.go`
-
-**Success Criteria**:
-- [ ] Contract test passes
-
-**Dependencies**: T020
-
----
 
 ## Phase 3.3: CLI Command Updates
 
-### T022: Update create Command to Use New Interfaces
-
-**Description**: Refactor cmd/gndb/create.go to use database.Operator and lifecycle.SchemaManager
-
-**Actions**:
-1. Update imports to use pkg/database and pkg/lifecycle
-2. Replace direct GORM calls with SchemaManager.Create()
-3. Remove SetCollation call (now in SchemaManager)
-4. Remove ListTables call (delete or inline if needed)
-5. Test: `gndb create --force`
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/create.go`
-
-**Success Criteria**:
-- [ ] Uses SchemaManager interface
-- [ ] No direct GORM calls
-- [ ] Command works correctly
-
-**Dependencies**: T017, T019
+### T022: Update create Command to Use New Interfaces ✅
 
 ---
 
-### T023: Update migrate Command to Use SchemaManager
-
-**Description**: Refactor migrate command to use lifecycle.SchemaManager
-
-**Actions**:
-1. Update imports
-2. Use SchemaManager.Migrate()
-3. Test: `gndb migrate`
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/migrate.go`
-
-**Success Criteria**:
-- [ ] Uses SchemaManager interface
-- [ ] Command works
-
-**Dependencies**: T019
+### T023: Update migrate Command to Use SchemaManager ✅
 
 ---
 
-### T024: Rename restructure → optimize, Use Optimizer Interface
+### T024: Rename restructure → optimize, Use Optimizer Interface ✅
 
 **Description**: Rename command and use lifecycle.Optimizer interface
 
@@ -198,9 +54,9 @@
 - `/Users/dimus/code/golang/gndb/cmd/gndb/root.go`
 
 **Success Criteria**:
-- [ ] Command renamed
-- [ ] Uses Optimizer interface
-- [ ] `gndb optimize` available (returns "not implemented")
+- [X] Command renamed
+- [X] Uses Optimizer interface
+- [X] `gndb optimize` available (returns "not implemented")
 
 **Dependencies**: T021
 

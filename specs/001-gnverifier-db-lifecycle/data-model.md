@@ -108,7 +108,7 @@ CREATE TABLE name_strings (
 );
 
 -- Created during populate phase (no indexes initially)
--- Added during restructure phase:
+-- Added during optimize phase:
 CREATE UNIQUE INDEX idx_namestrings_canonical_simple ON name_strings(canonical_simple);
 CREATE INDEX idx_namestrings_canonical_full ON name_strings(canonical_full);
 CREATE INDEX idx_namestrings_name_trgm ON name_strings USING GIST (name_string gist_trgm_ops(siglen=256));
@@ -160,7 +160,7 @@ CREATE TABLE name_string_occurrences (
     accepted_name_id BIGINT REFERENCES name_strings(id)
 );
 
--- Restructure phase indexes:
+-- Optimize phase indexes:
 CREATE INDEX idx_occurrences_namestring ON name_string_occurrences(name_string_id);
 CREATE INDEX idx_occurrences_datasource ON name_string_occurrences(data_source_id);
 CREATE INDEX idx_occurrences_taxon_id ON name_string_occurrences(taxon_id);
@@ -302,7 +302,7 @@ CREATE TABLE vernacular_names (
 CREATE INDEX idx_vernacular_taxon_id ON vernacular_names(taxon_id);
 CREATE INDEX idx_vernacular_name_trgm ON vernacular_names USING GIST (name_string gist_trgm_ops(siglen=256));
 
--- Partial indexes per language (created during restructure):
+-- Partial indexes per language (created during optimize):
 CREATE INDEX idx_vernacular_english ON vernacular_names(name_string) WHERE language_code = 'en';
 CREATE INDEX idx_vernacular_spanish ON vernacular_names(name_string) WHERE language_code = 'es';
 CREATE INDEX idx_vernacular_chinese ON vernacular_names(name_string) WHERE language_code IN ('zh', 'cmn');
@@ -378,7 +378,7 @@ CREATE TABLE schema_versions (
 
 ---
 
-## Materialized Views (Restructure Phase)
+## Materialized Views (Optimize Phase)
 
 ### 9. mv_name_lookup
 

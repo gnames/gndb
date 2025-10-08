@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gnames/gndb/internal/io/database"
-	"github.com/gnames/gndb/pkg/schema"
+	io_database "github.com/gnames/gndb/internal/io/database"
+	io_schema "github.com/gnames/gndb/internal/io/schema"
+	"github.com/gnames/gndb/pkg/database"
+	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/spf13/cobra"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 var (
@@ -49,7 +49,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	cfg := getConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	var op database.Operator = io_database.NewPgxOperator()
 	if err := op.Connect(ctx, &cfg.Database); err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -67,57 +67,19 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		fmt.Println("✓ All tables dropped")
 	}
 
-	// Build DSN for GORM
-	dsn := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Database.Host,
-		cfg.Database.Port,
-		cfg.Database.User,
-		cfg.Database.Password,
-		cfg.Database.Database,
-		cfg.Database.SSLMode,
-	)
-
-	// Connect with GORM
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return fmt.Errorf("failed to connect with GORM: %w", err)
-	}
+	// Create schema manager
+	var sm lifecycle.SchemaManager = io_schema.NewManager(op)
 
 	// Run GORM AutoMigrate to create schema
 	fmt.Println("Creating schema using GORM AutoMigrate...")
-	if err := schema.Migrate(db); err != nil {
+	if err := sm.Create(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to create schema: %w", err)
-	}
-	fmt.Println("✓ Schema created successfully")
-
-	// Set collation for string columns (critical for correct sorting)
-	fmt.Println("Setting collation for string columns...")
-	if err := op.SetCollation(ctx); err != nil {
-		return fmt.Errorf("failed to set collation: %w", err)
-	}
-	fmt.Println("✓ Collation set successfully")
-
-	// Note: No PostgreSQL extensions needed
-	// Fuzzy matching is handled by gnmatcher (bloom filters, suffix tries)
-	// This database only stores canonical forms for exact lookups
-
-	// Verify all tables were created
-	tables, err := op.ListTables(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to list tables: %w", err)
-	}
-
-	models := schema.AllModels()
-	fmt.Printf("\nCreated %d tables:\n", len(models))
-	for _, tableName := range tables {
-		fmt.Printf("  - %s\n", tableName)
 	}
 
 	fmt.Println("\n✓ Database schema creation complete!")
 	fmt.Println("\nNext steps:")
 	fmt.Println("  - Run 'gndb populate' to import data from SFGA files")
-	fmt.Println("  - Run 'gndb restructure' to create indexes and optimize")
+	fmt.Println("  - Run 'gndb optimize' to create indexes and optimize")
 
 	return nil
 }

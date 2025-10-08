@@ -92,7 +92,7 @@ For more information, see the project's README file.`,
 		getCreateCmd(),
 		getMigrateCmd(),
 		getPopulateCmd(),
-		getRestructureCmd(),
+		getOptimizeCmd(),
 	)
 
 	return rootCmd

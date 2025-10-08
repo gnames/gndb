@@ -64,7 +64,7 @@ type Config struct {
 	// Import contains settings for SFGA data import operations.
 	Import ImportConfig `mapstructure:"import" yaml:"import"`
 
-	// Optimization contains settings for database restructure phase.
+	// Optimization contains settings for database optimization phase.
 	Optimization OptimizationConfig `mapstructure:"optimization" yaml:"optimization"`
 
 	// Logging contains application logging settings.
@@ -119,7 +119,7 @@ type ImportConfig struct {
 	BatchSize int `mapstructure:"batch_size" yaml:"batch_size"`
 }
 
-// OptimizationConfig contains settings for database restructure phase.
+// OptimizationConfig contains settings for database optimization phase.
 type OptimizationConfig struct {
 	// ConcurrentIndexes determines whether indexes are created concurrently.
 	// - false: Faster index creation but locks tables (recommended for initial setup)

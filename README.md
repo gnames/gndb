@@ -116,7 +116,7 @@ Created 11 tables:
 gndb populate
 
 # Create indexes and optimize (coming soon)
-gndb restructure
+gndb optimize
 ```
 
 ## Troubleshooting
