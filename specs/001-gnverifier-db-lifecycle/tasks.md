@@ -33,98 +33,21 @@
 
 ### T022: Update create Command to Use New Interfaces ✅
 
----
-
 ### T023: Update migrate Command to Use SchemaManager ✅
-
----
 
 ### T024: Rename restructure → optimize, Use Optimizer Interface ✅
 
-**Description**: Rename command and use lifecycle.Optimizer interface
-
-**Actions**:
-1. Rename `cmd/gndb/restructure.go` → `cmd/gndb/optimize.go`
-2. Change command name "restructure" → "optimize"
-3. Use Optimizer interface
-4. Update root.go
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/optimize.go`
-- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go`
-
-**Success Criteria**:
-- [X] Command renamed
-- [X] Uses Optimizer interface
-- [X] `gndb optimize` available (returns "not implemented")
-
-**Dependencies**: T021
-
----
-
 ## Phase 3.4: Populator Stub
 
-### T025: [P] Write Populator Contract Test
+### T025: [P] Write Populator Contract Test ✅
 
-**Description**: Test for lifecycle.Populator interface compliance
+### T026: Implement Populator Stub ✅
 
-**Actions**:
-1. Create `pkg/lifecycle/populator_test.go`
-2. Write contract test (will fail until implementation exists)
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/lifecycle/populator_test.go`
-
-**Success Criteria**:
-- [ ] Test exists and fails
-
-**Parallel**: [P]
-
----
-
-### T026: Implement Populator Stub
-
-**Description**: Create basic Populator implementation structure
-
-**Actions**:
-1. Create `internal/io/populate/populator.go` with stub that returns "not implemented"
-2. Run contract test
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/populate/populator.go`
-
-**Success Criteria**:
-- [ ] Implements interface
-- [ ] Contract test passes
-- [ ] Returns "not implemented" error
-
-**Dependencies**: T025
-
----
-
-### T027: Update populate Command to Use Populator Interface
-
-**Description**: Refactor populate command to use lifecycle.Populator
-
-**Actions**:
-1. Update imports
-2. Use Populator interface
-3. Test: `gndb populate` (returns "not implemented")
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/populate.go`
-
-**Success Criteria**:
-- [ ] Uses interface
-- [ ] Returns clear message
-
-**Dependencies**: T026
-
----
+### T027: Update populate Command to Use Populator Interface ✅
 
 ## Phase 3.5: Integration Testing
 
-### T028: Integration Test - Create Schema End-to-End
+### T028: Integration Test - Create Schema End-to-End ✅
 
 **Description**: Test complete create workflow with new interfaces
 
@@ -137,8 +60,8 @@
 - `/Users/dimus/code/golang/gndb/cmd/gndb/create_integration_test.go`
 
 **Success Criteria**:
-- [ ] Integration test passes
-- [ ] Schema created correctly
+- [X] Integration test passes
+- [X] Schema created correctly
 
 **Dependencies**: T022
 

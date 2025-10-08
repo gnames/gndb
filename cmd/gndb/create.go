@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	io_database "github.com/gnames/gndb/internal/io/database"
 	io_schema "github.com/gnames/gndb/internal/io/schema"
@@ -23,13 +26,14 @@ func getCreateCmd() *cobra.Command {
 
 This command:
   1. Connects to PostgreSQL using configuration settings
-  2. Creates all base tables using GORM AutoMigrate
-  3. Records schema version
+  2. Checks for existing tables and prompts for confirmation if found
+  3. Creates all base tables using GORM AutoMigrate
+  4. Records schema version
 
 Note: Fuzzy matching is handled by gnmatcher (external to database).
 This database stores canonical forms for exact lookups only.
 
-Use --force to drop existing tables before creating schema.
+Use --force to skip confirmation and drop existing tables automatically.
 
 Examples:
   gndb create
@@ -58,13 +62,46 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Connected to database: %s@%s:%d/%s\n",
 		cfg.Database.User, cfg.Database.Host, cfg.Database.Port, cfg.Database.Database)
 
-	// If force flag is set, drop all existing tables
-	if forceCreate {
-		fmt.Println("Dropping all existing tables (--force enabled)...")
-		if err := op.DropAllTables(ctx); err != nil {
-			return fmt.Errorf("failed to drop tables: %w", err)
+	// Check if database has existing tables
+	hasTables, err := op.HasTables(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check for existing tables: %w", err)
+	}
+
+	// Handle existing tables
+	if hasTables {
+		if forceCreate {
+			// Force flag set - drop without prompting
+			fmt.Println("Dropping all existing tables (--force enabled)...")
+			if err := op.DropAllTables(ctx); err != nil {
+				return fmt.Errorf("failed to drop tables: %w", err)
+			}
+			fmt.Println("✓ All tables dropped")
+		} else {
+			// Prompt user for confirmation
+			fmt.Println("\n⚠️  Warning: Database contains existing tables.")
+			fmt.Println("Creating schema will drop ALL existing tables and data.")
+			fmt.Print("\nDo you want to continue? (yes/no): ")
+
+			reader := bufio.NewReader(os.Stdin)
+			response, err := reader.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("failed to read user input: %w", err)
+			}
+
+			response = strings.TrimSpace(strings.ToLower(response))
+			if response != "yes" && response != "y" {
+				fmt.Println("Aborted. No changes made to the database.")
+				return nil
+			}
+
+			// User confirmed - drop tables
+			fmt.Println("Dropping all existing tables...")
+			if err := op.DropAllTables(ctx); err != nil {
+				return fmt.Errorf("failed to drop tables: %w", err)
+			}
+			fmt.Println("✓ All tables dropped")
 		}
-		fmt.Println("✓ All tables dropped")
 	}
 
 	// Create schema manager

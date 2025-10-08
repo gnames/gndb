@@ -93,6 +93,28 @@ func (p *PgxOperator) TableExists(ctx context.Context, tableName string) (bool, 
 	return exists, nil
 }
 
+// HasTables checks if the database has any tables in the public schema.
+func (p *PgxOperator) HasTables(ctx context.Context) (bool, error) {
+	if p.pool == nil {
+		return false, fmt.Errorf("not connected to database")
+	}
+
+	query := `
+		SELECT EXISTS (
+			SELECT FROM information_schema.tables
+			WHERE table_schema = 'public'
+		)
+	`
+
+	var hasTables bool
+	err := p.pool.QueryRow(ctx, query).Scan(&hasTables)
+	if err != nil {
+		return false, fmt.Errorf("failed to check for tables: %w", err)
+	}
+
+	return hasTables, nil
+}
+
 // DropAllTables drops all tables in the public schema.
 func (p *PgxOperator) DropAllTables(ctx context.Context) error {
 	if p.pool == nil {

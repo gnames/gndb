@@ -31,6 +31,10 @@ type Operator interface {
 	// TableExists checks if a table exists in the database.
 	TableExists(ctx context.Context, tableName string) (bool, error)
 
+	// HasTables checks if the database has any tables in the public schema.
+	// Used to determine if schema creation should prompt for confirmation.
+	HasTables(ctx context.Context) (bool, error)
+
 	// DropAllTables drops all tables in the public schema.
 	// Used by create command when user confirms overwriting existing data.
 	DropAllTables(ctx context.Context) error
