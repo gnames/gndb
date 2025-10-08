@@ -70,23 +70,6 @@ func (p *PgxOperator) Close() error {
 	return nil
 }
 
-// CreateSchema creates all base tables from DDL definitions.
-func (p *PgxOperator) CreateSchema(ctx context.Context, ddlStatements []string, force bool) error {
-	if p.pool == nil {
-		return fmt.Errorf("not connected to database")
-	}
-
-	// If force=true, drop all tables first
-	if force {
-		if err := p.DropAllTables(ctx); err != nil {
-			return fmt.Errorf("failed to drop existing tables: %w", err)
-		}
-	}
-
-	// Execute all DDL statements in a transaction
-	return p.ExecuteDDLBatch(ctx, ddlStatements)
-}
-
 // TableExists checks if a table exists in the current database.
 func (p *PgxOperator) TableExists(ctx context.Context, tableName string) (bool, error) {
 	if p.pool == nil {
@@ -145,70 +128,12 @@ func (p *PgxOperator) DropAllTables(ctx context.Context) error {
 	// Drop each table with CASCADE
 	for _, table := range tables {
 		dropSQL := fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table)
-		if err := p.ExecuteDDL(ctx, dropSQL); err != nil {
+		if _, err := p.pool.Exec(ctx, dropSQL); err != nil {
 			return fmt.Errorf("failed to drop table %s: %w", table, err)
 		}
 	}
 
 	return nil
-}
-
-// ExecuteDDL executes a single DDL statement in a transaction.
-func (p *PgxOperator) ExecuteDDL(ctx context.Context, ddl string) error {
-	if p.pool == nil {
-		return fmt.Errorf("not connected to database")
-	}
-
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	if _, err := tx.Exec(ctx, ddl); err != nil {
-		return fmt.Errorf("failed to execute DDL: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// ExecuteDDLBatch executes multiple DDL statements in a single transaction.
-func (p *PgxOperator) ExecuteDDLBatch(ctx context.Context, ddlStatements []string) error {
-	if p.pool == nil {
-		return fmt.Errorf("not connected to database")
-	}
-
-	tx, err := p.pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	for i, ddl := range ddlStatements {
-		if _, err := tx.Exec(ctx, ddl); err != nil {
-			return fmt.Errorf("failed to execute DDL statement %d: %w", i+1, err)
-		}
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-}
-
-// EnableExtension enables a PostgreSQL extension.
-func (p *PgxOperator) EnableExtension(ctx context.Context, extensionName string) error {
-	if p.pool == nil {
-		return fmt.Errorf("not connected to database")
-	}
-
-	ddl := fmt.Sprintf("CREATE EXTENSION IF NOT EXISTS %s", extensionName)
-	return p.ExecuteDDL(ctx, ddl)
 }
 
 // VacuumAnalyze runs VACUUM ANALYZE on specified tables.
@@ -266,8 +191,22 @@ func (p *PgxOperator) SetStatisticsTarget(ctx context.Context, tableName, column
 		return fmt.Errorf("not connected to database")
 	}
 
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	sql := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET STATISTICS %d", tableName, columnName, target)
-	return p.ExecuteDDL(ctx, sql)
+	if _, err := tx.Exec(ctx, sql); err != nil {
+		return fmt.Errorf("failed to set statistics target: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // GetDatabaseSize returns the total size of the database in bytes.

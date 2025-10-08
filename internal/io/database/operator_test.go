@@ -7,7 +7,6 @@ import (
 	"github.com/gnames/gndb/internal/io/config"
 	"github.com/gnames/gndb/internal/io/database"
 	pkgconfig "github.com/gnames/gndb/pkg/config"
-	"github.com/gnames/gndb/pkg/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,9 +74,10 @@ func TestPgxOperator_Connect(t *testing.T) {
 
 	defer op.Close()
 
-	// Verify connection works
-	err = op.EnableExtension(ctx, "plpgsql") // plpgsql is always available
+	// Verify connection works by checking if we can query tables
+	exists, err := op.TableExists(ctx, "nonexistent_table")
 	assert.NoError(t, err, "Should be able to execute commands after Connect")
+	assert.False(t, exists)
 }
 
 func TestPgxOperator_Connect_InvalidHost(t *testing.T) {
@@ -108,7 +108,7 @@ func TestPgxOperator_TableExists(t *testing.T) {
 	defer op.Close()
 
 	// Clean up any existing test table
-	_ = op.ExecuteDDL(ctx, "DROP TABLE IF EXISTS test_table_exists CASCADE")
+	_, _ = op.Pool().Exec(ctx, "DROP TABLE IF EXISTS test_table_exists CASCADE")
 
 	// Table should not exist initially
 	exists, err := op.TableExists(ctx, "test_table_exists")
@@ -116,7 +116,7 @@ func TestPgxOperator_TableExists(t *testing.T) {
 	assert.False(t, exists, "Table should not exist initially")
 
 	// Create table
-	err = op.ExecuteDDL(ctx, "CREATE TABLE test_table_exists (id SERIAL PRIMARY KEY)")
+	_, err = op.Pool().Exec(ctx, "CREATE TABLE test_table_exists (id SERIAL PRIMARY KEY)")
 	require.NoError(t, err)
 
 	// Table should now exist
@@ -125,142 +125,7 @@ func TestPgxOperator_TableExists(t *testing.T) {
 	assert.True(t, exists, "Table should exist after creation")
 
 	// Clean up
-	_ = op.ExecuteDDL(ctx, "DROP TABLE test_table_exists")
-}
-
-func TestPgxOperator_ExecuteDDL(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	op := database.NewPgxOperator()
-	ctx := context.Background()
-
-	err := op.Connect(ctx, getTestConfig())
-	require.NoError(t, err)
-	defer op.Close()
-
-	// Clean up
-	_ = op.ExecuteDDL(ctx, "DROP TABLE IF EXISTS test_execute_ddl CASCADE")
-
-	// Execute valid DDL
-	err = op.ExecuteDDL(ctx, "CREATE TABLE test_execute_ddl (id SERIAL PRIMARY KEY, name TEXT)")
-	require.NoError(t, err)
-
-	// Verify table was created
-	exists, err := op.TableExists(ctx, "test_execute_ddl")
-	require.NoError(t, err)
-	assert.True(t, exists)
-
-	// Execute invalid DDL should fail and rollback
-	err = op.ExecuteDDL(ctx, "CREATE TABLE invalid syntax here")
-	assert.Error(t, err, "Invalid DDL should fail")
-
-	// Clean up
-	_ = op.ExecuteDDL(ctx, "DROP TABLE test_execute_ddl")
-}
-
-func TestPgxOperator_ExecuteDDLBatch(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	op := database.NewPgxOperator()
-	ctx := context.Background()
-
-	err := op.Connect(ctx, getTestConfig())
-	require.NoError(t, err)
-	defer op.Close()
-
-	// Clean up
-	_ = op.ExecuteDDL(ctx, "DROP TABLE IF EXISTS test_batch1 CASCADE")
-	_ = op.ExecuteDDL(ctx, "DROP TABLE IF EXISTS test_batch2 CASCADE")
-
-	// Execute batch of DDL statements
-	ddlStatements := []string{
-		"CREATE TABLE test_batch1 (id SERIAL PRIMARY KEY)",
-		"CREATE TABLE test_batch2 (id SERIAL PRIMARY KEY, ref_id INT REFERENCES test_batch1(id))",
-	}
-
-	err = op.ExecuteDDLBatch(ctx, ddlStatements)
-	require.NoError(t, err)
-
-	// Verify both tables exist
-	exists1, _ := op.TableExists(ctx, "test_batch1")
-	exists2, _ := op.TableExists(ctx, "test_batch2")
-	assert.True(t, exists1)
-	assert.True(t, exists2)
-
-	// Clean up
-	_ = op.ExecuteDDL(ctx, "DROP TABLE test_batch2")
-	_ = op.ExecuteDDL(ctx, "DROP TABLE test_batch1")
-}
-
-func TestPgxOperator_CreateSchema_WithGORM(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	op := database.NewPgxOperator()
-	ctx := context.Background()
-
-	err := op.Connect(ctx, getTestConfig())
-	require.NoError(t, err)
-	defer op.Close()
-
-	// Get all models for migration
-	models := schema.AllModels()
-
-	// Use GORM to generate schema (this is what we'll actually use)
-	// For now, just verify we can create a test table
-	ddl := `
-		CREATE TABLE IF NOT EXISTS test_schema_table (
-			id SERIAL PRIMARY KEY,
-			name TEXT
-		)
-	`
-
-	// Test CreateSchema with force=false (should succeed first time)
-	err = op.CreateSchema(ctx, []string{ddl}, false)
-	require.NoError(t, err)
-
-	// Verify table exists
-	exists, err := op.TableExists(ctx, "test_schema_table")
-	require.NoError(t, err)
-	assert.True(t, exists)
-
-	// Test CreateSchema with force=true (should drop and recreate)
-	err = op.CreateSchema(ctx, []string{ddl}, true)
-	require.NoError(t, err)
-
-	// Verify table still exists after force recreation
-	exists, err = op.TableExists(ctx, "test_schema_table")
-	require.NoError(t, err)
-	assert.True(t, exists)
-
-	// Prevent unused variable error
-	_ = models
-}
-
-func TestPgxOperator_EnableExtension(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	op := database.NewPgxOperator()
-	ctx := context.Background()
-
-	err := op.Connect(ctx, getTestConfig())
-	require.NoError(t, err)
-	defer op.Close()
-
-	// Enable pg_trgm extension (common for name matching)
-	err = op.EnableExtension(ctx, "pg_trgm")
-	require.NoError(t, err)
-
-	// Enabling again should be idempotent
-	err = op.EnableExtension(ctx, "pg_trgm")
-	assert.NoError(t, err, "EnableExtension should be idempotent")
+	_, _ = op.Pool().Exec(ctx, "DROP TABLE test_table_exists")
 }
 
 func TestPgxOperator_DropAllTables(t *testing.T) {
@@ -276,8 +141,8 @@ func TestPgxOperator_DropAllTables(t *testing.T) {
 	defer op.Close()
 
 	// Create some test tables
-	_ = op.ExecuteDDL(ctx, "CREATE TABLE IF NOT EXISTS drop_test1 (id SERIAL PRIMARY KEY)")
-	_ = op.ExecuteDDL(ctx, "CREATE TABLE IF NOT EXISTS drop_test2 (id SERIAL PRIMARY KEY)")
+	_, _ = op.Pool().Exec(ctx, "CREATE TABLE IF NOT EXISTS drop_test1 (id SERIAL PRIMARY KEY)")
+	_, _ = op.Pool().Exec(ctx, "CREATE TABLE IF NOT EXISTS drop_test2 (id SERIAL PRIMARY KEY)")
 
 	// Drop all tables
 	err = op.DropAllTables(ctx)
@@ -321,8 +186,8 @@ func TestPgxOperator_TableSize(t *testing.T) {
 	defer op.Close()
 
 	// Create test table
-	_ = op.ExecuteDDL(ctx, "DROP TABLE IF EXISTS size_test CASCADE")
-	err = op.ExecuteDDL(ctx, "CREATE TABLE size_test (id SERIAL PRIMARY KEY, data TEXT)")
+	_, _ = op.Pool().Exec(ctx, "DROP TABLE IF EXISTS size_test CASCADE")
+	_, err = op.Pool().Exec(ctx, "CREATE TABLE size_test (id SERIAL PRIMARY KEY, data TEXT)")
 	require.NoError(t, err)
 
 	// Get table size
@@ -331,5 +196,5 @@ func TestPgxOperator_TableSize(t *testing.T) {
 	assert.Greater(t, size, int64(0), "Table size should be positive")
 
 	// Clean up
-	_ = op.ExecuteDDL(ctx, "DROP TABLE size_test")
+	_, _ = op.Pool().Exec(ctx, "DROP TABLE size_test")
 }
