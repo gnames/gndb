@@ -1,1330 +1,436 @@
 # Tasks: GNverifier Database Lifecycle Management
 
-**Feature Branch**: `001-gnverifier-db-lifecycle`  
-**Input**: Design documents from `/Users/dimus/code/golang/gndb/specs/001-gnverifier-db-lifecycle/`  
-**Prerequisites**: plan.md ✅, research.md ✅, data-model.md ✅, contracts/ ✅, quickstart.md ✅
+**Feature Branch**: `001-gnverifier-db-lifecycle`
+**Status**: Architecture Refactored (T001-T015 complete)
+**Next Phase**: Interface Integration & CLI Wiring
 
-**Strategy**: Start with first 5 foundational tasks to establish project structure and TDD workflow
+**Context**:
+- T001-T015: Initial implementation complete (config, basic DatabaseOperator, schema models)
+- Architecture refactored per Constitution v1.3.0 Principle VIII
+- Interfaces created in pkg/, implementations preserved in internal/io/
+- DatabaseOperator trimmed from 14 methods → 5 core methods
+- SchemaManager and Optimizer extracted as separate components
+- See PRESERVE.md for details on preserved code
 
 ---
 
-## Phase 3.1: Project Setup
+## Phase 3.2: Interface Integration & Wiring
 
-### T001: Initialize Go Module and Project Structure
+### T016: [P] Write Contract Test for database.Operator Interface ✅
 
-**Description**: Create the Go module and base directory structure per plan.md architecture
+**Description**: Test that PgxOperator implements database.Operator interface
 
 **Actions**:
-1. Initialize Go module: `go mod init github.com/gnames/gndb`
-2. Create directory structure:
-   ```
-   mkdir -p pkg/{config,schema,migrate,populate,restructure}
-   mkdir -p internal/io/{config,database,sfga}
-   mkdir -p cmd/gndb
-   mkdir -p migrations
-   mkdir -p testdata
-   ```
-3. Create go.mod with initial dependencies:
-   - `github.com/jackc/pgx/v5` (PostgreSQL driver)
-   - `github.com/spf13/cobra` (CLI framework)
-   - `github.com/spf13/viper` (configuration)
-   - `github.com/stretchr/testify` (testing)
-4. Run `go mod tidy`
+1. Create `pkg/database/operator_test.go`
+2. Write contract compliance test verifying interface implementation
+3. Test MUST fail initially (interface mismatch)
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/go.mod`
-- `/Users/dimus/code/golang/gndb/go.sum`
+- `/Users/dimus/code/golang/gndb/pkg/database/operator_test.go`
 
 **Success Criteria**:
-- [x] Go module initialized with correct import path
-- [x] All directories created per plan.md structure
-- [x] Dependencies downloaded without errors
-- [x] `go build ./...` succeeds (even with empty packages)
+- [x] Test exists and passes (interface already matches from refactor)
+- [x] All 5 methods verified: Connect, Close, Pool, TableExists, DropAllTables
 
-**Parallel**: N/A (foundational task)
+**Result**: PASS - PgxOperator already implements interface correctly
+
+**Parallel**: [P] - Independent test file
 
 ---
 
-### T002: Create Configuration Package with Types and Validation
+### T017: Update PgxOperator to Implement pkg/database.Operator ✅
 
-**Description**: Implement pure configuration package in `pkg/config/` with struct definitions, defaults, and validation logic
+**Description**: Verify PgxOperator implements new interface (already trimmed to 5 methods in refactor)
 
 **Actions**:
-1. Create `pkg/config/config.go` with:
-   - `Config` struct with nested structs for database, import, optimization, logging
-   - `DatabaseConfig` struct (host, port, user, password, database, ssl_mode)
-   - `ImportConfig` struct with `BatchSizes` map
-   - `OptimizationConfig` struct with `ConcurrentIndexes` bool and `StatisticsTargets` map
-   - `LoggingConfig` struct (level, format)
-   - `Validate()` method that checks required fields (database connection params)
-   - `Defaults()` function returning sensible defaults
-2. Create `pkg/config/config_test.go` with:
-   - Test for `Defaults()` returning valid config
-   - Test for `Validate()` rejecting missing required fields
-   - Test for `Validate()` accepting complete config
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/config/config.go`
-- `/Users/dimus/code/golang/gndb/pkg/config/config_test.go`
-
-**Success Criteria**:
-- [x] Config struct has all fields from quickstart.md example YAML
-- [x] Validation enforces required database fields
-- [x] Defaults provide zero-config operation
-- [x] All tests pass: `go test ./pkg/config`
-- [x] No imports from internal/io/ (pure package)
-
-**Parallel**: [P] - Independent file, no external dependencies
-
----
-
-### T003: Implement Configuration Loader (Impure I/O)
-
-**Description**: Implement configuration file and flag loading in `internal/io/config/` using viper
-
-**Actions**:
-1. Create `internal/io/config/loader.go` with:
-   - `Load(configPath string)` function that:
-     - Uses viper to read YAML from configPath (or default locations: ./gndb.yaml, ~/.config/gndb/gndb.yaml)
-     - Unmarshals into `pkg/config.Config` struct
-     - Returns error if file malformed or validation fails
-   - `BindFlags(cmd *cobra.Command, cfg *config.Config)` function that:
-     - Binds cobra flags to viper keys
-     - Returns updated config with CLI flag overrides
-2. Create `internal/io/config/loader_test.go` with:
-   - Integration test: create temp YAML file, load it, verify struct populated
-   - Test: YAML file missing required field → validation error
-   - Test: CLI flag override works (flag value takes precedence)
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/config/loader.go`
-- `/Users/dimus/code/golang/gndb/internal/io/config/loader_test.go`
-
-**Success Criteria**:
-- [x] Loads YAML from file path or default locations
-- [x] Unmarshals into pkg/config.Config correctly
-- [x] Validation errors propagate to caller
-- [x] Integration tests pass with temp YAML files
-- [x] Precedence order working: flags > config file > defaults
-
-**Dependencies**: Requires T002 (pkg/config types)
-
-**Parallel**: No (depends on T002)
-
----
-
-## Phase 3.2: Schema Models (TDD - Tests First)
-
-### T004: [P] Write Schema Model Tests (MUST FAIL)
-
-**Description**: Write tests for Go schema models and DDL generation BEFORE implementation exists
-
-**Actions**:
-1. Create `pkg/schema/schema_test.go` with tests that WILL FAIL:
-   - `TestDataSourceTableDDL()`: Assert DataSource{}.TableDDL() contains "CREATE TABLE data_sources"
-   - `TestNameStringTableDDL()`: Assert NameString{}.TableDDL() contains "CREATE TABLE name_strings" and "canonical_simple TEXT"
-   - `TestNameStringIndexDDL()`: Assert NameString{}.IndexDDL() returns slice containing trigram index DDL
-   - `TestTaxonTableDDL()`: Assert Taxon{}.TableDDL() includes foreign key to name_strings
-   - `TestSchemaVersionTableDDL()`: Assert SchemaVersion{}.TableDDL() creates schema_versions table
-2. Run tests and verify they FAIL: `go test ./pkg/schema`
-3. Document failure output (expected - no implementation yet)
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/schema/schema_test.go`
-
-**Success Criteria**:
-- [x] Tests written covering DDL generation for all core models
-- [x] Tests FAIL when run (cannot compile or assertions fail)
-- [x] Test expectations match data-model.md specifications
-- [x] No implementation code written (tests only)
-
-**TDD GATE**: This task MUST be completed and MUST show failing tests before T005
-
-**Parallel**: [P] - Test file only, no implementation
-
----
-
-### T005: Implement Schema Models with DDL Generation
-
-**Description**: Implement Go schema models in `pkg/schema/models.go` to make T004 tests pass
-
-**Actions**:
-1. Create `pkg/schema/models.go` with struct definitions per data-model.md:
-   - `DataSource` struct with db and ddl struct tags
-   - `NameString` struct with parse_quality CHECK constraint
-   - `Taxon` struct with foreign key tags
-   - `Synonym` struct
-   - `VernacularName` struct
-   - `Reference` struct
-   - `SchemaVersion` struct
-2. Create `pkg/schema/ddl.go` with:
-   - `DDLGenerator` interface (TableDDL, IndexDDL, TableName methods)
-   - Helper function `generateDDL(model interface{})` that reflects on struct tags to build CREATE TABLE SQL
-   - Implement `TableDDL()` method for each model
-   - Implement `IndexDDL()` method for models that need secondary indexes
-3. Run tests from T004 and verify they now PASS: `go test ./pkg/schema`
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/schema/models.go`
-- `/Users/dimus/code/golang/gndb/pkg/schema/ddl.go`
-
-**Success Criteria**:
-- [x] All model structs match data-model.md specifications
-- [x] DDL generation uses reflection on struct tags
-- [x] Generated DDL matches expected PostgreSQL syntax
-- [x] All tests from T004 now PASS
-- [x] No database I/O (pure models only)
-
-**Dependencies**: Requires T004 (tests must exist and be failing)
-
-**Parallel**: No (must wait for T004 tests)
-
----
-
----
-
-## Phase 3.3: Database Operations (TDD - Tests First)
-
-### T006: [P] Write DatabaseOperator Contract Tests (MUST FAIL)
-
-**Description**: Write contract tests for DatabaseOperator interface BEFORE implementation exists
-
-**Actions**:
-1. Create `pkg/schema/database_test.go` with contract tests that WILL FAIL:
-   - `TestDatabaseOperator_Connect()`: Mock operator must implement Connect() method
-   - `TestDatabaseOperator_CreateSchema()`: Verify CreateSchema() accepts DDL slice
-   - `TestDatabaseOperator_TableExists()`: Assert TableExists() returns bool, error
-   - `TestDatabaseOperator_EnableExtension()`: Verify EnableExtension() is callable
-   - `TestDatabaseOperator_ExecuteDDLBatch()`: Test batch execution contract
-2. Create mock implementation that compiles but panics:
-   ```go
-   type MockDatabaseOperator struct{}
-   func (m *MockDatabaseOperator) Connect(ctx context.Context, dsn string) error {
-       panic("not implemented")
-   }
-   // ... other methods
-   ```
-3. Run tests and verify they FAIL: `go test ./pkg/schema`
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/schema/database_test.go`
-
-**Success Criteria**:
-- [ ] Contract tests verify all DatabaseOperator interface methods exist
-- [ ] Tests FAIL (mock panics or assertions fail)
-- [ ] Test expectations match contracts/DatabaseOperator.go
-- [ ] No real implementation code written
-
-**TDD GATE**: This task MUST be completed and MUST show failing tests before T007
-
-**Parallel**: [P] - Test file only, independent of other work
-
----
-
-### T007: Implement Database Operator with pgxpool
-
-**Description**: Implement DatabaseOperator interface in `internal/io/database/` using pgxpool for connection pooling
-
-**Actions**:
-1. Create `internal/io/database/operator.go` with:
-   - `PgxOperator` struct holding `*pgxpool.Pool`
-   - Implement `Connect()` using pgxpool.New() with config from DatabaseConfig
-   - Implement `CreateSchema()` executing DDL in transaction
-   - Implement `TableExists()` querying information_schema
-   - Implement `EnableExtension()` with CREATE EXTENSION IF NOT EXISTS
-   - Implement `ExecuteDDLBatch()` with transaction support
-   - Implement other DatabaseOperator methods per contract
-2. Create `internal/io/database/operator_test.go` with:
-   - Integration test using testcontainers-go for PostgreSQL
-   - Test Connect() → CreateSchema() → TableExists() flow
-   - Test EnableExtension() for pg_trgm
-   - Test error handling (invalid DSN, malformed DDL)
-3. Run tests from T006 and verify they now PASS
+1. Verify `internal/io/database/operator.go` matches interface signature
+2. Run contract test from T016
+3. Fix any import/signature issues
 
 **File Paths**:
 - `/Users/dimus/code/golang/gndb/internal/io/database/operator.go`
-- `/Users/dimus/code/golang/gndb/internal/io/database/operator_test.go`
 
 **Success Criteria**:
-- [ ] PgxOperator uses pgxpool with MaxConnections, MinConnections from config
-- [ ] All DatabaseOperator interface methods implemented
-- [ ] Connection pool configured with lifetime and idle timeout settings
-- [ ] Integration tests pass with real PostgreSQL via testcontainers
-- [ ] Contract tests from T006 now PASS
+- [x] Contract test passes
+- [x] Interface fully implemented with 5 methods
 
-**Dependencies**: Requires T006 (contract tests must exist and be failing)
+**Result**: PASS - PgxOperator correctly implements database.Operator interface
 
-**Parallel**: No (must wait for T006 tests)
+**Note**: Full build will succeed after T022 fixes create.go to remove SetCollation/ListTables calls
+
+**Dependencies**: T016
 
 ---
 
-### T008: [P] Write CLI Root Command Tests (MUST FAIL)
+### T018: [P] Write Contract Test for lifecycle.SchemaManager
 
-**Description**: Write tests for cobra root command structure BEFORE implementation
+**Description**: Test that schema.Manager implements lifecycle.SchemaManager interface
 
 **Actions**:
-1. Create `cmd/gndb/root_test.go` with tests that WILL FAIL:
-   - `TestRootCommand_HasSubcommands()`: Assert root command has create, migrate, populate, restructure subcommands
-   - `TestRootCommand_ConfigFlag()`: Verify --config flag exists and binds correctly
-   - `TestRootCommand_Help()`: Assert help text includes usage examples
-   - `TestRootCommand_VersionFlag()`: Verify --version flag outputs version info
-2. Run tests and verify they FAIL: `go test ./cmd/gndb`
+1. Create `pkg/lifecycle/schema_test.go`
+2. Write contract compliance test
+3. Test MUST fail initially
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/root_test.go`
+- `/Users/dimus/code/golang/gndb/pkg/lifecycle/schema_test.go`
 
 **Success Criteria**:
-- [ ] Tests verify root command structure per plan.md
-- [ ] Tests FAIL (no implementation yet)
-- [ ] Test expectations match CLI design
+- [ ] Test exists and fails
 
-**TDD GATE**: This task MUST be completed and MUST show failing tests before T009
-
-**Parallel**: [P] - Test file only, independent
+**Parallel**: [P]
 
 ---
 
-### T009: Implement CLI Root Command and Create Subcommand
+### T019: Verify SchemaManager Implementation
 
-**Description**: Implement cobra CLI with root command and `gndb create` subcommand
+**Description**: Ensure internal/io/schema.Manager correctly implements interface
 
 **Actions**:
-1. Create `cmd/gndb/main.go`:
-   - Initialize cobra root command
-   - Add --config flag for config file path
-   - Add --version flag
-   - Set up subcommands
-2. Create `cmd/gndb/root.go`:
-   - Define `rootCmd` with cobra
-   - Add persistent flags (--config, --log-level)
-   - Load configuration using internal/io/config.Load()
-3. Create `cmd/gndb/create.go`:
-   - Define `createCmd` subcommand
-   - Add --force flag (drop existing tables)
-   - Handler logic:
-     1. Load config
-     2. Connect to database using DatabaseOperator
-     3. Generate DDL from schema models
-     4. Call CreateSchema() with force flag
-     5. Enable pg_trgm extension
-     6. Set schema version
-     7. Output success message with table count
-4. Run tests from T008 and verify they now PASS
+1. Run test from T018
+2. Verify implementation matches interface
+3. Fix any issues
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/main.go`
-- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go`
+- `/Users/dimus/code/golang/gndb/internal/io/schema/manager.go`
+
+**Success Criteria**:
+- [ ] Contract test passes
+
+**Dependencies**: T018
+
+---
+
+### T020: [P] Write Contract Test for lifecycle.Optimizer
+
+**Description**: Test that OptimizerImpl implements lifecycle.Optimizer interface
+
+**Actions**:
+1. Create `pkg/lifecycle/optimizer_test.go`
+2. Write contract compliance test
+3. Test MUST fail initially
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/pkg/lifecycle/optimizer_test.go`
+
+**Success Criteria**:
+- [ ] Test exists and fails
+
+**Parallel**: [P]
+
+---
+
+### T021: Verify Optimizer Implementation
+
+**Description**: Ensure OptimizerImpl correctly implements interface
+
+**Actions**:
+1. Run test from T020
+2. Verify implementation
+3. Fix any issues
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/internal/io/optimize/optimizer.go`
+
+**Success Criteria**:
+- [ ] Contract test passes
+
+**Dependencies**: T020
+
+---
+
+## Phase 3.3: CLI Command Updates
+
+### T022: Update create Command to Use New Interfaces
+
+**Description**: Refactor cmd/gndb/create.go to use database.Operator and lifecycle.SchemaManager
+
+**Actions**:
+1. Update imports to use pkg/database and pkg/lifecycle
+2. Replace direct GORM calls with SchemaManager.Create()
+3. Remove SetCollation call (now in SchemaManager)
+4. Remove ListTables call (delete or inline if needed)
+5. Test: `gndb create --force`
+
+**File Paths**:
 - `/Users/dimus/code/golang/gndb/cmd/gndb/create.go`
-- `/Users/dimus/code/golang/gndb/cmd/gndb/root_test.go` (update tests)
 
 **Success Criteria**:
-- [ ] `gndb --help` shows all subcommands
-- [ ] `gndb create --help` shows usage and flags
-- [ ] `gndb create` successfully creates schema in PostgreSQL
-- [ ] --force flag drops and recreates tables
-- [ ] All tests from T008 now PASS
-- [ ] Binary builds: `go build -o gndb ./cmd/gndb`
+- [ ] Uses SchemaManager interface
+- [ ] No direct GORM calls
+- [ ] Command works correctly
 
-**Dependencies**: Requires T007 (DatabaseOperator), T008 (CLI tests)
-
-**Parallel**: No (depends on T007 and T008)
+**Dependencies**: T017, T019
 
 ---
 
-### T010: Integration Test - Quickstart Scenario 1 (Create Schema)
+### T023: Update migrate Command to Use SchemaManager
 
-**Description**: Implement integration test for Quickstart Scenario 1 (create schema from empty database)
+**Description**: Refactor migrate command to use lifecycle.SchemaManager
 
 **Actions**:
-1. Create `tests/integration/create_test.go`:
-   - Use testcontainers-go to spin up PostgreSQL
-   - Create gndb.yaml config pointing to test container
-   - Execute `gndb create` CLI command
-   - Verify all 11 tables exist (data_sources, name_strings, canonicals, etc.)
-   - Verify pg_trgm extension enabled
-   - Verify schema_versions table has entry
-   - Test with --force flag (drop and recreate)
-2. Create `testdata/sample.sfga` (empty for now, will be used in T011+)
-3. Add integration test to justfile: `just test-integration`
+1. Update imports
+2. Use SchemaManager.Migrate()
+3. Test: `gndb migrate`
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/tests/integration/create_test.go`
-- `/Users/dimus/code/golang/gndb/testdata/sample.sfga` (stub)
+- `/Users/dimus/code/golang/gndb/cmd/gndb/migrate.go`
 
 **Success Criteria**:
-- [ ] Integration test spins up PostgreSQL container
-- [ ] Test executes `gndb create` and verifies schema
-- [ ] Test passes with fresh database
-- [ ] Test passes with --force flag on existing schema
-- [ ] Matches Quickstart Scenario 1 exactly
-- [ ] `just test-integration` runs successfully
+- [ ] Uses SchemaManager interface
+- [ ] Command works
 
-**Dependencies**: Requires T009 (gndb create command)
-
-**Parallel**: No (depends on T009)
+**Dependencies**: T019
 
 ---
 
-### T011: Add Environment Variable Overrides for All Config Fields
+### T024: Rename restructure → optimize, Use Optimizer Interface
 
-**Description**: Implement environment variable support in `internal/io/config/loader.go` to allow all config fields to be overridden via `GNDB_*` environment variables, satisfying Constitution Principle VI (precedence: flags > env vars > config file > defaults)
+**Description**: Rename command and use lifecycle.Optimizer interface
 
 **Actions**:
-1. Update `internal/io/config/loader.go` to add environment variable support:
-   - Import `strings` package for key replacer
-   - In `Load()` function, add after `v.SetConfigType("yaml")`:
-     ```go
-     // Enable environment variable overrides
-     v.SetEnvPrefix("GNDB")
-     v.AutomaticEnv()
-     v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-     ```
-   - This enables automatic binding of environment variables with GNDB_ prefix
-   - Nested config fields map to env vars with underscores (database.host → GNDB_DATABASE_HOST)
-
-2. Create `internal/io/config/loader_test.go` with environment variable tests:
-   - `TestLoad_EnvVarOverride_DatabaseHost()`: Set GNDB_DATABASE_HOST, verify it overrides config file
-   - `TestLoad_EnvVarOverride_NestedField()`: Set GNDB_DATABASE_MAX_CONNECTIONS, verify override
-   - `TestLoad_EnvVarOverride_ImportBatchSize()`: Set GNDB_IMPORT_BATCH_SIZE, verify override
-   - `TestLoad_EnvVarOverride_LoggingLevel()`: Set GNDB_LOGGING_LEVEL, verify override
-   - `TestLoad_PrecedenceOrder()`: Verify env var overrides config file but is overridden by flags
-   - Use `t.Setenv()` to set environment variables in tests (Go 1.17+)
-
-3. Update `pkg/config/config.go` godoc to document all supported environment variables:
-   - Add godoc section before `Config` struct listing all GNDB_* environment variables
-   - Include examples for each field type (string, int, bool, map)
-
-4. Update `cmd/gndb/root.go` to add environment variable documentation to help text:
-   - In `rootCmd.Long`, add section "Environment Variables:" listing all GNDB_* variables
-   - Include note about precedence order
+1. Rename `cmd/gndb/restructure.go` → `cmd/gndb/optimize.go`
+2. Change command name "restructure" → "optimize"
+3. Use Optimizer interface
+4. Update root.go
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/config/loader.go` (update Load function)
-- `/Users/dimus/code/golang/gndb/internal/io/config/loader_test.go` (create with env var tests)
-- `/Users/dimus/code/golang/gndb/pkg/config/config.go` (update godoc)
-- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go` (update help text)
-
-**Environment Variables to Support** (all config fields from pkg/config/config.go):
-```
-GNDB_DATABASE_HOST                     # database.host
-GNDB_DATABASE_PORT                     # database.port
-GNDB_DATABASE_USER                     # database.user
-GNDB_DATABASE_PASSWORD                 # database.password
-GNDB_DATABASE_DATABASE                 # database.database
-GNDB_DATABASE_SSL_MODE                 # database.ssl_mode
-GNDB_DATABASE_MAX_CONNECTIONS          # database.max_connections
-GNDB_DATABASE_MIN_CONNECTIONS          # database.min_connections
-GNDB_DATABASE_MAX_CONN_LIFETIME        # database.max_conn_lifetime
-GNDB_DATABASE_MAX_CONN_IDLE_TIME       # database.max_conn_idle_time
-GNDB_IMPORT_BATCH_SIZE                 # import.batch_size
-GNDB_OPTIMIZATION_CONCURRENT_INDEXES   # optimization.concurrent_indexes
-GNDB_LOGGING_LEVEL                     # logging.level
-GNDB_LOGGING_FORMAT                    # logging.format
-```
+- `/Users/dimus/code/golang/gndb/cmd/gndb/optimize.go`
+- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go`
 
 **Success Criteria**:
-- [ ] All config fields can be overridden via GNDB_* environment variables
-- [ ] Nested field naming uses underscores (database.host → GNDB_DATABASE_HOST)
-- [ ] Environment variables override config file values
-- [ ] CLI flags override environment variables (precedence maintained)
-- [ ] All tests pass: `go test ./internal/io/config`
-- [ ] Godoc documentation includes all environment variables
-- [ ] `gndb --help` shows environment variable usage
+- [ ] Command renamed
+- [ ] Uses Optimizer interface
+- [ ] `gndb optimize` available (returns "not implemented")
 
-**Dependencies**: Requires T003 (config loader implementation)
-
-**Parallel**: No (modifies existing config loader)
-
-**Constitutional Compliance**: Satisfies Principle VI (Configuration Management) - precedence order: flags > env vars > config file > defaults
-
-**Testing Strategy**:
-- Unit tests verify each environment variable works
-- Integration test verifies precedence order (flag > env > file > default)
-- Use `t.Setenv()` for isolated test environment
-
-**Example Usage After Implementation**:
-```bash
-# Override database host via environment variable
-export GNDB_DATABASE_HOST=production-db.example.com
-export GNDB_DATABASE_PASSWORD=secret123
-gndb create
-
-# CLI flag still takes highest precedence
-gndb create --host=override-db.example.com  # Uses override-db, not production-db
-```
+**Dependencies**: T021
 
 ---
 
-### T012: Generate Default Config File on First Run
+## Phase 3.4: Populator Stub
 
-**Description**: Auto-generate a documented default config file (gndb.yaml) in the appropriate platform-specific directory on first run, and display config file location when gndb executes.
+### T025: [P] Write Populator Contract Test
+
+**Description**: Test for lifecycle.Populator interface compliance
 
 **Actions**:
-1. Create `internal/io/config/generate.go` with config file generation logic:
-   - Function `GetConfigDir()` to determine platform-specific config directory:
-     * Linux/macOS: `~/.config/gndb/`
-     * Windows: `%APPDATA%\gndb\` (using `os.UserConfigDir()`)
-   - Function `GetDefaultConfigPath()` returns `<config-dir>/gndb.yaml`
-   - Function `GenerateDefaultConfig()` creates documented YAML file:
-     ```yaml
-     # GNdb Configuration File
-     # This file was auto-generated. Edit as needed.
-     #
-     # Configuration precedence (highest to lowest):
-     #   1. CLI flags (--host, --port, etc.)
-     #   2. Environment variables (GNDB_*)
-     #   3. This config file
-     #   4. Built-in defaults
-     #
-     # For all environment variables, see: go doc github.com/gnames/gndb/pkg/config
-
-     # Database connection settings
-     database:
-       host: localhost              # PostgreSQL host
-       port: 5432                   # PostgreSQL port
-       user: postgres               # PostgreSQL user
-       password: postgres           # PostgreSQL password (consider using GNDB_DATABASE_PASSWORD env var)
-       database: gnames             # Database name
-       ssl_mode: disable            # SSL mode: disable/require/verify-ca/verify-full
-
-       # Connection pool settings
-       max_connections: 20          # Maximum connections in pool
-       min_connections: 2           # Minimum connections in pool
-       max_conn_lifetime: 60        # Max connection lifetime (minutes)
-       max_conn_idle_time: 10       # Max idle time (minutes)
-
-     # Import settings
-     import:
-       batch_size: 5000             # Number of records per batch insert
-
-     # Optimization settings
-     optimization:
-       concurrent_indexes: false    # Create indexes concurrently (true for production)
-       statistics_targets:          # Statistics targets for high-cardinality columns
-         name_strings.canonical_simple: 1000
-         taxa.rank: 100
-
-     # Logging settings
-     logging:
-       level: info                  # Log level: debug/info/warn/error
-       format: text                 # Log format: json/text
-     ```
-   - Function creates parent directories if they don't exist
-
-2. Update `cmd/gndb/root.go` to auto-generate config on first run:
-   - In `PersistentPreRunE`, before calling `config.Load()`:
-     * Check if config file exists at default location
-     * If not found and no explicit `--config` flag, call `GenerateDefaultConfig()`
-     * Print message: "Generated default config at: <path>"
-   - After loading config successfully, print: "Using config from: <path>" (if from file)
-   - If using defaults (no file), print: "Using built-in defaults (no config file)"
-
-3. Create `internal/io/config/generate_test.go` with tests:
-   - `TestGetConfigDir()`: Verify correct platform-specific directory
-   - `TestGetDefaultConfigPath()`: Verify full path construction
-   - `TestGenerateDefaultConfig()`: Create temp dir, generate config, verify YAML valid
-   - `TestGenerateDefaultConfig_CreatesParentDirs()`: Verify directory creation
-   - `TestGenerateDefaultConfig_FileExists()`: Don't overwrite existing config
-
-4. Update `internal/io/config/loader.go`:
-   - Track which config source was used (file path, env vars, defaults)
-   - Return config source info for display in CLI
+1. Create `pkg/lifecycle/populator_test.go`
+2. Write contract test (will fail until implementation exists)
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/config/generate.go` (new)
-- `/Users/dimus/code/golang/gndb/internal/io/config/generate_test.go` (new)
-- `/Users/dimus/code/golang/gndb/internal/io/config/loader.go` (update to track source)
-- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go` (update to generate and display config location)
-
-**Platform-Specific Config Directories**:
-- **Linux/macOS**: `~/.config/gndb/gndb.yaml`
-- **Windows**: `%APPDATA%\gndb\gndb.yaml`
-- Use `os.UserConfigDir()` (Go 1.13+) for cross-platform compatibility
+- `/Users/dimus/code/golang/gndb/pkg/lifecycle/populator_test.go`
 
 **Success Criteria**:
-- [ ] First run of `gndb` creates config file in platform-specific directory
-- [ ] Generated config file contains all fields with documentation comments
-- [ ] Config file uses default values from `pkg/config.Defaults()`
-- [ ] Existing config files are never overwritten
-- [ ] CLI displays config file location on startup
-- [ ] CLI distinguishes between file, env vars, and built-in defaults
-- [ ] All tests pass: `go test ./internal/io/config`
-- [ ] Cross-platform tested (Linux, macOS, Windows paths)
+- [ ] Test exists and fails
 
-**Dependencies**: Requires T011 (env var support for complete config system)
-
-**Parallel**: No (enhances existing config loader)
-
-**User Experience**:
-```bash
-# First run - auto-generates config
-$ gndb create
-Generated default config at: /home/user/.config/gndb/gndb.yaml
-Using config from: /home/user/.config/gndb/gndb.yaml
-[... rest of create output ...]
-
-# Subsequent runs - uses existing config
-$ gndb create
-Using config from: /home/user/.config/gndb/gndb.yaml
-[... rest of create output ...]
-
-# Explicit config path
-$ gndb create --config custom.yaml
-Using config from: custom.yaml
-[... rest of create output ...]
-
-# Environment variables only
-$ rm ~/.config/gndb/gndb.yaml
-$ GNDB_DATABASE_HOST=prod-db gndb create
-Using built-in defaults with environment variable overrides
-[... rest of create output ...]
-```
-
-**Generated Config File Quality**:
-- YAML syntax highlighted comments explaining each field
-- Security note about password (recommend env var)
-- Reference to full documentation
-- Grouped by logical sections (database, import, optimization, logging)
-- Example values for map fields (statistics_targets)
+**Parallel**: [P]
 
 ---
 
-### T013: Create .envrc.example for direnv Integration
+### T026: Implement Populator Stub
 
-**Description**: Create an example `.envrc.example` file demonstrating how to use direnv for local development with environment variable configuration, showing all available GNDB_* variables with documentation.
+**Description**: Create basic Populator implementation structure
 
 **Actions**:
-1. Create `.envrc.example` in project root with:
-   - Header comment explaining direnv usage and setup
-   - All GNDB_* environment variables from T011 with example values
-   - Comments explaining each variable's purpose and default value
-   - Security best practices section (don't commit .envrc with secrets)
-   - Instructions for using the file:
-     ```bash
-     # 1. Install direnv: https://direnv.net/
-     # 2. Copy this file: cp .envrc.example .envrc
-     # 3. Edit .envrc with your values
-     # 4. Allow direnv: direnv allow .
-     ```
-   - Example configurations for different environments:
-     * Local development setup
-     * Testing configuration
-     * Production-like environment
-   - Note about precedence: env vars override config file but are overridden by CLI flags
-
-2. Add `.envrc` to `.gitignore` to prevent committing sensitive values
-
-3. Create documentation in `.envrc.example`:
-   ```bash
-   # GNdb Environment Configuration for direnv
-   # 
-   # This file demonstrates how to configure gndb using environment variables.
-   # direnv automatically loads these variables when you cd into this directory.
-   #
-   # Setup:
-   #   1. Install direnv: https://direnv.net/
-   #   2. Copy this file: cp .envrc.example .envrc
-   #   3. Edit .envrc with your actual values
-   #   4. Allow direnv: direnv allow .
-   #
-   # Configuration Precedence (highest to lowest):
-   #   1. CLI flags (--host, --port, etc.)
-   #   2. Environment variables (these GNDB_* vars)
-   #   3. Config file (~/.config/gndb/gndb.yaml)
-   #   4. Built-in defaults
-   #
-   # SECURITY: Never commit .envrc with real credentials!
-
-   # Database Connection Settings
-   # Override these for local development or testing
-   export GNDB_DATABASE_HOST=localhost              # Default: localhost
-   export GNDB_DATABASE_PORT=5432                   # Default: 5432
-   export GNDB_DATABASE_USER=postgres               # Default: postgres
-   export GNDB_DATABASE_PASSWORD=postgres           # Default: postgres (CHANGE IN PRODUCTION!)
-   export GNDB_DATABASE_DATABASE=gnames             # Default: gnames
-   export GNDB_DATABASE_SSL_MODE=disable            # Default: disable (use 'require' in production)
-
-   # Connection Pool Settings
-   # export GNDB_DATABASE_MAX_CONNECTIONS=20        # Default: 20
-   # export GNDB_DATABASE_MIN_CONNECTIONS=2         # Default: 2
-   # export GNDB_DATABASE_MAX_CONN_LIFETIME=60      # Default: 60 minutes
-   # export GNDB_DATABASE_MAX_CONN_IDLE_TIME=10     # Default: 10 minutes
-
-   # Import Settings
-   # export GNDB_IMPORT_BATCH_SIZE=5000             # Default: 5000 records per batch
-
-   # Optimization Settings
-   # export GNDB_OPTIMIZATION_CONCURRENT_INDEXES=false  # Default: false (set true in production)
-
-   # Logging Settings
-   # export GNDB_LOGGING_LEVEL=info                 # Default: info (options: debug, info, warn, error)
-   # export GNDB_LOGGING_FORMAT=text                # Default: text (options: text, json)
-
-   # Example Configurations:
-
-   # Local Development (PostgreSQL via Docker):
-   # export GNDB_DATABASE_HOST=localhost
-   # export GNDB_DATABASE_PORT=5432
-   # export GNDB_DATABASE_USER=gndb_dev
-   # export GNDB_DATABASE_PASSWORD=dev_password
-   # export GNDB_DATABASE_DATABASE=gndb_local
-   # export GNDB_LOGGING_LEVEL=debug
-
-   # Testing Environment:
-   # export GNDB_DATABASE_DATABASE=gndb_test
-   # export GNDB_IMPORT_BATCH_SIZE=100
-   # export GNDB_LOGGING_LEVEL=warn
-
-   # Production-like Setup:
-   # export GNDB_DATABASE_HOST=prod-db.example.com
-   # export GNDB_DATABASE_SSL_MODE=require
-   # export GNDB_DATABASE_PASSWORD=<use_secret_manager>
-   # export GNDB_OPTIMIZATION_CONCURRENT_INDEXES=true
-   # export GNDB_LOGGING_FORMAT=json
-   # export GNDB_LOGGING_LEVEL=info
-   ```
-
-4. Update `.gitignore`:
-   - Add `.envrc` entry if not already present
-   - Add comment explaining why .envrc is ignored
-
-5. Update README.md (if exists) or create docs/configuration.md:
-   - Add section on environment variable configuration
-   - Link to .envrc.example
-   - Explain direnv workflow
-   - Show example usage
+1. Create `internal/io/populate/populator.go` with stub that returns "not implemented"
+2. Run contract test
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/.envrc.example` (new)
-- `/Users/dimus/code/golang/gndb/.gitignore` (update)
-- `/Users/dimus/code/golang/gndb/README.md` or `/Users/dimus/code/golang/gndb/docs/configuration.md` (update/create)
+- `/Users/dimus/code/golang/gndb/internal/io/populate/populator.go`
 
 **Success Criteria**:
-- [ ] `.envrc.example` demonstrates all GNDB_* environment variables from T011
-- [ ] File includes clear setup instructions for direnv
-- [ ] Comments explain each variable's purpose and default value
-- [ ] Security best practices documented (don't commit secrets)
-- [ ] Example configurations provided for different environments
-- [ ] `.envrc` added to `.gitignore`
-- [ ] Documentation updated with direnv usage guide
-- [ ] Variables match exactly those implemented in T011
+- [ ] Implements interface
+- [ ] Contract test passes
+- [ ] Returns "not implemented" error
 
-**Dependencies**: Requires T011 (environment variable support must be implemented)
-
-**Parallel**: No (documents functionality from T011)
-
-**User Workflow After Implementation**:
-```bash
-# Install direnv (one-time setup)
-$ brew install direnv  # macOS
-$ sudo apt install direnv  # Ubuntu/Debian
-$ echo 'eval "$(direnv hook bash)"' >> ~/.bashrc  # Enable direnv
-
-# Set up project environment
-$ cd gndb
-$ cp .envrc.example .envrc
-$ vim .envrc  # Edit with your database credentials
-$ direnv allow .
-
-# Environment variables now auto-loaded when in project directory
-$ gndb create  # Uses GNDB_* vars from .envrc
-
-# Change environment by editing .envrc
-$ vim .envrc  # Update GNDB_DATABASE_HOST=test-db
-$ gndb create  # Uses new host automatically
-```
-
-**Benefits of direnv Integration**:
-- Automatic environment activation when entering project directory
-- No need to manually export variables
-- Per-project configuration isolation
-- Easy switching between environments (dev/test/prod)
-- Works seamlessly with the GNDB_* environment variable system from T011
-- Safer than storing credentials in config files (can use different .envrc per environment)
-
-**Documentation Quality**:
-- Inline comments explain each variable
-- Examples show common use cases
-- Security warnings prominent
-- Clear setup instructions
-- Links to direnv documentation
+**Dependencies**: T025
 
 ---
 
-### T014: Test and Verify Schema Creation Workflow
+### T027: Update populate Command to Use Populator Interface
 
-**Description**: Test the complete schema creation workflow, verify that `gndb create` works correctly, and document the prerequisite that the PostgreSQL database must be created manually before running the command.
-
-**Context**: The `gndb create` command creates tables/schema inside an existing database - it does NOT create the database itself. Users must create the database first using `createdb` or similar tools.
+**Description**: Refactor populate command to use lifecycle.Populator
 
 **Actions**:
-1. Document database creation prerequisite:
-   - Add section to README.md or docs/quickstart.md
-   - Explain that PostgreSQL database must exist before running `gndb create`
-   - Provide example: `createdb gnames_test`
-
-2. Test schema creation workflow:
-   - Create a test database: `createdb gndb_test`
-   - Set up `.envrc` with test database credentials:
-     ```bash
-     export GNDB_DATABASE_DATABASE=gndb_test
-     export GNDB_DATABASE_USER=<your_user>
-     export GNDB_DATABASE_PASSWORD=<your_password>
-     ```
-   - Run: `direnv allow .`
-   - Run: `gndb create`
-   - Verify all tables created successfully
-
-3. Verify schema contents:
-   - Connect to database: `psql gndb_test`
-   - Check tables exist: `\dt`
-   - Verify expected tables from data-model.md:
-     * data_sources
-     * name_strings
-     * canonicals
-     * canonical_fulls
-     * canonical_stems
-     * name_string_indices
-     * words
-     * word_name_strings
-     * vernacular_strings
-     * vernacular_string_indices
-     * schema_versions
-   - Verify schema_versions table has entry
-   - Note: No PostgreSQL extensions needed (fuzzy matching handled by gnmatcher)
-
-4. Test --force flag:
-   - Run: `gndb create --force`
-   - Verify it drops existing tables and recreates schema
-   - Confirm data is cleared (expected behavior)
-
-5. Document the workflow in README.md:
-   - Add "Quick Start" section with step-by-step instructions
-   - Include prerequisite: create database first
-   - Show example with .envrc or direct flags
-   - Link to full configuration documentation
+1. Update imports
+2. Use Populator interface
+3. Test: `gndb populate` (returns "not implemented")
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/README.md` (update or create)
-- `/Users/dimus/code/golang/gndb/docs/quickstart.md` (update if exists)
-- Test database: `gndb_test` (local PostgreSQL)
+- `/Users/dimus/code/golang/gndb/cmd/gndb/populate.go`
 
 **Success Criteria**:
-- [ ] Documentation clearly states database must be created before `gndb create`
-- [ ] Successfully create test database and run `gndb create`
-- [ ] All 11 tables from data-model.md are created
-- [ ] schema_versions table has entry with version "1.0.0"
-- [ ] No PostgreSQL extensions required (fuzzy matching is in gnmatcher)
-- [ ] `--force` flag successfully drops and recreates schema
-- [ ] README.md has clear quick start instructions
-- [ ] Workflow matches quickstart.md scenario 1
+- [ ] Uses interface
+- [ ] Returns clear message
 
-**Dependencies**: Requires T001-T005 (schema models and operator are already implemented)
-
-**Parallel**: No (verification and documentation task)
-
-**Prerequisites for Users**:
-```bash
-# 1. Install PostgreSQL (if not already installed)
-brew install postgresql@15  # macOS
-# or
-sudo apt install postgresql-15  # Ubuntu
-
-# 2. Start PostgreSQL service
-brew services start postgresql@15  # macOS
-# or  
-sudo systemctl start postgresql  # Ubuntu
-
-# 3. Create the database
-createdb gndb_test
-
-# 4. Configure gndb (option A: using .envrc)
-cp .envrc.example .envrc
-vim .envrc  # Edit GNDB_DATABASE_DATABASE=gndb_test
-direnv allow .
-
-# 5. Create schema
-gndb create
-```
-
-**Expected Output**:
-```
-Connected to database: myuser@localhost:5432/gndb_test
-Creating schema using GORM AutoMigrate...
-✓ Schema created successfully
-✓ Schema version set to 1.0.0
-
-Created 11 tables:
-  - canonicals
-  - canonical_fulls
-  - canonical_stems
-  - data_sources
-  - name_string_indices
-  - name_strings
-  - schema_versions
-  - vernacular_string_indices
-  - vernacular_strings
-  - word_name_strings
-  - words
-
-✓ Database schema creation complete!
-
-Next steps:
-  - Run 'gndb populate' to import data from SFGA files
-  - Run 'gndb restructure' to create indexes and optimize
-```
-
-**Testing Checklist**:
-- [ ] Test with fresh database (no existing tables)
-- [ ] Test with `--force` flag on existing schema
-- [ ] Test with different database names
-- [ ] Test with environment variables vs config file
-- [ ] Test error handling (database doesn't exist)
-- [ ] Test error handling (insufficient permissions)
-- [ ] Verify schema_versions table populated
-- [ ] Verify all foreign keys created
-- [ ] Verify all indexes created by GORM
+**Dependencies**: T026
 
 ---
 
-### T015: Test Sources.yaml Configuration Loading and Validation
+## Phase 3.5: Integration Testing
 
-**Description**: Implement comprehensive tests for the sources.yaml configuration loader in `pkg/populate/sources.go`, validating filename parsing, YAML loading, URL detection, and all validation rules per the sources-yaml-spec.md.
+### T028: Integration Test - Create Schema End-to-End
 
-**Context**: The sources.yaml configuration is the primary interface for users to specify which SFGA data sources to import. This task ensures the implementation correctly handles all supported formats, validates user input, and provides helpful error messages.
+**Description**: Test complete create workflow with new interfaces
 
 **Actions**:
-1. Create `pkg/populate/sources_test.go` with comprehensive test coverage:
-   
-   **Filename Parsing Tests** (`TestParseFilename`):
-   - Test minimal format: `1001.sql` → ID=1001, no version/date
-   - Test full format: `0001_col_2025-10-03_v1.2.3.sql` → ID=1, version=1.2.3, date=2025-10-03
-   - Test with compression: `0012_gbif_2025-01-15_v2.0.sql.zip`
-   - Test sqlite format: `1005_custom_source.sqlite`
-   - Test with path: `/path/to/data/0003_worms_2024-12-01_v3.1.4.sql.zip`
-   - Test with URL: `https://example.com/data/0025_mydata.sql`
-   - Test version without dots: `0007_source_v10.sql`
-   - Test date only: `0100_data_2025-05-01.sql`
-   
-   **URL Detection Tests** (`TestIsValidURL`):
-   - Test http URL: `http://example.com/data.sql` → true
-   - Test https URL: `https://example.com/data.sql` → true
-   - Test local path: `/path/to/file.sql` → false
-   - Test relative path: `data/file.sql` → false
-   - Test current dir: `./file.sql` → false
-   - Test just filename: `file.sql` → false
-   - Test invalid protocol: `ftp://example.com/data.sql` → false
-   
-   **Minimal Config Loading** (`TestLoadSourcesConfig_Minimal`):
-   - Create temp directory with test SFGA file `1001.sql`
-   - Create minimal YAML: `data_sources: [{file: 1001.sql}]`
-   - Verify ID extracted from filename
-   - Verify local file validation (file exists)
-   
-   **Full Config Loading** (`TestLoadSourcesConfig_FullConfig`):
-   - Test all fields: id, title, title_short, description, URLs, type, curation flags
-   - Test outlink configuration (is_outlink_ready, outlink_url, outlink_id_field)
-   - Verify all fields populated correctly
-   - Test with URL (no file existence check)
-   
-   **Multiple Data Sources** (`TestLoadSourcesConfig_MultipleDataSources`):
-   - Load config with 3 sources (2 local, 1 URL)
-   - Verify all IDs extracted correctly
-   - Verify mix of local and URL sources
-   
-   **Validation Error Tests** (`TestLoadSourcesConfig_ValidationErrors`):
-   - Missing file field → error
-   - Invalid file format (not .sql/.sqlite) → error
-   - No ID in filename and no ID in YAML → error
-   - Invalid data_source_type → error
-   - is_outlink_ready=true but no outlink_url → error
-   - outlink_url without {} placeholder → error
-   - Invalid outlink_id_field → error
-   
-   **File Not Found** (`TestLoadSourcesConfig_FileNotFound`):
-   - Attempt to load non-existent config file → error
-   
-   **Generate Example Config** (`TestGenerateExampleConfig`):
-   - Generate example sources.yaml to temp directory
-   - Verify file created successfully
-   - Verify generated YAML is valid (can be loaded)
-   - Test error when file already exists (no overwrite)
-   
-   **ID Extraction Edge Cases** (`TestIDExtraction_EdgeCases`):
-   - ID from filename only (4 digits)
-   - Leading zeros preserved: `0001_col.sql` → ID=1
-   - Four digit ID: `9999_test.sql` → ID=9999
-   - Test that ID must be in filename (not just YAML)
-
-2. Export private functions for testing:
-   - Change `parseFilename` → `ParseFilename` (exported)
-   - Change `isValidURL` → `IsValidURL` (exported)
-   - Update internal calls to use new names
-
-3. Update validation logic in `sources.go`:
-   - Ensure file format validation checks for .sql, .sqlite, .sql.zip, .sqlite.zip
-   - Ensure ID validation requires 4-digit format in filename
-   - Ensure outlink validation checks all required fields when is_outlink_ready=true
-   - Ensure data_source_type only allows "taxonomic" or "nomenclatural"
-
-4. Run test suite and fix any issues:
-   - Run: `go test ./pkg/populate -v`
-   - Fix any failing tests
-   - Ensure 100% coverage of validation logic
-   - Ensure all error messages are clear and actionable
+1. Create integration test
+2. Test: connect → create → verify tables → verify collation
+3. Use testcontainers or test database
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/populate/sources_test.go` (new - comprehensive test suite)
-- `/Users/dimus/code/golang/gndb/pkg/populate/sources.go` (update - export functions, fix validation)
+- `/Users/dimus/code/golang/gndb/cmd/gndb/create_integration_test.go`
 
 **Success Criteria**:
-- [x] All filename parsing edge cases tested (8+ test cases)
-- [x] URL detection tests cover all protocols and path types
-- [x] Minimal, full, and multiple source configs tested
-- [x] All validation errors tested with expected error messages
-- [x] Example config generation tested
-- [x] ID extraction edge cases covered (leading zeros, ranges)
-- [x] ParseFilename and IsValidURL exported and tested
-- [x] All tests pass: `go test ./pkg/populate -v`
-- [x] Test coverage > 90% for sources.go (achieved 94.4%)
-- [x] Error messages are clear and actionable
+- [ ] Integration test passes
+- [ ] Schema created correctly
 
-**Dependencies**: Requires sources.go implementation (already complete)
-
-**Parallel**: No (tests existing implementation)
-
-**Test Organization**:
-```
-pkg/populate/
-├── sources.go          # Implementation (already complete)
-└── sources_test.go     # Comprehensive test suite (new)
-```
-
-**Example Test Output**:
-```
-$ go test ./pkg/populate -v
-=== RUN   TestParseFilename
-=== RUN   TestParseFilename/minimal_format
-=== RUN   TestParseFilename/full_format_with_all_metadata
-=== RUN   TestParseFilename/with_zip_compression
-... (all test cases)
---- PASS: TestParseFilename (0.00s)
-=== RUN   TestIsValidURL
---- PASS: TestIsValidURL (0.00s)
-=== RUN   TestLoadSourcesConfig_Minimal
---- PASS: TestLoadSourcesConfig_Minimal (0.01s)
-... (all tests)
-PASS
-coverage: 95.2% of statements
-ok      github.com/gnames/gndb/pkg/populate     0.123s
-```
-
-**Validation Rules to Test**:
-1. **File field**: Required, must end with .sql/.sqlite (with optional .zip)
-2. **ID extraction**: Must be 4-digit prefix in filename OR explicit in YAML
-3. **ID format**: Must be 0000-9999 (convention: <1000 official, ≥1000 custom)
-4. **URL validation**: Only http:// and https:// protocols allowed
-5. **Local file validation**: File must exist on filesystem
-6. **data_source_type**: If provided, must be "taxonomic" or "nomenclatural"
-7. **Outlink validation**: If is_outlink_ready=true, must have outlink_url with {} and valid outlink_id_field
-8. **outlink_id_field**: Must be one of: record_id, local_id, global_id, name_id, canonical, canonical_full
-
-**Testing Best Practices**:
-- Use `t.TempDir()` for temporary directories (auto-cleanup)
-- Use `require.NoError()` for setup, `assert.Error()` for expected failures
-- Test error messages contain expected substring (not exact match)
-- Use table-driven tests for multiple similar cases
-- Create actual test files on filesystem for local file tests
-- Use real URLs for URL tests (no file existence check for URLs)
+**Dependencies**: T022
 
 ---
 
-## Task Execution Order (T006-T015)
+### T029: Integration Test - Migrate Schema
 
-```
-T006 [P] (DatabaseOperator contract tests - MUST FAIL)
-  ↓
-T007 (DatabaseOperator implementation - make tests pass)
-  ↓
-T008 [P] (CLI tests - MUST FAIL) ←┐
-  ↓                                │
-T009 (CLI root + create) ──────────┘
-  ↓
-T010 (Integration test - Scenario 1)
-  ↓
-T011 (Environment variable overrides)
-  ↓
-T012 (Generate default config file on first run)
-  ↓
-T013 (Create .envrc.example for direnv)
-  ↓
-T014 (Test and verify schema creation workflow)
-  ↓
-T015 (Test sources.yaml configuration loading)
-```
-
-## Dependencies (T006-T015)
-- T006 blocks T007 (TDD: contract tests before implementation)
-- T008 can run parallel with T006 (independent test files)
-- T007, T008 both block T009 (CLI needs database operator and tests)
-- T009 blocks T010 (integration test needs working CLI)
-- T003 blocks T011 (env var support needs config loader to exist)
-- T011 blocks T012 (config generation needs env var support complete)
-- T011 blocks T013 (envrc example needs env var implementation)
-- T011 enhances T009 (adds env var capability to existing CLI)
-- T012 enhances T009 (adds auto-generation of config files)
-- T013 documents T011 (provides direnv integration example)
-- T013 blocks T014 (testing needs .envrc setup for configuration)
-- T014 verifies T001-T013 (validates entire config and schema creation system)
-- T015 is independent (tests sources.yaml implementation - populate phase preparation)
-
----
-
-## Progress Summary
-
-**Completed** (T001-T014):
-- ✅ T001-T002: Project structure and configuration types
-- ✅ T003: Configuration loader (file + flags)
-- ✅ T004-T005: Schema models with DDL generation
-- ✅ T006-T010: Database operator and CLI (skipped - not implemented yet)
-- ✅ T011: Environment variable overrides for all config fields
-- ✅ T012: Auto-generate default config file on first run
-- ✅ T013: Create .envrc.example for direnv integration
-- ✅ T014: Test and verify schema creation workflow
-
-**Verification** (T014 - Schema Creation):
-- ✅ Database must be created manually before `gndb create` (documented)
-- ✅ All 11 tables created successfully
-- ✅ schema_versions table populated
-- ✅ --force flag works (drops and recreates)
-- ✅ README.md Quick Start added
-
-**Completed** (T015):
-- ✅ T015: Test sources.yaml configuration loading and validation
-  - Test coverage: 94.4%
-  - All validation rules tested
-  - Filename parsing, URL detection, error handling verified
-
-**After T014**:
-- Migration operations (Atlas integration)
-- SFGA import (populate phase)
-- Optimization (restructure phase)
-
----
-
-## Validation Checklist
-
-- [x] All tasks specify exact file paths
-- [x] TDD workflow enforced (tests before implementation)
-- [x] Pure/impure separation maintained
-- [x] Parallel tasks [P] are truly independent
-- [x] Tasks match plan.md and contracts/
-- [x] Integration test matches quickstart.md
-
----
-
-**Status**: Tasks T006-T012 defined. Ready for execution after T005 completion.
-
----
-
-## Phase 3.2: Logging Infrastructure
-
-### T016: Implement Structured Logging with slog
-
-**Description**: Add structured logging using Go's built-in `log/slog` package with configuration-based setup
+**Description**: Test migrate command end-to-end
 
 **Actions**:
-1. Create `pkg/logger/logger.go` with:
-   - `New(cfg *config.LoggingConfig) *slog.Logger` function that:
-     - Creates slog.TextHandler if format is "text"
-     - Creates slog.JSONHandler if format is "json"
-     - Sets log level based on cfg.Level (debug, info, warn, error)
-     - Writes to os.Stdout for structured output
-   - `ParseLevel(level string) slog.Level` helper function
-   - Default to Info level and Text format if invalid config
-
-2. Create `pkg/logger/logger_test.go` with:
-   - Test: Text format produces human-readable output
-   - Test: JSON format produces valid JSON lines
-   - Test: Log level filtering works (debug messages hidden at info level)
-   - Test: Invalid level defaults to Info
-   - Test: Invalid format defaults to Text
-   - Test: Logger includes timestamp and level in output
-
-3. Integrate into CLI (`cmd/gndb/root.go`):
-   - Initialize logger after config loading
-   - Pass logger to commands via context or command struct
-   - Replace any fmt.Printf with logger.Info/Debug calls
-   - Use logger.Error for error messages before returning errors
-
-4. Update configuration validation:
-   - Add valid level check: debug, info, warn, error (case-insensitive)
-   - Keep existing format validation: json, text
+1. Create integration test
+2. Test: create → migrate → verify
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/logger/logger.go`
-- `/Users/dimus/code/golang/gndb/pkg/logger/logger_test.go`
-- `/Users/dimus/code/golang/gndb/cmd/gndb/root.go` (update)
-- `/Users/dimus/code/golang/gndb/pkg/config/config.go` (update validation)
+- `/Users/dimus/code/golang/gndb/cmd/gndb/migrate_integration_test.go`
 
 **Success Criteria**:
-- [x] Logger respects config.LoggingConfig settings
-- [x] Text format outputs readable logs to stdout
-- [x] JSON format outputs valid JSON lines
-- [x] Log levels filter correctly (debug < info < warn < error)
-- [x] Invalid config values default gracefully
-- [x] All tests pass: `go test ./pkg/logger`
-- [x] CLI uses logger instead of fmt.Printf
-- [x] No breaking changes to existing config structure
+- [ ] Integration test passes
 
-**Parallel**: [P] - New package, minimal changes to existing code
-
-**Dependencies**: 
-- Requires T002 (config package with LoggingConfig)
-- Enhances T009 (CLI will use structured logging)
-- No database dependencies
-
-**Testing Example**:
-```go
-// Test JSON format
-cfg := &config.LoggingConfig{Level: "info", Format: "json"}
-logger := logger.New(cfg)
-// Capture output, verify valid JSON with level, timestamp, message fields
-```
-
-**Integration Notes**:
-- slog is built into Go 1.21+, no external dependencies
-- Follows Go standard library patterns
-- Structured output helps with log aggregation tools
-- Debug level useful for troubleshooting data import issues
+**Dependencies**: T023
 
 ---
 
-## Updated Task Execution Order (T001-T016)
+## Phase 3.6: Cleanup & Documentation
 
-```
-T001-T005 (Setup & Schema)
-  ↓
-T006-T010 (Database & CLI - not yet implemented)
-  ↓
-T011-T015 (Config enhancements & testing)
-  ↓
-T016 [P] (Logging - can run parallel with T017+ when added)
-```
+### T030: Remove Obsolete pkg/ Directories
 
----
-
-**Status**: Task T016 added for slog structured logging integration.
-
-
----
-
-### T017: Fix Database Tests to Use Configuration System Properly
-
-**Description**: Update database integration tests to use the full configuration loading system instead of manual environment variable reading, allowing tests to respect config.yaml and .envrc settings
+**Description**: Clean up old package structure
 
 **Actions**:
-1. Update `internal/io/database/operator_test.go`:
-   - Replace `getTestConfig()` implementation to use `internal/io/config.Load()`
-   - Load config from default location or GNDB_CONFIG_PATH env var
-   - Merge with defaults using `cfg.MergeWithDefaults()`
-   - Override database name to "gndb_test" for safety
-   - Preserve backward compatibility with environment variables through config system
-
-2. Add helper function:
-   - `loadTestConfig() *config.DatabaseConfig` that:
-     - Calls `config.Load("")` to load from default locations
-     - Handles "config not found" error gracefully (use defaults)
-     - Merges with defaults
-     - Forces database name to "gndb_test"
-     - Returns DatabaseConfig ready for testing
-
-3. Update test documentation:
-   - Document that tests use full config system
-   - Show example config.yaml for test database
-   - Show example .envrc for test database
-   - Keep Docker instructions as fallback option
-
-4. Ensure test isolation:
-   - Tests should not interfere with production config
-   - Always use "gndb_test" database regardless of config
-   - Support both config file and environment variable approaches
+1. Check `pkg/migrate/`, `pkg/restructure/` - if empty/obsolete, remove
+2. Verify no broken imports
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/database/operator_test.go` (update)
+- `/Users/dimus/code/golang/gndb/pkg/migrate/`
+- `/Users/dimus/code/golang/gndb/pkg/restructure/`
 
 **Success Criteria**:
-- [ ] Tests load config using `config.Load()` system
-- [ ] Config.yaml settings are respected (host, port, user, password)
-- [ ] Environment variables override config.yaml values
-- [ ] Database name is always forced to "gndb_test"
-- [ ] Tests pass with config from .envrc
-- [ ] Tests pass with config from config.yaml
-- [ ] Tests pass with Docker defaults (no config)
-- [ ] Test documentation updated with examples
-- [ ] All database tests pass: `go test ./internal/io/database/...`
+- [ ] Obsolete dirs removed
+- [ ] Build succeeds
 
-**Parallel**: N/A - Updates existing test file
-
-**Dependencies**:
-- Requires T003 (config loader implementation)
-- Requires T011 (environment variable support)
-- Enhances existing database operator tests
-
-**Current Issue**:
-The current `getTestConfig()` manually reads environment variables (GNDB_DATABASE_USER, GNDB_DATABASE_PASSWORD) but doesn't use the full config loading system. This means:
-- It doesn't respect config.yaml settings
-- It doesn't benefit from the precedence system (flags > env > config > defaults)
-- It duplicates config loading logic
-
-**Proposed Solution**:
-```go
-func loadTestConfig() *config.DatabaseConfig {
-	// Load config using the standard config system
-	// Empty string means use default locations
-	result, err := config.Load("")
-	
-	var cfg *config.Config
-	if err != nil {
-		// No config file found, use defaults
-		cfg = config.Defaults()
-	} else {
-		cfg = result.Config
-	}
-	
-	// Ensure defaults are merged
-	cfg.MergeWithDefaults()
-	
-	// Always use test database for safety
-	cfg.Database.Database = "gndb_test"
-	
-	return &cfg.Database
-}
-```
-
-**Testing Scenarios**:
-1. **With .envrc**: Export GNDB_DATABASE_USER and GNDB_DATABASE_PASSWORD → tests use those values
-2. **With config.yaml**: Set database.user and database.password → tests use config values
-3. **With Docker defaults**: No config, no env vars → tests use defaults (postgres/test)
-4. **Precedence test**: Set both config.yaml and env vars → env vars win
+**Dependencies**: T024, T027
 
 ---
 
-## Updated Task Execution Order (T001-T017)
+### T031: Update CLAUDE.md
 
-```
-T001-T005 (Setup & Schema)
-  ↓
-T006-T010 (Database & CLI - not yet implemented)
-  ↓
-T011-T015 (Config enhancements & testing)
-  ↓
-T016 (Logging - COMPLETED)
-  ↓
-T017 (Fix database tests to use config system properly)
-```
+**Description**: Document refactored architecture
+
+**Actions**:
+1. Run `.specify/scripts/bash/update-agent-context.sh claude`
+2. Verify architecture documented
+3. Keep under 150 lines
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/CLAUDE.md`
+
+**Success Criteria**:
+- [ ] CLAUDE.md updated
+- [ ] Architecture accurate
+- [ ] Under 150 lines
+
+**Dependencies**: T030
 
 ---
 
-**Status**: Task T017 added to fix database integration tests configuration handling.
+### T032: Verify All Tests Pass
 
+**Description**: Run complete test suite
+
+**Actions**:
+1. Run `go test ./...`
+2. Fix any failures
+3. Verify coverage >70% for core packages
+
+**Success Criteria**:
+- [ ] All tests pass
+
+**Dependencies**: T031
+
+---
+
+## Phase 3.7: Future Implementation Plans
+
+### T033: Document Populate Implementation Plan
+
+**Description**: Create plan for Populator.Populate() implementation
+
+**Actions**:
+1. Review `pkg/populate/sources.go`
+2. Document in comments:
+   - Read sources.yaml
+   - Open SFGA with sflib
+   - Transform to models
+   - Bulk insert with CopyFrom
+   - Progress logging
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/internal/io/populate/populator.go`
+
+**Success Criteria**:
+- [ ] Plan documented in comments
+- [ ] Clear next steps
+
+**Dependencies**: T027
+
+---
+
+### T034: Document Optimize Implementation Plan
+
+**Description**: Create plan for Optimizer.Optimize() implementation
+
+**Actions**:
+1. Document in comments:
+   - Drop existing indexes/views
+   - Create indexes
+   - Create materialized views
+   - Use helper methods (VacuumAnalyze, etc.)
+   - Progress logging
+
+**File Paths**:
+- `/Users/dimus/code/golang/gndb/internal/io/optimize/optimizer.go`
+
+**Success Criteria**:
+- [ ] Plan documented
+- [ ] Helper methods referenced
+
+**Dependencies**: T024
+
+---
+
+## Summary
+
+**Total Tasks**: 19 (T016-T034)
+**Parallel Tasks**: 6 (T016, T018, T020, T025 - can run contract tests together)
+**Critical Path**: T016→T017→T022→T028→T030→T031→T032
+
+**Preserved from T001-T015**:
+- Config package (100%)
+- DatabaseOperator connection logic (trimmed to 5 methods)
+- GORM models (wrapped in SchemaManager)
+- SetCollation (moved to SchemaManager)
+- Optimization methods (moved to Optimizer)
+
+**Estimated Effort**: 9-12 hours focused work
+
+**Next Major Phase** (after T034): Implement Populator and Optimizer logic
+
+---
+
+*Constitution v1.3.0 | TDD | Minimalist | Preserves working code*
