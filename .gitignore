@@ -18,3 +18,8 @@ bench*.txt
 binding/*.so
 binding/*.h
 *out
+*.bak
+*.sqlite
+*.sql
+*.sqlite-shm
+*.sqlite-wal

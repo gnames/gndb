@@ -48,18 +48,18 @@ type SourcesConfig struct {
 //   - is_curated, is_auto_curated, has_classification (optional quality flags)
 //   - outlink configuration (optional)
 type DataSourceConfig struct {
-	// File is the path or URL to the SFGA file (required).
-	// Format: {id}_{name}_{date}_v{version}.(sql|sqlite)[.zip]
-	// Examples:
-	//   - /data/0001_col_2025-10-03_v2024.1.sqlite.zip
-	//   - https://opendata.globalnames.org/sfga/latest/0001.sqlite.zip
-	//   - /data/1001.sql (minimal)
-	File string `yaml:"file"`
+	// Core identification (required)
+	// ID identifies the data source. Convention: < 1000 = official, >= 1000 = custom
+	ID int `yaml:"id"`
 
-	// Core identification
-	// ID extracted from filename, SFGA col__id, or explicit here
-	// Convention (not enforced): < 1000 = official, >= 1000 = custom
-	ID *int `yaml:"id,omitempty"`
+	// Parent is the directory or URL containing SFGA files for this source.
+	// Auto-detected: starts with http:// or https:// = URL, otherwise = directory
+	// SFGA files are matched by pattern: {4-digit-ID}*.zip or {ID}*.zip
+	// Examples:
+	//   - http://opendata.globalnames.org/sfga/latest/
+	//   - /home/user/data/sfga/
+	//   - ~/data/sfga/
+	Parent string `yaml:"parent"`
 
 	// Titles and description (override SFGA if needed)
 	Title       string `yaml:"title,omitempty"`       // Override SFGA col__title
@@ -157,30 +157,40 @@ func (c *SourcesConfig) Validate() error {
 
 // Validate checks a single data source configuration.
 func (d *DataSourceConfig) Validate() error {
-	// File is required
-	if d.File == "" {
-		return fmt.Errorf("file path is required")
+	// ID is required
+	if d.ID == 0 {
+		return fmt.Errorf("id is required")
 	}
 
-	// Check if file is URL or local path
-	isURL := IsValidURL(d.File)
+	// Parent is required
+	if d.Parent == "" {
+		return fmt.Errorf("parent directory or URL is required")
+	}
+
+	// Check if parent is URL or local directory
+	isURL := IsValidURL(d.Parent)
 
 	if !isURL {
-		// For local files, check if file exists
-		if _, err := os.Stat(d.File); os.IsNotExist(err) {
-			return fmt.Errorf("file does not exist: %s", d.File)
+		// For local directories, expand ~ if needed
+		parentPath := d.Parent
+		if strings.HasPrefix(parentPath, "~/") {
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("failed to expand ~: %w", err)
+			}
+			parentPath = filepath.Join(homeDir, parentPath[2:])
 		}
-	}
 
-	// Extract metadata from filename
-	metadata := ParseFilename(d.File)
-
-	// Extract or validate ID
-	if d.ID == nil {
-		if metadata.ID > 0 {
-			d.ID = &metadata.ID
-		} else {
-			return fmt.Errorf("cannot extract ID from filename '%s': must provide 'id' in YAML or use standard filename format", filepath.Base(d.File))
+		// Check if directory exists
+		stat, err := os.Stat(parentPath)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("parent directory does not exist: %s", d.Parent)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to check parent directory: %w", err)
+		}
+		if !stat.IsDir() {
+			return fmt.Errorf("parent path is not a directory: %s", d.Parent)
 		}
 	}
 
@@ -298,7 +308,7 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 	if filter == "main" {
 		var filtered []DataSourceConfig
 		for _, src := range sources {
-			if src.ID != nil && *src.ID < 1000 {
+			if src.ID < 1000 {
 				filtered = append(filtered, src)
 			}
 		}
@@ -309,7 +319,7 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 	if filter == "exclude main" {
 		var filtered []DataSourceConfig
 		for _, src := range sources {
-			if src.ID != nil && *src.ID >= 1000 {
+			if src.ID >= 1000 {
 				filtered = append(filtered, src)
 			}
 		}
@@ -330,7 +340,7 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 
 	var filtered []DataSourceConfig
 	for _, src := range sources {
-		if src.ID != nil && requestedIDs[*src.ID] {
+		if requestedIDs[src.ID] {
 			filtered = append(filtered, src)
 		}
 	}

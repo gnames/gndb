@@ -139,20 +139,21 @@ func TestIsValidURL(t *testing.T) {
 }
 
 func TestLoadSourcesConfig_Minimal(t *testing.T) {
-	// Create a temporary test file
+	// Create a temporary test directory
 	tmpDir, err := os.MkdirTemp("", "sources-test-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	// Create test SFGA file
-	sfgaPath := filepath.Join(tmpDir, "1001.sql")
-	err = os.WriteFile(sfgaPath, []byte("-- test sql"), 0644)
+	// Create parent directory for SFGA files
+	parentDir := filepath.Join(tmpDir, "sfga")
+	err = os.MkdirAll(parentDir, 0755)
 	require.NoError(t, err)
 
 	// Create minimal YAML config
 	yamlContent := fmt.Sprintf(`data_sources:
-  - file: %s
-`, sfgaPath)
+  - id: 1001
+    parent: %s
+`, parentDir)
 
 	configPath := filepath.Join(tmpDir, "sources.yaml")
 	err = os.WriteFile(configPath, []byte(yamlContent), 0644)
@@ -164,14 +165,14 @@ func TestLoadSourcesConfig_Minimal(t *testing.T) {
 	require.Len(t, config.DataSources, 1)
 
 	ds := config.DataSources[0]
-	assert.Equal(t, sfgaPath, ds.File)
-	assert.Equal(t, 1001, *ds.ID)
+	assert.Equal(t, parentDir, ds.Parent)
+	assert.Equal(t, 1001, ds.ID)
 }
 
 func TestLoadSourcesConfig_FullConfig(t *testing.T) {
 	yamlContent := `data_sources:
-  - file: https://example.com/data/0001_col_2025-10-03_v1.2.3.sql.zip
-    id: 1
+  - id: 1
+    parent: https://example.com/data/
     title: Catalogue of Life
     title_short: CoL
     description: Global taxonomic backbone
@@ -198,8 +199,8 @@ func TestLoadSourcesConfig_FullConfig(t *testing.T) {
 	require.Len(t, config.DataSources, 1)
 
 	ds := config.DataSources[0]
-	assert.Equal(t, "https://example.com/data/0001_col_2025-10-03_v1.2.3.sql.zip", ds.File)
-	assert.Equal(t, 1, *ds.ID)
+	assert.Equal(t, "https://example.com/data/", ds.Parent)
+	assert.Equal(t, 1, ds.ID)
 	assert.Equal(t, "Catalogue of Life", ds.Title)
 	assert.Equal(t, "CoL", ds.TitleShort)
 	assert.Equal(t, "Global taxonomic backbone", ds.Description)
@@ -215,26 +216,29 @@ func TestLoadSourcesConfig_FullConfig(t *testing.T) {
 }
 
 func TestLoadSourcesConfig_MultipleDataSources(t *testing.T) {
-	// Create temporary directory and test files
+	// Create temporary directory and parent directories
 	tmpDir, err := os.MkdirTemp("", "sources-test-*")
 	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
-	// Create test SFGA files
-	file1 := filepath.Join(tmpDir, "0001_col.sql")
-	file2 := filepath.Join(tmpDir, "0002_gbif.sql")
-	err = os.WriteFile(file1, []byte("-- test sql"), 0644)
+	// Create parent directories
+	parent1 := filepath.Join(tmpDir, "parent1")
+	parent2 := filepath.Join(tmpDir, "parent2")
+	err = os.MkdirAll(parent1, 0755)
 	require.NoError(t, err)
-	err = os.WriteFile(file2, []byte("-- test sql"), 0644)
+	err = os.MkdirAll(parent2, 0755)
 	require.NoError(t, err)
 
 	yamlContent := fmt.Sprintf(`data_sources:
-  - file: %s
+  - id: 1
+    parent: %s
     title: Catalogue of Life
-  - file: %s
+  - id: 2
+    parent: %s
     title: GBIF Backbone
-  - file: https://example.com/1001_custom.sql
-`, file1, file2)
+  - id: 1001
+    parent: https://example.com/sfga/
+`, parent1, parent2)
 
 	configPath := filepath.Join(tmpDir, "sources.yaml")
 	err = os.WriteFile(configPath, []byte(yamlContent), 0644)
@@ -244,9 +248,9 @@ func TestLoadSourcesConfig_MultipleDataSources(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, config.DataSources, 3)
 
-	assert.Equal(t, 1, *config.DataSources[0].ID)
-	assert.Equal(t, 2, *config.DataSources[1].ID)
-	assert.Equal(t, 1001, *config.DataSources[2].ID)
+	assert.Equal(t, 1, config.DataSources[0].ID)
+	assert.Equal(t, 2, config.DataSources[1].ID)
+	assert.Equal(t, 1001, config.DataSources[2].ID)
 }
 
 func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
@@ -257,36 +261,33 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 		expectedErr  string
 	}{
 		{
-			name: "missing file",
-			yamlTemplate: `data_sources:
-  - id: 1
+			name: "missing id",
+			setupFunc: func(tmpDir string) string {
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
+				return fmt.Sprintf(`data_sources:
+  - parent: %s
     title: Test
-`,
+`, parentDir)
+			},
+			expectedErr: "id is required",
+		},
+		{
+			name: "missing parent",
 			setupFunc: func(tmpDir string) string {
 				return `data_sources:
   - id: 1
     title: Test
 `
 			},
-			expectedErr: "file path is required",
+			expectedErr: "parent directory or URL is required",
 		},
 		{
-			name: "no ID in filename",
-			setupFunc: func(tmpDir string) string {
-				// Create file without ID in name
-				testFile := filepath.Join(tmpDir, "noID.sql")
-				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
-				return fmt.Sprintf(`data_sources:
-  - file: %s
-`, testFile)
-			},
-			expectedErr: "cannot extract ID",
-		},
-		{
-			name: "file does not exist",
+			name: "parent directory does not exist",
 			setupFunc: func(tmpDir string) string {
 				return fmt.Sprintf(`data_sources:
-  - file: %s/nonexistent_0001.sql
+  - id: 1
+    parent: %s/nonexistent
 `, tmpDir)
 			},
 			expectedErr: "does not exist",
@@ -294,51 +295,55 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 		{
 			name: "invalid data_source_type",
 			setupFunc: func(tmpDir string) string {
-				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
 				return fmt.Sprintf(`data_sources:
-  - file: %s
+  - id: 1
+    parent: %s
     data_source_type: invalid
-`, testFile)
+`, parentDir)
 			},
 			expectedErr: "invalid data_source_type",
 		},
 		{
 			name: "outlink_ready without outlink_url",
 			setupFunc: func(tmpDir string) string {
-				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
 				return fmt.Sprintf(`data_sources:
-  - file: %s
+  - id: 1
+    parent: %s
     is_outlink_ready: true
-`, testFile)
+`, parentDir)
 			},
 			expectedErr: "outlink_url is required",
 		},
 		{
 			name: "outlink_url without placeholder",
 			setupFunc: func(tmpDir string) string {
-				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
 				return fmt.Sprintf(`data_sources:
-  - file: %s
+  - id: 1
+    parent: %s
     is_outlink_ready: true
     outlink_url: "https://example.com/taxon/123"
-`, testFile)
+`, parentDir)
 			},
 			expectedErr: "must contain {} placeholder",
 		},
 		{
 			name: "invalid outlink_id_field",
 			setupFunc: func(tmpDir string) string {
-				testFile := filepath.Join(tmpDir, "0001_test.sql")
-				_ = os.WriteFile(testFile, []byte("-- test"), 0644)
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
 				return fmt.Sprintf(`data_sources:
-  - file: %s
+  - id: 1
+    parent: %s
     is_outlink_ready: true
     outlink_url: "https://example.com/taxon/{}"
     outlink_id_field: "invalid_field"
-`, testFile)
+`, parentDir)
 			},
 			expectedErr: "invalid outlink_id_field",
 		},
@@ -404,8 +409,8 @@ func TestFilterSources(t *testing.T) {
 	// Helper to create test sources
 	createSource := func(id int) populate.DataSourceConfig {
 		return populate.DataSourceConfig{
-			ID:   &id,
-			File: fmt.Sprintf("%04d_test.sql", id),
+			ID:     id,
+			Parent: "https://example.com/sfga/",
 		}
 	}
 
@@ -493,7 +498,7 @@ func TestFilterSources(t *testing.T) {
 
 				actualIDs := make([]int, len(filtered))
 				for i, src := range filtered {
-					actualIDs[i] = *src.ID
+					actualIDs[i] = src.ID
 				}
 				assert.Equal(t, tt.expectedIDs, actualIDs)
 			}
@@ -501,36 +506,32 @@ func TestFilterSources(t *testing.T) {
 	}
 }
 
-func TestIDExtraction_EdgeCases(t *testing.T) {
+func TestParentPath_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name        string
-		filename    string
-		expectedID  int
+		id          int
+		parentPath  string
 		expectError bool
+		errorMsg    string
 	}{
 		{
-			name:        "ID from filename only",
-			filename:    "0123_data.sql",
-			expectedID:  123,
+			name:        "valid local directory",
+			id:          123,
+			parentPath:  "",
 			expectError: false,
 		},
 		{
-			name:        "ID from yaml only (should fail - need ID in filename)",
-			filename:    "data_source.sql",
-			expectedID:  0,
+			name:        "valid URL",
+			id:          1,
+			parentPath:  "https://example.com/sfga/",
+			expectError: false,
+		},
+		{
+			name:        "nonexistent directory",
+			id:          1,
+			parentPath:  "/nonexistent/path/to/sfga",
 			expectError: true,
-		},
-		{
-			name:        "leading zeros preserved in filename",
-			filename:    "0001_col.sql",
-			expectedID:  1,
-			expectError: false,
-		},
-		{
-			name:        "four digit ID",
-			filename:    "9999_test.sql",
-			expectedID:  9999,
-			expectError: false,
+			errorMsg:    "does not exist",
 		},
 	}
 
@@ -540,15 +541,19 @@ func TestIDExtraction_EdgeCases(t *testing.T) {
 			require.NoError(t, err)
 			defer os.RemoveAll(tmpDir)
 
-			// Create the SFGA file
-			sfgaPath := filepath.Join(tmpDir, tt.filename)
-			err = os.WriteFile(sfgaPath, []byte("-- test sql"), 0644)
-			require.NoError(t, err)
+			// Create parent directory if needed for local path test
+			parentPath := tt.parentPath
+			if parentPath == "" {
+				parentPath = filepath.Join(tmpDir, "parent")
+				err = os.MkdirAll(parentPath, 0755)
+				require.NoError(t, err)
+			}
 
 			// Create config YAML
 			yamlContent := fmt.Sprintf(`data_sources:
-  - file: %s
-`, sfgaPath)
+  - id: %d
+    parent: %s
+`, tt.id, parentPath)
 
 			configPath := filepath.Join(tmpDir, "sources.yaml")
 			err = os.WriteFile(configPath, []byte(yamlContent), 0644)
@@ -557,10 +562,14 @@ func TestIDExtraction_EdgeCases(t *testing.T) {
 			config, err := populate.LoadSourcesConfig(configPath)
 			if tt.expectError {
 				assert.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				}
 			} else {
 				require.NoError(t, err)
 				require.Len(t, config.DataSources, 1)
-				assert.Equal(t, tt.expectedID, *config.DataSources[0].ID)
+				assert.Equal(t, tt.id, config.DataSources[0].ID)
+				assert.Equal(t, parentPath, config.DataSources[0].Parent)
 			}
 		})
 	}

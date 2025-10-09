@@ -1,7 +1,7 @@
 # Tasks: Populator Implementation
 
 **Feature Branch**: `001-gnverifier-db-lifecycle`
-**Status**: In Progress (T034-T035 Complete)
+**Status**: In Progress (T034-T037 Complete)
 **Prerequisites**: T001-T033 complete (interfaces, contracts, CLI wiring)
 
 **Context**:
@@ -101,7 +101,7 @@
 
 ## Phase 4.3: SFGA Fetching & Opening
 
-### T037: [P] Implement SFGA Fetcher Wrapper
+### T037: [P] Implement SFGA Fetcher Wrapper ✅
 
 **Description**: Create wrapper around sflib Archive.Fetch
 
@@ -122,10 +122,10 @@
 - `/Users/dimus/code/golang/gndb/internal/io/populate/sfga_test.go` (new)
 
 **Success Criteria**:
-- [ ] fetchSFGA handles local files
-- [ ] fetchSFGA handles URLs
-- [ ] openSFGA returns valid db handle
-- [ ] Unit tests pass
+- [x] fetchSFGA handles local files
+- [x] fetchSFGA handles URLs
+- [x] openSFGA returns valid db handle
+- [x] Unit tests pass
 
 **Dependencies**: T034
 
@@ -545,14 +545,14 @@
 ## Summary
 
 **Total Tasks**: 18 (T034-T051)
-**Completed**: 3 (T034 ✅, T035 ✅, T036 ✅)
+**Completed**: 4 (T034 ✅, T035 ✅, T036 ✅, T037 ✅)
 **Parallel Tasks**: 10 (T034, T035, T037, T038, T040, T042, T044, T046, T050, T051)
 **Critical Path**: T034→T036→T037→T039→T041→T043→T045→T047→T048→T049→T050
 
 **Phase Breakdown**:
 - Phase 4.1: Cache Setup (T034) - 1 task [P] ✅
 - Phase 4.2: Sources Config (T035-T036) - 2 tasks, 1 [P] ✅
-- Phase 4.3: SFGA Fetching (T037) - 1 task [P]
+- Phase 4.3: SFGA Fetching (T037) - 1 task [P] ✅
 - Phase 4.4: Name Strings (T038-T039) - 2 tasks, 1 [P]
 - Phase 4.5: Hierarchy (T040-T041) - 2 tasks, 1 [P]
 - Phase 4.6: Name Indices (T042-T043) - 2 tasks, 1 [P]
@@ -561,7 +561,7 @@
 - Phase 4.9: Orchestration (T048) - 1 task
 - Phase 4.10: Testing & Docs (T049-T051) - 3 tasks, 2 [P]
 
-**Estimated Effort**: 13-17 hours focused work (3 tasks complete)
+**Estimated Effort**: 13-17 hours focused work (4 tasks complete)
 
 **Key Patterns**:
 - TDD: Integration tests before implementation
@@ -570,9 +570,9 @@
 - Reference implementation: github.com/sfborg/to-gn patterns
 
 **Next Steps**:
-1. T036: Wire CLI filtering flags to populate command
-2. T037: Implement SFGA fetcher wrapper
-3. Continue through phases 4.4-4.9 (name strings, hierarchy, indices, vernaculars, metadata)
+1. T038: Write Integration Test for Name Strings Import
+2. T039: Implement Name Strings Processing
+3. Continue through phases 4.5-4.9 (hierarchy, indices, vernaculars, metadata)
 4. T048: Wire all phases in main Populate() orchestration
 5. T049-T051: End-to-end testing and documentation
 
