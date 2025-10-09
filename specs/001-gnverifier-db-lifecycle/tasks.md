@@ -61,58 +61,23 @@
 
 ## Phase 3.7: Future Implementation Plans
 
-### T033: Document Populate Implementation Plan
+### T033: Document Populate Implementation Plan ✅
 
-**Description**: Create plan for Populator.Populate() implementation
-
-**Actions**:
-1. Review `pkg/populate/sources.go`
-2. Document in comments:
-   - Read sources.yaml
-   - Open SFGA with sflib
-   - Transform to models
-   - Bulk insert with CopyFrom
-   - Progress logging
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/populate/populator.go`
-
-**Success Criteria**:
-- [ ] Plan documented in comments
-- [ ] Clear next steps
-
-**Dependencies**: T027
-
----
-
-### T034: Document Optimize Implementation Plan
-
-**Description**: Create plan for Optimizer.Optimize() implementation
-
-**Actions**:
-1. Document in comments:
-   - Drop existing indexes/views
-   - Create indexes
-   - Create materialized views
-   - Use helper methods (VacuumAnalyze, etc.)
-   - Progress logging
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/optimize/optimizer.go`
-
-**Success Criteria**:
-- [ ] Plan documented
-- [ ] Helper methods referenced
-
-**Dependencies**: T024
-
----
 
 ## Summary
 
-**Total Tasks**: 19 (T016-T034)
-**Parallel Tasks**: 6 (T016, T018, T020, T025 - can run contract tests together)
-**Critical Path**: T016→T017→T022→T028→T030→T031→T032
+**Total Tasks**: 18 (T016-T033)
+**Status**: Phase 3 Complete ✅
+**Parallel Tasks**: 6 (T016, T018, T020, T025 - contract tests)
+**Critical Path**: T016→T017→T022→T028→T030→T031→T032→T033
+
+**Completed Work**:
+- Interface architecture refactored (DatabaseOperator, SchemaManager, Optimizer, Populator)
+- Contract tests for all interfaces
+- CLI commands wired to new interfaces
+- Integration tests for create and migrate workflows
+- Comprehensive populate implementation plan documented
+- Config/cache infrastructure unified across platforms
 
 **Preserved from T001-T015**:
 - Config package (100%)
@@ -121,9 +86,8 @@
 - SetCollation (moved to SchemaManager)
 - Optimization methods (moved to Optimizer)
 
-**Estimated Effort**: 9-12 hours focused work
-
-**Next Major Phase** (after T034): Implement Populator and Optimizer logic
+**Next Major Phase**: Implement Populator logic following documented plan
+- Optimizer implementation plan postponed until after Populator (requirements may evolve)
 
 ---
 

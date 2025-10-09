@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/gnames/gndb/pkg/templates"
@@ -13,42 +12,34 @@ import (
 
 func TestGetConfigDir(t *testing.T) {
 	tempHome := t.TempDir()
-	if runtime.GOOS == "windows" {
-		t.Setenv("APPDATA", tempHome)
-	} else {
-		t.Setenv("HOME", tempHome)
-	}
+	t.Setenv("HOME", tempHome)
 
 	configDir, err := GetConfigDir()
 	require.NoError(t, err)
 
-	var expectedDir string
-	if runtime.GOOS == "windows" {
-		expectedDir = filepath.Join(tempHome, "gndb")
-	} else {
-		expectedDir = filepath.Join(tempHome, ".config", "gndb")
-	}
-
+	expectedDir := filepath.Join(tempHome, ".config", "gndb")
 	assert.Equal(t, expectedDir, configDir)
+}
+
+func TestGetCacheDir(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
+	cacheDir, err := GetCacheDir()
+	require.NoError(t, err)
+
+	expectedDir := filepath.Join(tempHome, ".cache", "gndb")
+	assert.Equal(t, expectedDir, cacheDir)
 }
 
 func TestGetDefaultConfigPath(t *testing.T) {
 	tempHome := t.TempDir()
-	if runtime.GOOS == "windows" {
-		t.Setenv("APPDATA", tempHome)
-	} else {
-		t.Setenv("HOME", tempHome)
-	}
+	t.Setenv("HOME", tempHome)
 
 	configPath, err := GetDefaultConfigPath()
 	require.NoError(t, err)
 
-	var expectedDir string
-	if runtime.GOOS == "windows" {
-		expectedDir = filepath.Join(tempHome, "gndb")
-	} else {
-		expectedDir = filepath.Join(tempHome, ".config", "gndb")
-	}
+	expectedDir := filepath.Join(tempHome, ".config", "gndb")
 	expectedPath := filepath.Join(expectedDir, "config.yaml")
 
 	assert.Equal(t, expectedPath, configPath)
@@ -57,11 +48,7 @@ func TestGetDefaultConfigPath(t *testing.T) {
 
 func TestGenerateDefaultConfig(t *testing.T) {
 	tempHome := t.TempDir()
-	if runtime.GOOS == "windows" {
-		t.Setenv("APPDATA", tempHome)
-	} else {
-		t.Setenv("HOME", tempHome)
-	}
+	t.Setenv("HOME", tempHome)
 
 	t.Run("creates config and sources files", func(t *testing.T) {
 		configPath, err := GenerateDefaultConfig()
@@ -140,11 +127,7 @@ func TestGenerateDefaultConfig(t *testing.T) {
 
 func TestConfigFileExists(t *testing.T) {
 	tempHome := t.TempDir()
-	if runtime.GOOS == "windows" {
-		t.Setenv("APPDATA", tempHome)
-	} else {
-		t.Setenv("HOME", tempHome)
-	}
+	t.Setenv("HOME", tempHome)
 
 	// Case 1: File does not exist
 	exists, err := ConfigFileExists()

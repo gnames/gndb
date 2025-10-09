@@ -27,21 +27,42 @@ func TestParseFilename(t *testing.T) {
 			expectedDate:    "",
 		},
 		{
-			name:            "full format with all metadata",
-			filename:        "0001_col_2025-10-03_v1.2.3.sql",
+			name:            "full format with version prefix",
+			filename:        "0001_col_2025-10-03_v2024.1.sql",
 			expectedID:      1,
-			expectedVersion: "1.2.3",
+			expectedVersion: "v2024.1",
 			expectedDate:    "2025-10-03",
 		},
 		{
-			name:            "with zip compression",
-			filename:        "0012_gbif_2025-01-15_v2.0.sql.zip",
-			expectedID:      12,
-			expectedVersion: "2.0",
-			expectedDate:    "2025-01-15",
+			name:            "version matching date (common pattern)",
+			filename:        "0002_gbif_2024-12-15_2024-12-15.sql.zip",
+			expectedID:      2,
+			expectedVersion: "2024-12-15",
+			expectedDate:    "2024-12-15",
 		},
 		{
-			name:            "sqlite format",
+			name:            "date only, no version",
+			filename:        "0003_worms_2025-01-01.sqlite",
+			expectedID:      3,
+			expectedVersion: "",
+			expectedDate:    "2025-01-01",
+		},
+		{
+			name:            "complex version string",
+			filename:        "0004_itis_2025-02-01_v2025.1-beta.3.sql.zip",
+			expectedID:      4,
+			expectedVersion: "v2025.1-beta.3",
+			expectedDate:    "2025-02-01",
+		},
+		{
+			name:            "version with underscores",
+			filename:        "0005_ncbi_2025-03-15_2025_03_15.sqlite",
+			expectedID:      5,
+			expectedVersion: "2025_03_15",
+			expectedDate:    "2025-03-15",
+		},
+		{
+			name:            "sqlite format no date",
 			filename:        "1005_custom_source.sqlite",
 			expectedID:      1005,
 			expectedVersion: "",
@@ -49,31 +70,38 @@ func TestParseFilename(t *testing.T) {
 		},
 		{
 			name:            "with path",
-			filename:        "/path/to/data/0003_worms_2024-12-01_v3.1.4.sql.zip",
-			expectedID:      3,
-			expectedVersion: "3.1.4",
+			filename:        "/path/to/data/0006_worms_2024-12-01_v3.1.4.sql.zip",
+			expectedID:      6,
+			expectedVersion: "v3.1.4",
 			expectedDate:    "2024-12-01",
 		},
 		{
 			name:            "with URL",
 			filename:        "https://example.com/data/0025_mydata_2025-03-20_v1.0.sqlite.zip",
 			expectedID:      25,
-			expectedVersion: "1.0",
+			expectedVersion: "v1.0",
 			expectedDate:    "2025-03-20",
 		},
 		{
-			name:            "version without dots",
-			filename:        "0007_source_v10.sql",
-			expectedID:      7,
-			expectedVersion: "10",
-			expectedDate:    "",
-		},
-		{
-			name:            "date only",
+			name:            "date only with path",
 			filename:        "0100_data_2025-05-01.sql",
 			expectedID:      100,
 			expectedVersion: "",
 			expectedDate:    "2025-05-01",
+		},
+		{
+			name:            "version without v prefix",
+			filename:        "0007_source_2025-01-01_2025.1.sql",
+			expectedID:      7,
+			expectedVersion: "2025.1",
+			expectedDate:    "2025-01-01",
+		},
+		{
+			name:            "arbitrary version string",
+			filename:        "0008_test_2025-01-01_release-candidate-3.sql",
+			expectedID:      8,
+			expectedVersion: "release-candidate-3",
+			expectedDate:    "2025-01-01",
 		},
 	}
 
@@ -370,6 +398,205 @@ func TestGenerateExampleConfig_FileExists(t *testing.T) {
 	err = populate.GenerateExampleConfig(tmpfile.Name())
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already exists")
+}
+
+func TestFilterSources(t *testing.T) {
+	// Helper to create test sources
+	createSource := func(id int) populate.DataSourceConfig {
+		return populate.DataSourceConfig{
+			ID:   &id,
+			File: fmt.Sprintf("%04d_test.sql", id),
+		}
+	}
+
+	sources := []populate.DataSourceConfig{
+		createSource(1),
+		createSource(5),
+		createSource(10),
+		createSource(100),
+		createSource(1000),
+		createSource(1001),
+		createSource(2000),
+	}
+
+	tests := []struct {
+		name        string
+		filter      string
+		expectedIDs []int
+		expectError bool
+	}{
+		{
+			name:        "empty filter returns all",
+			filter:      "",
+			expectedIDs: []int{1, 5, 10, 100, 1000, 1001, 2000},
+			expectError: false,
+		},
+		{
+			name:        "main filter returns ID < 1000",
+			filter:      "main",
+			expectedIDs: []int{1, 5, 10, 100},
+			expectError: false,
+		},
+		{
+			name:        "exclude main returns ID >= 1000",
+			filter:      "exclude main",
+			expectedIDs: []int{1000, 1001, 2000},
+			expectError: false,
+		},
+		{
+			name:        "single ID",
+			filter:      "5",
+			expectedIDs: []int{5},
+			expectError: false,
+		},
+		{
+			name:        "comma-separated IDs",
+			filter:      "1,10,1001",
+			expectedIDs: []int{1, 10, 1001},
+			expectError: false,
+		},
+		{
+			name:        "comma-separated with spaces",
+			filter:      "5, 100, 2000",
+			expectedIDs: []int{5, 100, 2000},
+			expectError: false,
+		},
+		{
+			name:        "non-existent ID returns empty",
+			filter:      "9999",
+			expectedIDs: []int{},
+			expectError: false,
+		},
+		{
+			name:        "invalid ID format",
+			filter:      "abc",
+			expectedIDs: nil,
+			expectError: true,
+		},
+		{
+			name:        "mixed valid and invalid",
+			filter:      "1,invalid,5",
+			expectedIDs: nil,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filtered, err := populate.FilterSources(sources, tt.filter)
+
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Len(t, filtered, len(tt.expectedIDs))
+
+				actualIDs := make([]int, len(filtered))
+				for i, src := range filtered {
+					actualIDs[i] = *src.ID
+				}
+				assert.Equal(t, tt.expectedIDs, actualIDs)
+			}
+		})
+	}
+}
+
+func TestValidateOverrideFlags(t *testing.T) {
+	createSource := func(id int) populate.DataSourceConfig {
+		return populate.DataSourceConfig{
+			ID:   &id,
+			File: fmt.Sprintf("%04d_test.sql", id),
+		}
+	}
+
+	tests := []struct {
+		name              string
+		sources           []populate.DataSourceConfig
+		hasReleaseVersion bool
+		hasReleaseDate    bool
+		expectError       bool
+		errorContains     string
+	}{
+		{
+			name:              "no sources, no flags - OK",
+			sources:           []populate.DataSourceConfig{},
+			hasReleaseVersion: false,
+			hasReleaseDate:    false,
+			expectError:       false,
+		},
+		{
+			name:              "single source, no flags - OK",
+			sources:           []populate.DataSourceConfig{createSource(1)},
+			hasReleaseVersion: false,
+			hasReleaseDate:    false,
+			expectError:       false,
+		},
+		{
+			name:              "single source, release-version flag - OK",
+			sources:           []populate.DataSourceConfig{createSource(1)},
+			hasReleaseVersion: true,
+			hasReleaseDate:    false,
+			expectError:       false,
+		},
+		{
+			name:              "single source, release-date flag - OK",
+			sources:           []populate.DataSourceConfig{createSource(1)},
+			hasReleaseVersion: false,
+			hasReleaseDate:    true,
+			expectError:       false,
+		},
+		{
+			name:              "single source, both flags - OK",
+			sources:           []populate.DataSourceConfig{createSource(1)},
+			hasReleaseVersion: true,
+			hasReleaseDate:    true,
+			expectError:       false,
+		},
+		{
+			name:              "multiple sources, no flags - OK",
+			sources:           []populate.DataSourceConfig{createSource(1), createSource(2)},
+			hasReleaseVersion: false,
+			hasReleaseDate:    false,
+			expectError:       false,
+		},
+		{
+			name:              "multiple sources, release-version flag - ERROR",
+			sources:           []populate.DataSourceConfig{createSource(1), createSource(2), createSource(3)},
+			hasReleaseVersion: true,
+			hasReleaseDate:    false,
+			expectError:       true,
+			errorContains:     "cannot use --release-version flag with multiple sources (3 sources selected)",
+		},
+		{
+			name:              "multiple sources, release-date flag - ERROR",
+			sources:           []populate.DataSourceConfig{createSource(1), createSource(2)},
+			hasReleaseVersion: false,
+			hasReleaseDate:    true,
+			expectError:       true,
+			errorContains:     "cannot use --release-date flag with multiple sources (2 sources selected)",
+		},
+		{
+			name:              "multiple sources, both flags - ERROR (release-version checked first)",
+			sources:           []populate.DataSourceConfig{createSource(1), createSource(2)},
+			hasReleaseVersion: true,
+			hasReleaseDate:    true,
+			expectError:       true,
+			errorContains:     "cannot use --release-version flag with multiple sources",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := populate.ValidateOverrideFlags(tt.sources, tt.hasReleaseVersion, tt.hasReleaseDate)
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorContains)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestIDExtraction_EdgeCases(t *testing.T) {

@@ -221,15 +221,24 @@ func (d *DataSourceConfig) Validate() error {
 }
 
 // ParseFilename extracts metadata from SFGA filename.
-// Expected format: {id}_{name}_{date}_v{version}.(sql|sqlite)[.zip]
+// Expected format: {id}_{name}_{date}_{version}.(sql|sqlite)[.zip]
 // Examples:
-//   - 0001_col_2025-10-03_v2024.1.sqlite.zip
-//   - 1001.sql (minimal)
+//   - 0001_col_2025-10-03_v2024.1.sqlite.zip  → ID=1, Date=2025-10-03, Version=v2024.1
+//   - 0002_gbif_2024-12-15_2024-12-15.sql.zip → ID=2, Date=2024-12-15, Version=2024-12-15
+//   - 0003_worms_2025-01-01.sqlite            → ID=3, Date=2025-01-01, Version=""
+//   - 1001.sql                                 → ID=1001, Date="", Version=""
+//
+// Version extraction rules:
+//   - If release date is last segment before extension: no version
+//   - If underscore + text after date: everything until .sql|.sqlite is version
 func ParseFilename(path string) FileMetadata {
 	var metadata FileMetadata
 
 	// Get filename without directory
 	filename := filepath.Base(path)
+
+	// Strip .zip extension if present
+	filename = strings.TrimSuffix(filename, ".zip")
 
 	// Extract ID (first 4 digits)
 	idPattern := regexp.MustCompile(`^(\d{4})`)
@@ -245,10 +254,21 @@ func ParseFilename(path string) FileMetadata {
 		metadata.ReleaseDate = matches[1]
 	}
 
-	// Extract version (text after _v until .sql or .sqlite)
-	versionPattern := regexp.MustCompile(`_v([^_]+?)\.(?:sql|sqlite)`)
-	if matches := versionPattern.FindStringSubmatch(filename); len(matches) > 1 {
-		metadata.Version = matches[1]
+	// Extract version (everything after last underscore until .sql or .sqlite)
+	// Only if there's content after the date
+	if metadata.ReleaseDate != "" {
+		// Find position of release date in filename
+		dateIdx := strings.Index(filename, metadata.ReleaseDate)
+		if dateIdx != -1 {
+			// Get substring after the date
+			afterDate := filename[dateIdx+len(metadata.ReleaseDate):]
+
+			// Check if there's an underscore followed by content before extension
+			versionPattern := regexp.MustCompile(`^_(.+?)\.(?:sql|sqlite)$`)
+			if matches := versionPattern.FindStringSubmatch(afterDate); len(matches) > 1 {
+				metadata.Version = matches[1]
+			}
+		}
 	}
 
 	return metadata
@@ -258,6 +278,83 @@ func ParseFilename(path string) FileMetadata {
 func IsValidURL(str string) bool {
 	u, err := url.Parse(str)
 	return err == nil && (u.Scheme == "http" || u.Scheme == "https")
+}
+
+// FilterSources filters data sources based on the filter string.
+// Supported filters:
+//   - "main": Returns sources with ID < 1000 (official sources)
+//   - "exclude main": Returns sources with ID >= 1000 (custom sources)
+//   - "1,3,5": Returns sources with specified IDs (comma-separated)
+//   - "": Returns all sources (no filtering)
+func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfig, error) {
+	filter = strings.TrimSpace(filter)
+
+	// No filter - return all sources
+	if filter == "" {
+		return sources, nil
+	}
+
+	// Handle "main" filter (ID < 1000)
+	if filter == "main" {
+		var filtered []DataSourceConfig
+		for _, src := range sources {
+			if src.ID != nil && *src.ID < 1000 {
+				filtered = append(filtered, src)
+			}
+		}
+		return filtered, nil
+	}
+
+	// Handle "exclude main" filter (ID >= 1000)
+	if filter == "exclude main" {
+		var filtered []DataSourceConfig
+		for _, src := range sources {
+			if src.ID != nil && *src.ID >= 1000 {
+				filtered = append(filtered, src)
+			}
+		}
+		return filtered, nil
+	}
+
+	// Handle comma-separated IDs: "1,3,5"
+	idStrs := strings.Split(filter, ",")
+	requestedIDs := make(map[int]bool)
+	for _, idStr := range idStrs {
+		idStr = strings.TrimSpace(idStr)
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid source ID '%s': must be a number", idStr)
+		}
+		requestedIDs[id] = true
+	}
+
+	var filtered []DataSourceConfig
+	for _, src := range sources {
+		if src.ID != nil && requestedIDs[*src.ID] {
+			filtered = append(filtered, src)
+		}
+	}
+
+	return filtered, nil
+}
+
+// ValidateOverrideFlags validates that --release-version and --release-date flags
+// are only used with a single source.
+// Returns an error if multiple sources are selected and override flags are present.
+func ValidateOverrideFlags(sources []DataSourceConfig, hasReleaseVersion, hasReleaseDate bool) error {
+	if len(sources) <= 1 {
+		return nil // Single source or no sources - OK
+	}
+
+	if hasReleaseVersion {
+		return fmt.Errorf("cannot use --release-version flag with multiple sources (%d sources selected). Use --release-version only with a single source (e.g., --sources 1)", len(sources))
+	}
+
+	if hasReleaseDate {
+		return fmt.Errorf("cannot use --release-date flag with multiple sources (%d sources selected). Use --release-date only with a single source (e.g., --sources 1)", len(sources))
+	}
+
+	return nil
 }
 
 // GenerateExampleConfig creates an example configuration file with all official sources.

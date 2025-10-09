@@ -10,31 +10,28 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// GetConfigDir returns the platform-specific configuration directory for GNdb.
-// - Linux/macOS: ~/.config/gndb/
-// - Windows: %APPDATA%\gndb\
+// GetConfigDir returns the configuration directory for GNdb.
+// Uses ~/.config/gndb/ on all platforms (Linux, macOS, Windows) for consistency.
 func GetConfigDir() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)
 	}
 
-	// Use ~/.config/gndb on all Unix-like systems (Linux, macOS)
-	// Use %APPDATA%\gndb on Windows
-	var configDir string
-	if filepath.Separator == '/' {
-		// Unix-like (Linux, macOS)
-		configDir = filepath.Join(homeDir, ".config", "gndb")
-	} else {
-		// Windows
-		appData := os.Getenv("APPDATA")
-		if appData == "" {
-			appData = filepath.Join(homeDir, "AppData", "Roaming")
-		}
-		configDir = filepath.Join(appData, "gndb")
+	configDir := filepath.Join(homeDir, ".config", "gndb")
+	return configDir, nil
+}
+
+// GetCacheDir returns the cache directory for GNdb.
+// Uses ~/.cache/gndb/ on all platforms (Linux, macOS, Windows) for consistency.
+func GetCacheDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user home directory: %w", err)
 	}
 
-	return configDir, nil
+	cacheDir := filepath.Join(homeDir, ".cache", "gndb")
+	return cacheDir, nil
 }
 
 // GetDefaultConfigPath returns the full path to the default config file.

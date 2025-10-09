@@ -1,144 +1,204 @@
 
-# Implementation Plan: GNverifier Database Lifecycle Management
+# Implementation Plan: [FEATURE]
 
-**Branch**: `001-gnverifier-db-lifecycle` | **Date**: 2025-10-08 | **Spec**: [spec.md](./spec.md)
-**Input**: Feature specification from `/Users/dimus/code/golang/gndb/specs/001-gnverifier-db-lifecycle/spec.md`
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
+## Execution Flow (/plan command scope)
+```
+1. Load feature spec from Input path
+   → If not found: ERROR "No feature spec at {path}"
+2. Fill Technical Context (scan for NEEDS CLARIFICATION)
+   → Detect Project Type from file system structure or context (web=frontend+backend, mobile=app+api)
+   → Set Structure Decision based on project type
+3. Fill the Constitution Check section based on the content of the constitution document.
+4. Evaluate Constitution Check section below
+   → If violations exist: Document in Complexity Tracking
+   → If no justification possible: ERROR "Simplify approach first"
+   → Update Progress Tracking: Initial Constitution Check
+5. Execute Phase 0 → research.md
+   → If NEEDS CLARIFICATION remain: ERROR "Resolve unknowns"
+6. Execute Phase 1 → contracts, data-model.md, quickstart.md, agent-specific template file (e.g., `CLAUDE.md` for Claude Code, `.github/copilot-instructions.md` for GitHub Copilot, `GEMINI.md` for Gemini CLI, `QWEN.md` for Qwen Code or `AGENTS.md` for opencode).
+7. Re-evaluate Constitution Check section
+   → If new violations: Refactor design, return to Phase 1
+   → Update Progress Tracking: Post-Design Constitution Check
+8. Plan Phase 2 → Describe task generation approach (DO NOT create tasks.md)
+9. STOP - Ready for /tasks command
+```
+
+**IMPORTANT**: The /plan command STOPS at step 7. Phases 2-4 are executed by other commands:
+- Phase 2: /tasks command creates tasks.md
+- Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-Enable users to manage the complete GNverifier database lifecycle locally: create schema, migrate, populate with custom data sources, and optimize for fast name verification. The DatabaseOperator interface provides basic database managerial commands and exposes pgxpool connections; high-level components (SchemaManager, Populator, Optimizer) receive these connections and implement specialized SQL operations internally.
+[Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
-**Language/Version**: Go 1.25
-**Primary Dependencies**: pgx/v5 (pgxpool for connection pooling), GORM (AutoMigrate for schema management), cobra (CLI), viper (config), sflib (SFGA data import)
-**Storage**: PostgreSQL (primary), SQLite (SFGA format data sources)
-**Testing**: go test (unit tests for pure logic, integration tests for io modules)
-**Target Platform**: Linux server, macOS CLI
-**Project Type**: single (Go CLI application)
-**Performance Goals**: 1000 names/sec reconciliation throughput
-**Constraints**: Offline-capable, idempotent optimization (rebuild from scratch)
-**Scale/Scope**: 100M scientific name-strings, 200M occurrences, 10M vernacular names, 20M occurrences
-**User Input**: DatabaseOperator interface must provide pgxpool database connections to high-level lifecycle components
+**Language/Version**: [e.g., Go 1.21, Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., database/sql, FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
+**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
+**Testing**: [e.g., go test, pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
+**Target Platform**: [e.g., Linux server, macOS CLI, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: [single/web/mobile - determines source structure]  
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
+**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 **I. Modular Architecture**
-- [X] Each feature component is a separate module with single responsibility
-- [X] Modules communicate only through interfaces, no direct implementation coupling
-- [X] Module boundaries clearly defined and documented
+- [ ] Each feature component is a separate module with single responsibility
+- [ ] Modules communicate only through interfaces, no direct implementation coupling
+- [ ] Module boundaries clearly defined and documented
 
 **II. Pure/Impure Code Separation**
-- [X] Pure logic separated from I/O and state-changing operations
-- [X] All database, file system, network operations isolated in `io` modules
-- [X] Pure functions do not import or depend on `io` modules
+- [ ] Pure logic separated from I/O and state-changing operations
+- [ ] All database, file system, network operations isolated in `io` modules
+- [ ] Pure functions do not import or depend on `io` modules
 
 **III. Test-Driven Development** *(NON-NEGOTIABLE)*
-- [X] Tests written first and verified to fail before implementation
-- [X] Red-Green-Refactor workflow documented in task ordering
-- [X] All features include passing tests before considered complete
+- [ ] Tests written first and verified to fail before implementation
+- [ ] Red-Green-Refactor workflow documented in task ordering
+- [ ] All features include passing tests before considered complete
 
 **IV. CLI-First Interface**
-- [X] All functionality exposed via CLI commands using subcommands
-- [X] Database lifecycle phases separated: create, migrate, populate, restructure
-- [X] Subcommands are independently executable and composable
-- [X] Structured output to stdout, errors to stderr
-- [X] No GUI, web, or graphical dependencies introduced
+- [ ] All functionality exposed via CLI commands using subcommands
+- [ ] Database lifecycle phases separated: create, migrate, populate, restructure
+- [ ] Subcommands are independently executable and composable
+- [ ] Structured output to stdout, errors to stderr
+- [ ] No GUI, web, or graphical dependencies introduced
 
 **V. Open Source Readability**
-- [X] Public APIs documented with clear godoc comments
-- [X] Complex logic includes explanatory comments
-- [X] Names follow Go conventions and are self-documenting
+- [ ] Public APIs documented with clear godoc comments
+- [ ] Complex logic includes explanatory comments
+- [ ] Names follow Go conventions and are self-documenting
 
 **VI. Configuration Management**
-- [X] YAML configuration file support included (gndb.yaml)
-- [X] CLI flags override file-based configuration settings
-- [X] Precedence order enforced: flags > env vars > config file > defaults
-- [X] Configuration schema documented and validated at startup
-- [X] Fail-fast with clear errors for invalid configuration
-
-**VII. Development Principles (KISS/DRY)**
-- [X] Code follows KISS (Keep It Simple) principle
-- [X] DRY (Don't Repeat Yourself) applied appropriately
-- [X] Documentation is concise and clear
-
-**VIII. Contributor-First Minimalism** *(NON-NEGOTIABLE)*
-- [X] Code is simple and explicit, avoids premature abstraction
-- [X] Documentation is minimal - godoc comments focus on "why" not "what"
-- [X] Tests are straightforward with clear behavior specifications
-- [X] No overly generic abstractions or "framework" patterns
-- [X] Design optimized for <5 minute module comprehension
+- [ ] YAML configuration file support included (gndb.yaml)
+- [ ] CLI flags override file-based configuration settings
+- [ ] Precedence order enforced: flags > env vars > config file > defaults
+- [ ] Configuration schema documented and validated at startup
+- [ ] Fail-fast with clear errors for invalid configuration
 
 ## Project Structure
 
 ### Documentation (this feature)
 ```
-specs/001-gnverifier-db-lifecycle/
-├── plan.md              # This file
-├── research.md          # Technology decisions
-├── data-model.md        # Go struct models
-├── quickstart.md        # CLI usage guide
-├── contracts/           # Interface definitions
-│   ├── DatabaseOperator.go
-│   ├── SchemaManager.go
-│   ├── Populator.go
-│   └── Optimizer.go
-└── tasks.md             # Generated by /tasks command
+specs/[###-feature]/
+├── plan.md              # This file (/plan command output)
+├── research.md          # Phase 0 output (/plan command)
+├── data-model.md        # Phase 1 output (/plan command)
+├── quickstart.md        # Phase 1 output (/plan command)
+├── contracts/           # Phase 1 output (/plan command)
+└── tasks.md             # Phase 2 output (/tasks command - NOT created by /plan)
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., pkg/parser, internal/io/database). The delivered plan must
+  not include Option labels.
+-->
 ```
+# [REMOVE IF UNUSED] Option 1: Single Go project (DEFAULT for GNdb)
 pkg/
-├── config/              # Configuration types and validation (pure)
-│   ├── config.go
-│   └── config_test.go
-├── database/            # Database operation interfaces (pure)
-│   ├── operator.go      # DatabaseOperator interface
-│   └── operator_test.go
-├── lifecycle/           # Lifecycle phase interfaces (pure)
-│   ├── schema.go        # SchemaManager interface
-│   ├── populator.go     # Populator interface
-│   ├── optimizer.go     # Optimizer interface
-│   └── *_test.go
-└── model/               # Data model definitions (pure)
-    ├── datasource.go
-    ├── namestring.go
-    └── *_test.go
+├── module1/             # Pure logic modules
+│   ├── interfaces.go    # Interface definitions
+│   ├── logic.go         # Pure implementations
+│   └── logic_test.go    # Unit tests
+└── module2/
 
 internal/io/             # Impure implementations
-├── database/
-│   ├── operator.go      # DatabaseOperator implementation using pgxpool
-│   └── operator_test.go # Integration tests
-├── schema/
-│   ├── manager.go       # SchemaManager implementation using GORM
-│   └── manager_test.go
-├── populate/
-│   ├── importer.go      # Populator implementation using sflib
-│   └── importer_test.go
-├── optimize/
-│   ├── optimizer.go     # Optimizer implementation
-│   └── optimizer_test.go
-└── config/
-    ├── loader.go        # Config file/flag loading
-    └── loader_test.go
+├── module1/
+│   ├── implementation.go     # Implements pkg/module1 interfaces
+│   └── integration_test.go   # I/O integration tests
+└── module2/
 
-cmd/gndb/
-├── main.go              # Root command setup
-├── create.go            # Create subcommand
-├── migrate.go           # Migrate subcommand
-├── populate.go          # Populate subcommand
-└── optimize.go          # Optimize subcommand
+cmd/
+└── gndb/
+    └── main.go          # CLI entry point
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: Single Go project structure following constitutional pure/impure separation. DatabaseOperator (pkg/database) defines the interface for basic database operations and connection management. Implementations in internal/io/database provide pgxpool-based connections. High-level lifecycle components (SchemaManager, Populator, Optimizer) receive database connections and execute specialized SQL internally.
+**Structure Decision**: [Document the selected structure and reference the real
+directories captured above]
 
-## Phase 0 & 1: Research & Design
+## Phase 0: Outline & Research
+1. **Extract unknowns from Technical Context** above:
+   - For each NEEDS CLARIFICATION → research task
+   - For each dependency → best practices task
+   - For each integration → patterns task
 
-**Completed Artifacts**:
-- `research.md` - Technology decisions (pgxpool, GORM, sflib, CLI structure, logging)
-- `data-model.md` - Go struct models for schema generation
-- `contracts/*.go` - Interface definitions (DatabaseOperator, SchemaManager, Populator, Optimizer)
-- `quickstart.md` - End-to-end CLI usage guide
+2. **Generate and dispatch research agents**:
+   ```
+   For each unknown in Technical Context:
+     Task: "Research {unknown} for {feature context}"
+   For each technology choice:
+     Task: "Find best practices for {tech} in {domain}"
+   ```
+
+3. **Consolidate findings** in `research.md` using format:
+   - Decision: [what was chosen]
+   - Rationale: [why chosen]
+   - Alternatives considered: [what else evaluated]
+
+**Output**: research.md with all NEEDS CLARIFICATION resolved
+
+## Phase 1: Design & Contracts
+*Prerequisites: research.md complete*
+
+1. **Extract entities from feature spec** → `data-model.md`:
+   - Entity name, fields, relationships
+   - Validation rules from requirements
+   - State transitions if applicable
+
+2. **Define interface contracts** from functional requirements:
+   - For each module → interface definition
+   - For each user action → CLI command signature
+   - Output interface definitions to `/contracts/`
+
+3. **Generate contract tests** from contracts:
+   - One test file per interface
+   - Assert interface compliance
+   - Tests must fail (no implementation yet)
+
+4. **Extract test scenarios** from user stories:
+   - Each story → integration test scenario
+   - Quickstart test = story validation steps
+
+5. **Update agent file incrementally** (O(1) operation):
+   - Run `.specify/scripts/bash/update-agent-context.sh claude`
+     **IMPORTANT**: Execute it exactly as specified above. Do not add or remove any arguments.
+   - If exists: Add only NEW tech from current plan
+   - Preserve manual additions between markers
+   - Update recent changes (keep last 3)
+   - Keep under 150 lines for token efficiency
+   - Output to repository root
+
+**Output**: data-model.md, /contracts/*, failing tests, quickstart.md, agent-specific file
 
 ## Phase 2: Task Planning Approach
 *This section describes what the /tasks command will do - DO NOT execute during /plan*
@@ -146,54 +206,52 @@ cmd/gndb/
 **Task Generation Strategy**:
 - Load `.specify/templates/tasks-template.md` as base
 - Generate tasks from Phase 1 design docs (contracts, data model, quickstart)
-- Follow TDD workflow strictly (RED-GREEN-REFACTOR):
-  1. Contract test tasks (verify interface compliance, must fail initially) [P]
-  2. Implementation tasks to make contract tests pass
-  3. Integration test tasks (end-to-end lifecycle scenarios)
-  4. CLI subcommand tasks (create, migrate, populate, optimize)
-  5. Configuration and validation tasks
-  6. Documentation updates (CLAUDE.md)
-
-**Key Task Categories**:
-1. **DatabaseOperator**:
-   - Contract test for Pool() method
-   - pgxpool implementation with connection management
-   - Integration tests for TableExists, DropAllTables
-2. **SchemaManager**:
-   - Contract test for Create/Migrate methods
-   - GORM AutoMigrate implementation
-   - Integration tests with test database
-3. **Populator**:
-   - Contract test for Populate method
-   - sflib integration for SFGA reading
-   - pgx CopyFrom for bulk inserts
-   - Progress logging
-4. **Optimizer**:
-   - Contract test for Optimize method
-   - Idempotent drop/recreate logic
-   - Index and materialized view creation
-5. **CLI Subcommands**:
-   - create, migrate, populate, optimize commands
-   - Configuration loading (viper)
-   - Error handling and user prompts
+- Each contract → contract test task [P]
+- Each entity → model creation task [P] 
+- Each user story → integration test task
+- Implementation tasks to make tests pass
 
 **Ordering Strategy**:
-- TDD order: Contract tests → implementations → integration tests → CLI
-- Dependency order: pkg/config → pkg/database → pkg/lifecycle → internal/io/* → cmd/gndb
-- Mark [P] for parallel execution (independent contracts/tests)
+- TDD order: Tests before implementation 
+- Dependency order: Pure modules → io implementations → CLI
+- Mark [P] for parallel execution (independent files)
 
-**Estimated Output**: 25-35 numbered, ordered tasks in tasks.md
+**Estimated Output**: 20-30 numbered, ordered tasks in tasks.md
 
 **IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
 
+## Phase 3+: Future Implementation
+*These phases are beyond the scope of the /plan command*
+
+**Phase 3**: Task execution (/tasks command creates tasks.md)  
+**Phase 4**: Implementation (execute tasks.md following constitutional principles)  
+**Phase 5**: Validation (run tests, execute quickstart.md, performance validation)
+
+## Complexity Tracking
+*Fill ONLY if Constitution Check has violations that must be justified*
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| [e.g., Breaking modular arch] | [current need] | [why simpler approach insufficient] |
+| [e.g., Mixing pure/impure] | [specific problem] | [why separation impractical] |
 
 
-## Status
+## Progress Tracking
+*This checklist is updated during execution flow*
 
-- [X] Phase 0-1: Research & Design complete
-- [X] Phase 2: Task planning approach documented
-- [X] Constitution Check: PASS (all principles followed)
-- [ ] Phase 3: Tasks generated (/tasks command - next step)
+**Phase Status**:
+- [ ] Phase 0: Research complete (/plan command)
+- [ ] Phase 1: Design complete (/plan command)
+- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
+- [ ] Phase 3: Tasks generated (/tasks command)
+- [ ] Phase 4: Implementation complete
+- [ ] Phase 5: Validation passed
+
+**Gate Status**:
+- [ ] Initial Constitution Check: PASS
+- [ ] Post-Design Constitution Check: PASS
+- [ ] All NEEDS CLARIFICATION resolved
+- [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v1.3.0 - See `.specify/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `.specify/memory/constitution.md`*
