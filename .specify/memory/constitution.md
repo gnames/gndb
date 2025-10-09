@@ -1,21 +1,28 @@
 <!--
 SYNC IMPACT REPORT
-Version: 1.3.0 → 1.3.1
-Change Type: PATCH (clarification of existing principle)
-Modified Principles: VIII. Contributor-First Minimalism
-Added Sections: None
+Version: 1.3.0 → 1.3.2
+Change Type: MINOR (added enforcement rules to existing principle)
+Modified Principles:
+  - II. Pure/Impure Code Separation (added Import Direction Rules)
+  - VIII. Contributor-First Minimalism (clarified abstraction criteria)
+Added Sections: Import Direction Rules, Dependency Flow diagram
 Removed Sections: None
 Changes:
-  - Clarified that good abstractions (comprehension, testability) are encouraged
-  - Added "Encouraged" section to balance "Discouraged" section
-  - Removed dogmatic "Rule of Three" in favor of value-based assessment
-  - Emphasized cognitive load reduction as valid abstraction criterion
+  - Added explicit import constraints: pkg/ cannot import cmd/ or internal/io/
+  - Added visual dependency flow diagram with FORBIDDEN paths
+  - Clarified cmd/ is the wiring layer that may import both pkg/ and internal/io/
+  - Emphasized architectural drift prevention through strict import rules
+  - VIII: Clarified that good abstractions (comprehension, testability) are encouraged
+  - VIII: Added "Encouraged" section to balance "Discouraged" section
+  - VIII: Removed dogmatic "Rule of Three" in favor of value-based assessment
 Templates Status:
   ✅ .specify/templates/plan-template.md (no changes needed)
   ✅ .specify/templates/spec-template.md (no changes needed)
   ✅ .specify/templates/tasks-template.md (no changes needed)
-Rationale: Original wording discouraged beneficial abstractions. Refined to encourage
-  abstractions that reduce cognitive load while discouraging unnecessary complexity.
+Rationale:
+  - Import rules were implicit; making them explicit prevents architectural violations
+  - Dependency flow diagram provides visual clarity for contributors
+  - Abstraction guidance now balances minimalism with practical benefits
 -->
 
 # GNdb Constitution
@@ -36,9 +43,26 @@ Rationale: Original wording discouraged beneficial abstractions. Refined to enco
 - All state changes, I/O operations, and side effects MUST be isolated in dedicated `io` modules
 - Pure functions MUST be the default; impure code implements interfaces defined by pure modules
 - Database operations, file system access, and network calls MUST live in `io` boundaries
-- Pure code MUST NOT import or depend on `io` modules
 
-**Rationale**: Separating pure from impure code makes testing straightforward, reasoning about behavior clear, and refactoring safe.
+**Import Direction Rules** (enforced by design):
+- `pkg/` MUST NOT import `cmd/` or `internal/io/`
+- `internal/io/` MAY import `pkg/` (to implement interfaces)
+- `internal/io/` MUST NOT import `cmd/`
+- `cmd/` MAY import both `pkg/` and `internal/io/` (wiring layer)
+
+**Dependency Flow**:
+```
+cmd/       ──→  pkg/         (uses pure interfaces)
+  └──────→  internal/io/  (creates implementations)
+
+internal/io/  ──→  pkg/      (implements interfaces)
+
+pkg/       ──X──  cmd/       (FORBIDDEN)
+pkg/       ──X──  internal/io/ (FORBIDDEN)
+internal/io/ ──X── cmd/       (FORBIDDEN)
+```
+
+**Rationale**: Separating pure from impure code makes testing straightforward, reasoning about behavior clear, and refactoring safe. Strict import rules prevent architectural drift and ensure pure logic remains reusable.
 
 ### III. Test-Driven Development (NON-NEGOTIABLE)
 - TDD is mandatory for all new functionality
@@ -195,4 +219,4 @@ This constitution supersedes all other development practices and patterns. Amend
 - Complexity introduced MUST solve real problems, not imagined ones
 - When in doubt, choose simplicity over sophistication
 
-**Version**: 1.3.1 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-09
+**Version**: 1.3.2 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-09

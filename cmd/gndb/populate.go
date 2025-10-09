@@ -108,13 +108,8 @@ Examples:
 			hasReleaseVersion := cmd.Flags().Changed("release-version")
 			hasReleaseDate := cmd.Flags().Changed("release-date")
 
-			if len(filteredSources) > 1 {
-				if hasReleaseVersion {
-					return fmt.Errorf("cannot override release version with multiple sources (%d sources selected). Use --sources to select a single source (e.g., --sources 1)", len(filteredSources))
-				}
-				if hasReleaseDate {
-					return fmt.Errorf("cannot override release date with multiple sources (%d sources selected). Use --sources to select a single source (e.g., --sources 2)", len(filteredSources))
-				}
+			if err := validateOverrideFlags(len(filteredSources), hasReleaseVersion, hasReleaseDate); err != nil {
+				return err
 			}
 
 			// Apply overrides if single source
@@ -167,4 +162,28 @@ Examples:
 		StringVar(&sourcesYAMLPath, "sources-yaml", "", "Path to sources.yaml configuration file (default: ~/.config/gndb/gndb/sources.yaml)")
 
 	return cmd
+}
+
+// validateOverrideFlags validates that release version and release date overrides
+// are only used with a single source (CLI-specific constraint).
+func validateOverrideFlags(sourceCount int, hasReleaseVersion, hasReleaseDate bool) error {
+	if sourceCount <= 1 {
+		return nil // Single source or no sources - OK
+	}
+
+	if hasReleaseVersion {
+		return fmt.Errorf(
+			"cannot override release version with multiple sources (%d sources selected). Use --sources to select a single source (e.g., --sources 1)",
+			sourceCount,
+		)
+	}
+
+	if hasReleaseDate {
+		return fmt.Errorf(
+			"cannot override release date with multiple sources (%d sources selected). Use --sources to select a single source (e.g., --sources 2)",
+			sourceCount,
+		)
+	}
+
+	return nil
 }
