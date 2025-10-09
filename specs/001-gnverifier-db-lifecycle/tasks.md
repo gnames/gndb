@@ -49,100 +49,15 @@
 
 ### T028: Integration Test - Create Schema End-to-End ✅
 
-**Description**: Test complete create workflow with new interfaces
-
-**Actions**:
-1. Create integration test
-2. Test: connect → create → verify tables → verify collation
-3. Use testcontainers or test database
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/create_integration_test.go`
-
-**Success Criteria**:
-- [X] Integration test passes
-- [X] Schema created correctly
-
-**Dependencies**: T022
-
----
-
-### T029: Integration Test - Migrate Schema
-
-**Description**: Test migrate command end-to-end
-
-**Actions**:
-1. Create integration test
-2. Test: create → migrate → verify
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/cmd/gndb/migrate_integration_test.go`
-
-**Success Criteria**:
-- [ ] Integration test passes
-
-**Dependencies**: T023
-
----
+### T029: Integration Test - Migrate Schema ✅
 
 ## Phase 3.6: Cleanup & Documentation
 
-### T030: Remove Obsolete pkg/ Directories
+### T030: Remove Obsolete pkg/ Directories ✅
 
-**Description**: Clean up old package structure
+### T031: Update CLAUDE.md ✅
 
-**Actions**:
-1. Check `pkg/migrate/`, `pkg/restructure/` - if empty/obsolete, remove
-2. Verify no broken imports
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/pkg/migrate/`
-- `/Users/dimus/code/golang/gndb/pkg/restructure/`
-
-**Success Criteria**:
-- [ ] Obsolete dirs removed
-- [ ] Build succeeds
-
-**Dependencies**: T024, T027
-
----
-
-### T031: Update CLAUDE.md
-
-**Description**: Document refactored architecture
-
-**Actions**:
-1. Run `.specify/scripts/bash/update-agent-context.sh claude`
-2. Verify architecture documented
-3. Keep under 150 lines
-
-**File Paths**:
-- `/Users/dimus/code/golang/gndb/CLAUDE.md`
-
-**Success Criteria**:
-- [ ] CLAUDE.md updated
-- [ ] Architecture accurate
-- [ ] Under 150 lines
-
-**Dependencies**: T030
-
----
-
-### T032: Verify All Tests Pass
-
-**Description**: Run complete test suite
-
-**Actions**:
-1. Run `go test ./...`
-2. Fix any failures
-3. Verify coverage >70% for core packages
-
-**Success Criteria**:
-- [ ] All tests pass
-
-**Dependencies**: T031
-
----
+### T032: Verify All Tests Pass ✅
 
 ## Phase 3.7: Future Implementation Plans
 
