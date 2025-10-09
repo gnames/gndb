@@ -56,10 +56,7 @@
    - Handle "main" (ID < 1000)
    - Handle "exclude main" (ID >= 1000)
    - Handle comma-separated IDs: "1,3,5"
-2. Add validation for --release-version/--release-date flags:
-   - `ValidateOverrideFlags(sources []DataSourceConfig, hasReleaseVersion, hasReleaseDate bool) error`
-   - Return error if len(sources) > 1 and (hasReleaseVersion OR hasReleaseDate)
-3. Write unit tests in `sources_test.go`
+2. Write unit tests in `sources_test.go`
 
 **File Paths**:
 - `/Users/dimus/code/golang/gndb/pkg/populate/sources.go`
@@ -68,7 +65,6 @@
 **Success Criteria**:
 - [x] FilterSources("main") returns ID < 1000
 - [x] FilterSources("1,3,5") returns correct sources
-- [x] ValidateOverrideFlags catches multiple sources
 - [x] All unit tests pass
 
 **Dependencies**: None
@@ -86,7 +82,7 @@
    - Add --release-date flag (string, default: "")
    - Load sources.yaml using populate.LoadSourcesConfig()
    - Apply FilterSources with --sources value
-   - Call ValidateOverrideFlags
+   - Validate override flags (CLI constraint: only single source)
    - Apply version/release-date overrides if single source
 2. Add error messages for validation failures
 3. Update help text with examples

@@ -1,15 +1,21 @@
 <!--
 SYNC IMPACT REPORT
-Version: 1.2.0 → 1.3.0
-Change Type: MINOR (new principle added)
-Modified Principles: None
-Added Sections: VIII. Contributor-First Minimalism (NON-NEGOTIABLE)
+Version: 1.3.0 → 1.3.1
+Change Type: PATCH (clarification of existing principle)
+Modified Principles: VIII. Contributor-First Minimalism
+Added Sections: None
 Removed Sections: None
+Changes:
+  - Clarified that good abstractions (comprehension, testability) are encouraged
+  - Added "Encouraged" section to balance "Discouraged" section
+  - Removed dogmatic "Rule of Three" in favor of value-based assessment
+  - Emphasized cognitive load reduction as valid abstraction criterion
 Templates Status:
-  ✅ .specify/templates/plan-template.md (add check for minimalism principle)
-  ✅ .specify/templates/spec-template.md (validated - no conflicts)
-  ✅ .specify/templates/tasks-template.md (validated - no conflicts)
-Follow-up TODOs: Update plan-template.md Constitution Check section to include Principle VIII
+  ✅ .specify/templates/plan-template.md (no changes needed)
+  ✅ .specify/templates/spec-template.md (no changes needed)
+  ✅ .specify/templates/tasks-template.md (no changes needed)
+Rationale: Original wording discouraged beneficial abstractions. Refined to encourage
+  abstractions that reduce cognitive load while discouraging unnecessary complexity.
 -->
 
 # GNdb Constitution
@@ -88,7 +94,11 @@ This project is designed for hybrid human-LLM collaboration and rapid contributo
 
 **Code**:
 - Write the simplest code that solves the problem
-- Avoid abstractions until the third duplication (Rule of Three)
+- Create abstractions when they improve comprehension or testability
+  * Good abstraction: Clear name reveals intent in 2 seconds vs. 30 seconds reading code
+  * Good abstraction: Isolates testable logic from I/O complexity
+  * Bad abstraction: Generic frameworks without concrete use cases
+  * Bad abstraction: Premature optimization for imagined future needs
 - No "just in case" code - implement what's needed now
 - Prefer explicit over implicit, clear over clever
 - Each function should fit on one screen when practical
@@ -105,12 +115,18 @@ This project is designed for hybrid human-LLM collaboration and rapid contributo
 - Test names serve as specification (e.g., `TestPopulate_EmptyDatabase_CreatesRecords`)
 - One clear assertion per test when practical
 
-**Forbidden**:
-- Overly generic abstractions without concrete use cases
+**Encouraged**:
+- Named functions that make code read like prose
+- Pure logic extracted for independent testing
+- Interfaces that clarify contracts and enable mocking
+- Helper functions that eliminate cognitive load
+
+**Discouraged**:
+- Generic abstractions without concrete use cases
 - "Framework" patterns (e.g., custom middleware stacks, plugin systems)
 - Verbose doc comments that restate the code
 - Complex test fixtures for simple scenarios
-- Helper functions used once or twice
+- Single-use helpers that obscure rather than clarify
 
 **Rationale**: Contributors (human or LLM) should understand a module in <5 minutes. Every abstraction is a tax on comprehension. Optimize for change velocity, not architectural purity. This enables rapid onboarding and sustained contributor engagement.
 
@@ -179,4 +195,4 @@ This constitution supersedes all other development practices and patterns. Amend
 - Complexity introduced MUST solve real problems, not imagined ones
 - When in doubt, choose simplicity over sophistication
 
-**Version**: 1.3.0 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-08
+**Version**: 1.3.1 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-09

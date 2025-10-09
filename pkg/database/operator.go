@@ -36,6 +36,6 @@ type Operator interface {
 	HasTables(ctx context.Context) (bool, error)
 
 	// DropAllTables drops all tables in the public schema.
-	// Used by create command when user confirms overwriting existing data.
+	// Used during schema initialization when overwriting existing data.
 	DropAllTables(ctx context.Context) error
 }

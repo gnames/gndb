@@ -13,7 +13,7 @@ import (
 var (
 	cfgFile string
 	cfg     *pkgconfig.Config
-	log     *slog.Logger
+	lg      *slog.Logger
 )
 
 func getRootCmd() *cobra.Command {
@@ -64,16 +64,16 @@ For more information, see the project's README file.`,
 			cfg = result.Config
 
 			// Initialize logger with config
-			log = logger.New(&cfg.Logging)
+			lg = logger.New(&cfg.Logging)
 
 			// Display config source using logger
 			switch result.Source {
 			case "file":
-				log.Info("config loaded", "source", "file", "path", result.SourcePath)
+				lg.Info("config loaded", "source", "file", "path", result.SourcePath)
 			case "defaults+env":
-				log.Info("config loaded", "source", "defaults with environment overrides")
+				lg.Info("config loaded", "source", "defaults with environment overrides")
 			case "defaults":
-				log.Info("config loaded", "source", "built-in defaults")
+				lg.Info("config loaded", "source", "built-in defaults")
 			}
 
 			return nil

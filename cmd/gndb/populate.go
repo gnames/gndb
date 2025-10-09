@@ -64,6 +64,8 @@ Examples:
 
   # Use custom sources.yaml location
   gndb populate --sources-yaml /path/to/sources.yaml`,
+		// RunE runs but returns error, so the error handling is a responsibility of
+		// the framework.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg := getConfig()
 			ctx := context.Background()
@@ -80,44 +82,57 @@ Examples:
 			// Load sources configuration
 			sourcesConfig, err := gnpopulate.LoadSourcesConfig(sourcesYAMLPath)
 			if err != nil {
-				return fmt.Errorf("failed to load sources configuration from %s: %w", sourcesYAMLPath, err)
+				return fmt.Errorf(
+					"failed to load sources configuration from %s: %w",
+					sourcesYAMLPath,
+					err,
+				)
 			}
 
 			// Filter sources based on --sources flag
-			filteredSources, err := gnpopulate.FilterSources(sourcesConfig.DataSources, sourcesFilter)
+			filteredSources, err := gnpopulate.FilterSources(
+				sourcesConfig.DataSources,
+				sourcesFilter,
+			)
 			if err != nil {
 				return fmt.Errorf("failed to filter sources: %w", err)
 			}
 
 			if len(filteredSources) == 0 {
-				return fmt.Errorf("no sources selected for import. Check your --sources filter or sources.yaml configuration")
+				return fmt.Errorf(
+					"no sources selected for import. Check your --sources filter or sources.yaml configuration",
+				)
 			}
 
-			// Validate override flags
+			// Validate override flags (CLI constraint: overrides only work with single source)
 			hasReleaseVersion := cmd.Flags().Changed("release-version")
 			hasReleaseDate := cmd.Flags().Changed("release-date")
 
-			err = gnpopulate.ValidateOverrideFlags(filteredSources, hasReleaseVersion, hasReleaseDate)
-			if err != nil {
-				return err
+			if len(filteredSources) > 1 {
+				if hasReleaseVersion {
+					return fmt.Errorf("cannot override release version with multiple sources (%d sources selected). Use --sources to select a single source (e.g., --sources 1)", len(filteredSources))
+				}
+				if hasReleaseDate {
+					return fmt.Errorf("cannot override release date with multiple sources (%d sources selected). Use --sources to select a single source (e.g., --sources 2)", len(filteredSources))
+				}
 			}
 
 			// Apply overrides if single source
 			if len(filteredSources) == 1 {
 				if hasReleaseVersion {
 					// Version override will be applied during population
-					log.Info("release version override", "version", releaseVersion)
+					lg.Info("release version override", "version", releaseVersion)
 				}
 				if hasReleaseDate {
 					// Date override will be applied during population
-					log.Info("release date override", "date", releaseDate)
+					lg.Info("release date override", "date", releaseDate)
 				}
 			}
 
 			// Update sources config with filtered list
 			sourcesConfig.DataSources = filteredSources
 
-			log.Info("sources loaded", "count", len(filteredSources), "filter", sourcesFilter)
+			lg.Info("sources loaded", "count", len(filteredSources), "filter", sourcesFilter)
 
 			// Create database operator
 			op := database.NewPgxOperator()
@@ -131,21 +146,25 @@ Examples:
 			populator := populate.NewPopulator(op)
 
 			// Run population
-			log.Info("starting database population")
+			lg.Info("starting database population")
 			err = populator.Populate(ctx, cfg)
 			if err != nil {
 				return fmt.Errorf("population failed: %w", err)
 			}
 
-			log.Info("database population complete")
+			lg.Info("database population complete")
 			return nil
 		},
 	}
 
-	cmd.Flags().StringVar(&sourcesFilter, "sources", "", "Filter sources to import: 'main' (ID < 1000), 'exclude main' (ID >= 1000), or comma-separated IDs '1,3,5'")
-	cmd.Flags().StringVar(&releaseVersion, "release-version", "", "Override release version (only for single source)")
-	cmd.Flags().StringVar(&releaseDate, "release-date", "", "Override release date in YYYY-MM-DD format (only for single source)")
-	cmd.Flags().StringVar(&sourcesYAMLPath, "sources-yaml", "", "Path to sources.yaml configuration file (default: ~/.config/gndb/gndb/sources.yaml)")
+	cmd.Flags().
+		StringVar(&sourcesFilter, "sources", "", "Filter sources to import: 'main' (ID < 1000), 'exclude main' (ID >= 1000), or comma-separated IDs '1,3,5'")
+	cmd.Flags().
+		StringVar(&releaseVersion, "release-version", "", "Override release version (only for single source)")
+	cmd.Flags().
+		StringVar(&releaseDate, "release-date", "", "Override release date in YYYY-MM-DD format (only for single source)")
+	cmd.Flags().
+		StringVar(&sourcesYAMLPath, "sources-yaml", "", "Path to sources.yaml configuration file (default: ~/.config/gndb/gndb/sources.yaml)")
 
 	return cmd
 }

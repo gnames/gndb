@@ -338,25 +338,6 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 	return filtered, nil
 }
 
-// ValidateOverrideFlags validates that --release-version and --release-date flags
-// are only used with a single source.
-// Returns an error if multiple sources are selected and override flags are present.
-func ValidateOverrideFlags(sources []DataSourceConfig, hasReleaseVersion, hasReleaseDate bool) error {
-	if len(sources) <= 1 {
-		return nil // Single source or no sources - OK
-	}
-
-	if hasReleaseVersion {
-		return fmt.Errorf("cannot use --release-version flag with multiple sources (%d sources selected). Use --release-version only with a single source (e.g., --sources 1)", len(sources))
-	}
-
-	if hasReleaseDate {
-		return fmt.Errorf("cannot use --release-date flag with multiple sources (%d sources selected). Use --release-date only with a single source (e.g., --sources 1)", len(sources))
-	}
-
-	return nil
-}
-
 // GenerateExampleConfig creates an example configuration file with all official sources.
 func GenerateExampleConfig(path string) error {
 	// Check if file already exists

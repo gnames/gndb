@@ -4,7 +4,7 @@
 // # Configuration Loading
 //
 // Configuration is loaded with the following precedence (highest to lowest):
-//  1. CLI flags (--host, --port, etc.)
+//  1. Runtime overrides (flags, parameters)
 //  2. Environment variables (GNDB_*)
 //  3. Config file (gndb.yaml)
 //  4. Defaults
@@ -47,7 +47,7 @@
 //	export GNDB_DATABASE_PASSWORD=secret123
 //	gndb create
 //
-//	# CLI flags still take highest precedence
+//	# Runtime overrides take highest precedence
 //	gndb create --host=override-db.example.com  # Uses override-db, not prod-db
 package config
 

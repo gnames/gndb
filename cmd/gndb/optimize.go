@@ -30,13 +30,13 @@ func getOptimizeCmd() *cobra.Command {
 			optimizer := optimize.NewOptimizer(op)
 
 			// Run optimization
-			log.Info("starting database optimization")
+			lg.Info("starting database optimization")
 			err = optimizer.Optimize(ctx, cfg)
 			if err != nil {
 				return fmt.Errorf("optimization failed: %w", err)
 			}
 
-			log.Info("database optimization complete")
+			lg.Info("database optimization complete")
 			return nil
 		},
 	}
