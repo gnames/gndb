@@ -371,7 +371,7 @@
 
 ## Phase 4.7: Vernacular Processing (Phases 3 & 4)
 
-### T044: [P] Write Integration Test for Vernaculars
+### T044: [P] Write Integration Test for Vernaculars ✅
 
 **Description**: Create failing test for vernacular names import
 
@@ -385,12 +385,14 @@
 3. Use testdata SFGA with vernaculars
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/populate/vernaculars_integration_test.go` (new)
+- `/home/dimus/code/golang/gndb/internal/io/populate/vernaculars_integration_test.go` (new)
 
 **Success Criteria**:
-- [ ] Test fails (function not implemented)
-- [ ] Covers vernacular strings and indices
-- [ ] Tests uniqueness
+- [x] Test fails (function not implemented: "undefined: processVernaculars")
+- [x] Covers vernacular strings and indices (3 test scenarios)
+- [x] Tests uniqueness (deduplication of "Common plantain")
+- [x] Tests idempotency (data cleaning)
+- [x] Tests empty table handling
 
 **Dependencies**: T037
 
