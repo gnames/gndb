@@ -433,7 +433,7 @@
 
 ## Phase 4.8: Data Source Metadata (Phase 5)
 
-### T046: [P] Write Integration Test for Data Source Metadata
+### T046: [P] Write Integration Test for Data Source Metadata ✅
 
 **Description**: Create failing test for data_sources record creation
 
@@ -448,12 +448,15 @@
 3. Verify all metadata fields populated
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/populate/metadata_integration_test.go` (new)
+- `/home/dimus/code/golang/gndb/internal/io/populate/metadata_integration_test.go` (new, 400 lines)
 
 **Success Criteria**:
-- [ ] Test fails (function not implemented)
-- [ ] Tests create and update scenarios
-- [ ] Verifies counts
+- [x] Test fails (function not implemented: "undefined: updateDataSourceMetadata")
+- [x] Tests create and update scenarios (3 test cases)
+- [x] Verifies counts (name_string_indices and vernacular_string_indices)
+- [x] Tests metadata merging (SFGA metadata + sources.yaml config)
+- [x] Tests idempotency (existing data source updated)
+- [x] Tests empty/null metadata handling
 
 **Dependencies**: T037
 

@@ -1,0 +1,14 @@
+data_sources:
+  # Ruhoff 1980
+  - id: 1000
+    parent: http://opendata.globalnames.org/sfga/latest/
+    title_short: "Ruhoff 1980"
+    home_url: "https://doi.org/10.5479/si.00810282.294"
+    is_auto_curated: true
+  # VASCAN
+  - id: 1002
+    parent: http://opendata.globalnames.org/sfga/latest/
+    title_short: "VASCAN"
+    is_curated: true
+    has_classification: true
+
