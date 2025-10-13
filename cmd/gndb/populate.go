@@ -76,7 +76,7 @@ Examples:
 				if err != nil {
 					return fmt.Errorf("failed to get config directory: %w", err)
 				}
-				sourcesYAMLPath = filepath.Join(configDir, "gndb", "sources.yaml")
+				sourcesYAMLPath = filepath.Join(configDir, "sources.yaml")
 			}
 
 			// Load sources configuration
@@ -159,7 +159,7 @@ Examples:
 	cmd.Flags().
 		StringVar(&releaseDate, "release-date", "", "Override release date in YYYY-MM-DD format (only for single source)")
 	cmd.Flags().
-		StringVar(&sourcesYAMLPath, "sources-yaml", "", "Path to sources.yaml configuration file (default: ~/.config/gndb/gndb/sources.yaml)")
+		StringVar(&sourcesYAMLPath, "sources-yaml", "", "Path to sources.yaml configuration file (default: ~/.config/gndb/sources.yaml)")
 
 	return cmd
 }

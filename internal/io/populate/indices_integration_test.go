@@ -2,6 +2,7 @@ package populate
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/gnames/gndb/internal/io/database"
@@ -251,7 +252,7 @@ func TestProcessNameIndices_BareNames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create minimal SFGA with only names (no taxon/synonym tables)
-	sfgaDB, err := openSFGA(":memory:")
+	sfgaDB, err := sql.Open("sqlite3", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -273,7 +274,39 @@ func TestProcessNameIndices_BareNames(t *testing.T) {
 			col__id TEXT PRIMARY KEY,
 			col__name_id TEXT NOT NULL,
 			col__parent_id TEXT,
-			col__status_id TEXT
+			col__status_id TEXT,
+			col__species TEXT DEFAULT '',
+			col__section TEXT DEFAULT '',
+			col__subgenus TEXT DEFAULT '',
+			col__genus TEXT DEFAULT '',
+			col__subtribe TEXT DEFAULT '',
+			col__tribe TEXT DEFAULT '',
+			col__subfamily TEXT DEFAULT '',
+			col__family TEXT DEFAULT '',
+			col__superfamily TEXT DEFAULT '',
+			col__suborder TEXT DEFAULT '',
+			col__order TEXT DEFAULT '',
+			col__subclass TEXT DEFAULT '',
+			col__class TEXT DEFAULT '',
+			col__subphylum TEXT DEFAULT '',
+			col__phylum TEXT DEFAULT '',
+			col__kingdom TEXT DEFAULT '',
+			sf__species_id TEXT DEFAULT '',
+			sf__section_id TEXT DEFAULT '',
+			sf__subgenus_id TEXT DEFAULT '',
+			sf__genus_id TEXT DEFAULT '',
+			sf__subtribe_id TEXT DEFAULT '',
+			sf__tribe_id TEXT DEFAULT '',
+			sf__subfamily_id TEXT DEFAULT '',
+			sf__family_id TEXT DEFAULT '',
+			sf__superfamily_id TEXT DEFAULT '',
+			sf__suborder_id TEXT DEFAULT '',
+			sf__order_id TEXT DEFAULT '',
+			sf__subclass_id TEXT DEFAULT '',
+			sf__class_id TEXT DEFAULT '',
+			sf__subphylum_id TEXT DEFAULT '',
+			sf__phylum_id TEXT DEFAULT '',
+			sf__kingdom_id TEXT DEFAULT ''
 		);
 
 		CREATE TABLE synonym (

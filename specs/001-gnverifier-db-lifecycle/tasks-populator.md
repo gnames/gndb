@@ -337,32 +337,33 @@
 
 ---
 
-### T043: Implement Name Indices Processing
+### T043: Implement Name Indices Processing ✅
 
 **Description**: Implement Phase 2 - Name Indices with classification
 
 **Actions**:
 1. Create `internal/io/populate/indices.go`
-2. Implement `processNameIndices(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, sourceID int, hierarchy map[string]*hNode) error`:
+2. Implement `processNameIndices(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, sourceID int, hierarchy map[string]*hNode, cfg *config.Config) error`:
    - Clean old data: `DELETE FROM name_string_indices WHERE data_source_id = $1`
-   - Query SFGA name + taxon tables
-   - For each name:
-     * If in taxon: call getBreadcrumbs() for classification
-     * If not in taxon: record_id = "bare-name-{col__id}", taxonomic_status = "bare name"
-   - Create NameStringIndex records
+   - Three-phase processing:
+     * Phase 1: processTaxa() - accepted names with classification from hierarchy
+     * Phase 2: processSynonyms() - synonyms linked to accepted taxa
+     * Phase 3: processBareNames() - orphan names with "bare-name-" prefix
+   - Use getBreadcrumbs() for classification (respects WithFlatClassification flag)
    - Bulk insert using pgx.CopyFrom
    - Progress logging
 3. Handle empty taxon table (all names are bare)
 4. Include rank, taxonomic_status, accepted_record_id
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/populate/indices.go` (new)
+- `/home/dimus/code/golang/gndb/internal/io/populate/indices.go` (new)
 
 **Success Criteria**:
-- [ ] Integration test passes
-- [ ] Classifications generated correctly
-- [ ] Bare names handled
-- [ ] Old data cleaned
+- [x] Integration test passes (33,297 records from vascan)
+- [x] Classifications generated correctly (pipe-delimited strings)
+- [x] Bare names handled (with "bare-name-{id}" prefix)
+- [x] Old data cleaned (idempotency test passes)
+- [x] Synonyms linked to accepted taxa via AcceptedRecordID
 
 **Dependencies**: T041, T042
 

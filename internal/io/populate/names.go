@@ -105,7 +105,10 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 	}
 
 	// Batch insert configuration
-	const batchSize = 50000
+	// PostgreSQL has a limit of 65535 parameters per query.
+	// With 2 parameters per row (id, name), max is 32767 rows.
+	// Use 30000 to stay safely under the limit.
+	const batchSize = 30000
 	totalInserted := 0
 
 	// Process names in batches
