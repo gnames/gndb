@@ -69,6 +69,12 @@ type Config struct {
 
 	// Logging contains application logging settings.
 	Logging LoggingConfig `mapstructure:"logging" yaml:"logging"`
+
+	// JobsNumber is the number of concurrent workers for parallel operations.
+	// Used for gnparser pool size (both botanical and zoological parsers).
+	// A value of 0 (default) auto-detects using runtime.NumCPU().
+	// Example: JobsNumber=8 creates 8 botanical + 8 zoological parsers (16 total).
+	JobsNumber int `mapstructure:"jobs_number" yaml:"jobs_number"`
 }
 
 // DatabaseConfig contains PostgreSQL connection parameters.
@@ -117,6 +123,13 @@ type ImportConfig struct {
 	// during SFGA import. Applies to all record types.
 	// Larger batches are faster but use more memory. Tune based on available RAM.
 	BatchSize int `mapstructure:"batch_size" yaml:"batch_size"`
+
+	// WithFlatClassification is true if the 'flat' version of classification
+	// is preferable instead of parent/child hierarchical classification.
+	// Note: If flat classification does not exist in SFGA, classification breadcrumbs
+	// will stay empty even if parent/child hierarchy exists.
+	// Default: false (hierarchical parent/child classification is preferred)
+	WithFlatClassification bool `mapstructure:"with_flat_classification" yaml:"with_flat_classification"`
 }
 
 // OptimizationConfig contains settings for database optimization phase.

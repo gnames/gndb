@@ -159,7 +159,69 @@
 
 ---
 
-### T039: Implement Name Strings Processing
+### T038.5: [P] Implement GNparser Pool Wrapper ✅
+
+**Description**: Create wrapper around gnparser.NewPool for botanical and zoological parsing
+
+**Actions**:
+1. Create `pkg/parserpool/pool.go` (pure - parsing is computation, not I/O)
+2. Define `Pool` interface:
+   ```go
+   type Pool interface {
+       Parse(nameString string, code nomcode.Code) (*gnparser.Parsed, error)
+       Close()
+   }
+   ```
+3. Implement `PoolImpl` struct in same file:
+   - Two channels: botanicalCh, zoologicalCh (chan gnparser.GNparser)
+   - poolSize field
+4. Implement `NewPool(jobsNum int) Pool`:
+   - poolSize = jobsNum (default: runtime.NumCPU() if 0)
+   - Create two parser pools using gnparser.NewPool():
+     * Botanical: cfg.Code = nomcode.Botanical
+     * Zoological: cfg.Code = nomcode.Zoological
+   - Example: `botanicalCh := gnparser.NewPool(gnparser.NewConfig(gnparser.OptFormat(gnfmt.CSV), gnparser.OptWithBotanicalCode()), poolSize)`
+5. Implement `Parse(nameString string, code nomcode.Code)`:
+   - Select channel based on code (botanical vs zoological)
+   - Get parser from channel: `parser := <-ch` (blocks if all busy)
+   - Parse: `result := parser.ParseName(nameString)`
+   - Return parser to channel: `ch <- parser`
+   - Return parsed result
+6. Implement `Close()`:
+   - Close both channels
+   - Drain remaining parsers
+7. Write unit tests in `pkg/parserpool/pool_test.go`:
+   - Test concurrent parsing with multiple goroutines
+   - Test nomcode.Botanical and nomcode.Zoological
+   - Test blocking when pool exhausted
+   - Test Close() cleanup
+   - Run with -race flag
+
+**File Paths**:
+- `/home/dimus/code/golang/gndb/pkg/parserpool/pool.go` (new, interface + implementation)
+- `/home/dimus/code/golang/gndb/pkg/parserpool/pool_test.go` (new)
+
+**Success Criteria**:
+- [x] Pool interface defined in pkg/parserpool/
+- [x] PoolImpl uses gnparser.NewPool() correctly
+- [x] Config.Code set to nomcode.Botanical and nomcode.Zoological
+- [x] Concurrent parsing works without race conditions
+- [x] Close() properly cleans up resources
+- [x] Unit tests pass with -race flag
+
+**Dependencies**: None (can be done in parallel with T038)
+
+**Notes**:
+- Uses gnparser.NewPool(cfg Config, size int) chan GNparser
+- Config.Code field (nomcode.Code) differentiates botanical vs zoological
+- Pool size defaults to runtime.NumCPU() when jobsNum == 0
+- Total parsers = 2 * poolSize (one pool per code)
+- Used by T041 (hierarchy building) for concurrent canonical parsing
+- Channel-based approach from gnparser provides natural backpressure
+
+---
+
+### T039: Implement Name Strings Processing ✅
 
 **Description**: Implement Phase 1 - Name Strings import
 
@@ -179,10 +241,10 @@
 - `/Users/dimus/code/golang/gndb/internal/io/populate/names.go` (new)
 
 **Success Criteria**:
-- [ ] Integration test passes
-- [ ] Handles empty gn__scientific_name_string
-- [ ] Progress logged to stderr
-- [ ] ON CONFLICT works correctly
+- [x] Integration test passes
+- [x] Handles empty gn__scientific_name_string
+- [x] Progress logged to stderr
+- [x] ON CONFLICT works correctly
 
 **Dependencies**: T038
 
@@ -190,7 +252,7 @@
 
 ## Phase 4.5: Hierarchy Building (Phase 2 Part 1)
 
-### T040: [P] Write Integration Test for Hierarchy Building
+### T040: [P] Write Integration Test for Hierarchy Building ✅
 
 **Description**: Create failing test for hierarchy map generation
 
@@ -207,15 +269,15 @@
 - `/Users/dimus/code/golang/gndb/internal/io/populate/hierarchy_integration_test.go` (new)
 
 **Success Criteria**:
-- [ ] Test fails (function not implemented)
-- [ ] Covers parent-child walking
-- [ ] Tests flat classification fallback
+- [x] Test fails (function not implemented)
+- [x] Covers parent-child walking
+- [x] Tests flat classification fallback
 
 **Dependencies**: T037
 
 ---
 
-### T041: Implement Hierarchy Builder
+### T041: Implement Hierarchy Builder ✅
 
 **Description**: Implement hierarchy map generation from SFGA taxon table
 
@@ -238,10 +300,10 @@
 - `/Users/dimus/code/golang/gndb/internal/io/populate/hierarchy.go` (new)
 
 **Success Criteria**:
-- [ ] Integration test passes
-- [ ] Hierarchy map built correctly
-- [ ] getBreadcrumbs handles missing parents
-- [ ] Concurrent parsing works
+- [x] Integration test passes
+- [x] Hierarchy map built correctly
+- [x] getBreadcrumbs handles missing parents
+- [x] Concurrent parsing works
 
 **Dependencies**: T040
 
