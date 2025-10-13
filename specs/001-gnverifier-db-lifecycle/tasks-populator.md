@@ -398,30 +398,34 @@
 
 ---
 
-### T045: Implement Vernacular Processing
+### T045: Implement Vernacular Processing ✅
 
 **Description**: Implement Phases 3 & 4 - Vernacular strings and indices
 
 **Actions**:
 1. Create `internal/io/populate/vernaculars.go`
 2. Implement `processVernaculars(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, sourceID int) error`:
-   - Phase 3: Read SFGA VernacularName table
+   - Phase 1: Read SFGA vernacular table
      * Generate UUID v5 for vernacular strings
-     * Batch insert with ON CONFLICT DO NOTHING
-   - Phase 4: Create VernacularStringIndex records
-     * Link to name_string_id
-     * Include language, locality
-     * Bulk insert using CopyFrom
+     * Batch insert with ON CONFLICT DO NOTHING (30k batch size)
+     * UTF-8 fixing and truncation (500 char limit)
+   - Phase 2: Create VernacularStringIndex records
+     * Clean old data (DELETE WHERE data_source_id)
+     * Link to vernacular strings via UUID v5
+     * Include language, locality, country_code metadata
+     * Bulk insert using pgx.CopyFrom
    - Progress logging for both phases
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/populate/vernaculars.go` (new)
+- `/home/dimus/code/golang/gndb/internal/io/populate/vernaculars.go` (new, 350 lines)
 
 **Success Criteria**:
-- [ ] Integration test passes
-- [ ] Vernacular strings unique
-- [ ] Indices link correctly
-- [ ] Progress logged
+- [x] All 3 integration tests pass
+- [x] Vernacular strings unique (ON CONFLICT DO NOTHING)
+- [x] Indices link correctly via UUID v5
+- [x] Progress logged (Phase 1, Phase 2, counts)
+- [x] Idempotency verified (data cleaning works)
+- [x] Empty table handling works
 
 **Dependencies**: T044
 

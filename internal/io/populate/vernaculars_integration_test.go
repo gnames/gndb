@@ -113,7 +113,7 @@ func TestProcessVernaculars_Integration(t *testing.T) {
 		WHERE data_source_id = $1 AND language = 'English'
 	`, sourceID).Scan(&englishCount)
 	require.NoError(t, err)
-	assert.Equal(t, 3, englishCount, "Should have 3 English vernaculars")
+	assert.Equal(t, 4, englishCount, "Should have 4 English vernaculars (Common plantain x2, Human, E. coli)")
 
 	var spanishCount int
 	err = op.Pool().QueryRow(ctx, `
