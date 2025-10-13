@@ -183,7 +183,8 @@ func TestCreateCommand_RequiresConfig(t *testing.T) {
 	// (we're not testing actual DB connection here, just that it tries)
 	buf := new(bytes.Buffer)
 	cmd.SetErr(buf)
-	cmd.SetArgs([]string{"create"})
+	// Use --force to skip interactive prompts in tests
+	cmd.SetArgs([]string{"create", "--force"})
 
 	// This will fail because no database is available, but that's expected
 	// We're just verifying the command tries to execute
