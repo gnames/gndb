@@ -3,6 +3,7 @@ module github.com/gnames/gndb
 go 1.25
 
 require (
+	github.com/gnames/gnuuid v0.2.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/sfborg/sflib v0.4.6
@@ -26,7 +27,6 @@ require (
 	github.com/gnames/gnlib v0.49.0 // indirect
 	github.com/gnames/gnparser v1.11.8 // indirect
 	github.com/gnames/gnsys v0.3.9 // indirect
-	github.com/gnames/gnuuid v0.2.0 // indirect
 	github.com/gnames/organizer v0.1.1 // indirect
 	github.com/gnames/tribool v0.1.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect

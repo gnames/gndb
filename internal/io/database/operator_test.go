@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/config"
 	"github.com/gnames/gndb/internal/io/database"
-	pkgconfig "github.com/gnames/gndb/pkg/config"
+	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,29 +37,6 @@ import (
 // Skip these tests in CI without testcontainers support using:
 //   go test -short (these tests will be skipped)
 
-func getTestConfig() *pkgconfig.DatabaseConfig {
-	// Load config using the standard config system
-	// Empty string means use default locations
-	result, err := config.Load("")
-
-	var cfg *pkgconfig.Config
-	if err != nil {
-		// No config file found, use defaults
-		cfg = pkgconfig.Defaults()
-	} else {
-		cfg = result.Config
-	}
-
-	// Ensure defaults are merged
-	cfg.MergeWithDefaults()
-
-	// Always use test database for safety
-	// This prevents accidentally running tests against production database
-	cfg.Database.Database = "gndb_test"
-
-	return &cfg.Database
-}
-
 func TestPgxOperator_Connect(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
@@ -69,7 +45,7 @@ func TestPgxOperator_Connect(t *testing.T) {
 	op := database.NewPgxOperator()
 	ctx := context.Background()
 
-	err := op.Connect(ctx, getTestConfig())
+	err := op.Connect(ctx, iotesting.GetTestDatabaseConfig())
 	require.NoError(t, err, "Connect should succeed with valid config")
 
 	defer op.Close()
@@ -88,7 +64,7 @@ func TestPgxOperator_Connect_InvalidHost(t *testing.T) {
 	op := database.NewPgxOperator()
 	ctx := context.Background()
 
-	cfg := getTestConfig()
+	cfg := iotesting.GetTestDatabaseConfig()
 	cfg.Host = "invalid-host-that-does-not-exist"
 
 	err := op.Connect(ctx, cfg)
@@ -103,7 +79,7 @@ func TestPgxOperator_TableExists(t *testing.T) {
 	op := database.NewPgxOperator()
 	ctx := context.Background()
 
-	err := op.Connect(ctx, getTestConfig())
+	err := op.Connect(ctx, iotesting.GetTestDatabaseConfig())
 	require.NoError(t, err)
 	defer op.Close()
 
@@ -136,7 +112,7 @@ func TestPgxOperator_DropAllTables(t *testing.T) {
 	op := database.NewPgxOperator()
 	ctx := context.Background()
 
-	err := op.Connect(ctx, getTestConfig())
+	err := op.Connect(ctx, iotesting.GetTestDatabaseConfig())
 	require.NoError(t, err)
 	defer op.Close()
 

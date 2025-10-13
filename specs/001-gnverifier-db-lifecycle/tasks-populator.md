@@ -133,7 +133,7 @@
 
 ## Phase 4.4: Name Strings Processing (Phase 1)
 
-### T038: [P] Write Integration Test for Name Strings Import
+### T038: [P] Write Integration Test for Name Strings Import ✅
 
 **Description**: Create failing test for name strings import
 
@@ -151,9 +151,9 @@
 - `/Users/dimus/code/golang/gndb/internal/io/populate/names_integration_test.go` (new)
 
 **Success Criteria**:
-- [ ] Test fails (function not implemented)
-- [ ] Test clearly specifies expected behavior
-- [ ] Uses testdata SFGA file
+- [x] Test fails (function not implemented)
+- [x] Test clearly specifies expected behavior
+- [x] Uses testdata SFGA file
 
 **Dependencies**: T037
 

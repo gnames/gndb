@@ -4,10 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/config"
 	"github.com/gnames/gndb/internal/io/database"
 	"github.com/gnames/gndb/internal/io/schema"
-	pkgconfig "github.com/gnames/gndb/pkg/config"
+	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,40 +15,19 @@ import (
 // See operator_test.go for configuration instructions.
 // Skip with: go test -short
 
-func getMigrateTestConfig() *pkgconfig.Config {
-	// Load config using the standard config system
-	result, err := config.Load("")
-
-	var cfg *pkgconfig.Config
-	if err != nil {
-		// No config file found, use defaults
-		cfg = pkgconfig.Defaults()
-	} else {
-		cfg = result.Config
-	}
-
-	// Ensure defaults are merged
-	cfg.MergeWithDefaults()
-
-	// Always use test database for safety
-	cfg.Database.Database = "gndb_test"
-
-	return cfg
-}
-
 // TestMigrateCommand_Integration tests the complete migrate workflow end-to-end.
 // This test verifies:
-//   1. Database connection
-//   2. Schema creation (prerequisite)
-//   3. Schema migration via GORM AutoMigrate
-//   4. Verification that migration is idempotent
+//  1. Database connection
+//  2. Schema creation (prerequisite)
+//  3. Schema migration via GORM AutoMigrate
+//  4. Verification that migration is idempotent
 func TestMigrateCommand_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
 	ctx := context.Background()
-	cfg := getMigrateTestConfig()
+	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
 	op := database.NewPgxOperator()
@@ -109,7 +87,7 @@ func TestMigrateCommand_Integration_Idempotent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	cfg := getMigrateTestConfig()
+	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
 	op := database.NewPgxOperator()
@@ -160,7 +138,7 @@ func TestMigrateCommand_Integration_WithoutInitialSchema(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	cfg := getMigrateTestConfig()
+	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
 	op := database.NewPgxOperator()

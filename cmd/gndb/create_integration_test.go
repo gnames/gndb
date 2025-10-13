@@ -4,10 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/config"
 	"github.com/gnames/gndb/internal/io/database"
 	"github.com/gnames/gndb/internal/io/schema"
-	pkgconfig "github.com/gnames/gndb/pkg/config"
+	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,40 +15,19 @@ import (
 // See operator_test.go for configuration instructions.
 // Skip with: go test -short
 
-func getCreateTestConfig() *pkgconfig.Config {
-	// Load config using the standard config system
-	result, err := config.Load("")
-
-	var cfg *pkgconfig.Config
-	if err != nil {
-		// No config file found, use defaults
-		cfg = pkgconfig.Defaults()
-	} else {
-		cfg = result.Config
-	}
-
-	// Ensure defaults are merged
-	cfg.MergeWithDefaults()
-
-	// Always use test database for safety
-	cfg.Database.Database = "gndb_test"
-
-	return cfg
-}
-
 // TestCreateCommand_Integration tests the complete create workflow end-to-end.
 // This test verifies:
-//   1. Database connection
-//   2. Schema creation via GORM AutoMigrate
-//   3. Table existence verification
-//   4. Collation settings
+//  1. Database connection
+//  2. Schema creation via GORM AutoMigrate
+//  3. Table existence verification
+//  4. Collation settings
 func TestCreateCommand_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
 	ctx := context.Background()
-	cfg := getCreateTestConfig()
+	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
 	op := database.NewPgxOperator()
@@ -114,7 +92,7 @@ func TestCreateCommand_Integration_Idempotent(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	cfg := getCreateTestConfig()
+	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
 	op := database.NewPgxOperator()
@@ -157,7 +135,7 @@ func TestCreateCommand_Integration_HasTables(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	cfg := getCreateTestConfig()
+	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
 	op := database.NewPgxOperator()
