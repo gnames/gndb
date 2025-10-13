@@ -462,30 +462,33 @@
 
 ---
 
-### T047: Implement Data Source Metadata
+### T047: Implement Data Source Metadata ✅
 
 **Description**: Implement Phase 5 - Data source record creation
 
 **Actions**:
 1. Create `internal/io/populate/metadata.go`
 2. Implement `updateDataSourceMetadata(ctx context.Context, p *PopulatorImpl, source DataSourceConfig, sfgaDB *sql.DB) error`:
-   - Read SFGA metadata (title, description, home_url, etc.)
-   - Merge with sources.yaml overrides
+   - Read SFGA metadata (title, description, doi)
+   - Merge with sources.yaml overrides (title, description can be overridden)
    - Query counts:
      * `SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1`
      * `SELECT COUNT(*) FROM vernacular_string_indices WHERE data_source_id = $1`
-   - INSERT or UPDATE data_sources table
+   - DELETE existing data_sources record (idempotency)
+   - INSERT new data_sources record
    - Set updated_at = NOW()
-3. Handle NULL version/release_date gracefully
+3. Handle empty/NULL SFGA metadata gracefully
 
 **File Paths**:
-- `/Users/dimus/code/golang/gndb/internal/io/populate/metadata.go` (new)
+- `/home/dimus/code/golang/gndb/internal/io/populate/metadata.go` (new, ~240 lines)
 
 **Success Criteria**:
-- [ ] Integration test passes
-- [ ] Metadata merged correctly
-- [ ] Counts accurate
-- [ ] Idempotent (can run multiple times)
+- [x] All 3 integration tests pass
+- [x] Metadata merged correctly (SFGA + sources.yaml)
+- [x] Counts accurate (queried from indices tables)
+- [x] Idempotent (DELETE + INSERT pattern, tested with 2 updates)
+- [x] Empty/NULL metadata handled gracefully
+- [x] UpdatedAt timestamp set correctly
 
 **Dependencies**: T046
 
