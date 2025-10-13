@@ -311,7 +311,7 @@
 
 ## Phase 4.6: Name Indices Processing (Phase 2 Part 2)
 
-### T042: [P] Write Integration Test for Name Indices Import
+### T042: [P] Write Integration Test for Name Indices Import ✅
 
 **Description**: Create failing test for name indices with classification
 
@@ -329,9 +329,9 @@
 - `/Users/dimus/code/golang/gndb/internal/io/populate/indices_integration_test.go` (new)
 
 **Success Criteria**:
-- [ ] Test fails (function not implemented)
-- [ ] Covers all name index scenarios
-- [ ] Tests classification integration
+- [x] Test fails (function not implemented)
+- [x] Covers all name index scenarios
+- [x] Tests classification integration
 
 **Dependencies**: T037
 
