@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gnames/gndb/internal/io/config"
+	ioconfig "github.com/gnames/gndb/internal/io/config"
 )
 
 // clearCache removes all files from the cache directory and ensures it exists.
@@ -34,7 +34,7 @@ func clearCache(cacheDir string) error {
 //   - Useful for debugging failed imports (inspect cached SFGA files)
 func prepareCacheDir() (string, error) {
 	// Get base cache directory from config
-	baseCache, err := config.GetCacheDir()
+	baseCache, err := ioconfig.GetCacheDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get cache directory: %w", err)
 	}

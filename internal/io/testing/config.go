@@ -3,8 +3,8 @@
 package testing
 
 import (
-	"github.com/gnames/gndb/internal/io/config"
-	pkgconfig "github.com/gnames/gndb/pkg/config"
+	ioconfig "github.com/gnames/gndb/internal/io/config"
+	"github.com/gnames/gndb/pkg/config"
 )
 
 const (
@@ -26,14 +26,14 @@ const (
 //	    cfg := testing.GetTestConfig()
 //	    // ... use cfg for database operations
 //	}
-func GetTestConfig() *pkgconfig.Config {
+func GetTestConfig() *config.Config {
 	// Load config using the standard config system
-	result, err := config.Load("")
+	result, err := ioconfig.Load("")
 
-	var cfg *pkgconfig.Config
+	var cfg *config.Config
 	if err != nil {
 		// No config file found, use defaults
-		cfg = pkgconfig.Defaults()
+		cfg = config.Defaults()
 	} else {
 		cfg = result.Config
 	}
@@ -49,7 +49,7 @@ func GetTestConfig() *pkgconfig.Config {
 
 // GetTestDatabaseConfig returns only the database configuration for tests.
 // This is useful when you only need database config without the full Config struct.
-func GetTestDatabaseConfig() *pkgconfig.DatabaseConfig {
+func GetTestDatabaseConfig() *config.DatabaseConfig {
 	cfg := GetTestConfig()
 	return &cfg.Database
 }

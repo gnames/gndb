@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gnames/gndb/internal/io/config"
-	"github.com/gnames/gndb/internal/io/database"
+	ioconfig "github.com/gnames/gndb/internal/io/config"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
 	iopopulate "github.com/gnames/gndb/internal/io/populate"
-	"github.com/gnames/gndb/internal/io/schema"
+	ioschema "github.com/gnames/gndb/internal/io/schema"
 	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +44,7 @@ func TestPopulateCommand_E2E(t *testing.T) {
 	cfg.JobsNumber = 2
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
@@ -53,14 +53,14 @@ func TestPopulateCommand_E2E(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 
 	// Create schema
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err, "Schema creation should succeed")
 
 	// Setup test sources.yaml
 	// The populate command loads sources.yaml from GetConfigDir()/sources.yaml
 	// We need to temporarily replace it with our test version
-	configDir, err := config.GetConfigDir()
+	configDir, err := ioconfig.GetConfigDir()
 	require.NoError(t, err, "Should get config directory")
 
 	sourcesYAMLPath := filepath.Join(configDir, "sources.yaml")
@@ -252,19 +252,19 @@ func TestPopulateCommand_E2E_NoSources(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
 
 	// Clean up and create schema
 	_ = op.DropAllTables(ctx)
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err)
 
 	// Setup empty sources.yaml
-	configDir, err := config.GetConfigDir()
+	configDir, err := ioconfig.GetConfigDir()
 	require.NoError(t, err)
 
 	sourcesYAMLPath := filepath.Join(configDir, "sources.yaml")
@@ -324,19 +324,19 @@ func TestPopulateCommand_E2E_FilteredSource(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
 
 	// Clean up and create schema
 	_ = op.DropAllTables(ctx)
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err)
 
 	// Setup sources.yaml with multiple sources
-	configDir, err := config.GetConfigDir()
+	configDir, err := ioconfig.GetConfigDir()
 	require.NoError(t, err)
 
 	sourcesYAMLPath := filepath.Join(configDir, "sources.yaml")

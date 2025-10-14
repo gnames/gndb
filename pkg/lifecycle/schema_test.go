@@ -1,10 +1,9 @@
-
 package lifecycle_test
 
 import (
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/schema"
+	ioschema "github.com/gnames/gndb/internal/io/schema"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +16,7 @@ func TestSchemaManagerContract(t *testing.T) {
 	// The following line is a compile-time check.
 	// If schema.Manager does not implement lifecycle.SchemaManager,
 	// this code will fail to compile.
-	var _ lifecycle.SchemaManager = &schema.Manager{}
+	var _ lifecycle.SchemaManager = &ioschema.Manager{}
 
 	// This assertion is a runtime check to confirm the test was executed.
 	assert.True(t, true, "schema.Manager should implement lifecycle.SchemaManager")

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	internalconfig "github.com/gnames/gndb/internal/io/config"
+	ioconfig "github.com/gnames/gndb/internal/io/config"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/database"
 	"github.com/gnames/gndb/pkg/lifecycle"
@@ -39,7 +39,7 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 	slog.Info("Starting database population")
 
 	// Step 1: Load sources.yaml from default location
-	configDir, err := internalconfig.GetConfigDir()
+	configDir, err := ioconfig.GetConfigDir()
 	if err != nil {
 		return fmt.Errorf("failed to get config directory: %w", err)
 	}

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/gnames/gndb/internal/io/config"
-	"github.com/gnames/gndb/internal/io/database"
-	"github.com/gnames/gndb/internal/io/populate"
-	gnpopulate "github.com/gnames/gndb/pkg/populate"
+	ioconfig "github.com/gnames/gndb/internal/io/config"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
+	iopopulate "github.com/gnames/gndb/internal/io/populate"
+	"github.com/gnames/gndb/pkg/populate"
 	"github.com/spf13/cobra"
 )
 
@@ -72,7 +72,7 @@ Examples:
 
 			// Determine sources.yaml path
 			if sourcesYAMLPath == "" {
-				configDir, err := config.GetConfigDir()
+				configDir, err := ioconfig.GetConfigDir()
 				if err != nil {
 					return fmt.Errorf("failed to get config directory: %w", err)
 				}
@@ -80,7 +80,7 @@ Examples:
 			}
 
 			// Load sources configuration
-			sourcesConfig, err := gnpopulate.LoadSourcesConfig(sourcesYAMLPath)
+			sourcesConfig, err := populate.LoadSourcesConfig(sourcesYAMLPath)
 			if err != nil {
 				return fmt.Errorf(
 					"failed to load sources configuration from %s: %w",
@@ -90,7 +90,7 @@ Examples:
 			}
 
 			// Filter sources based on --sources flag
-			filteredSources, err := gnpopulate.FilterSources(
+			filteredSources, err := populate.FilterSources(
 				sourcesConfig.DataSources,
 				sourcesFilter,
 			)
@@ -139,7 +139,7 @@ Examples:
 			cfg.Populate.ReleaseDate = releaseDate
 
 			// Create database operator
-			op := database.NewPgxOperator()
+			op := iodatabase.NewPgxOperator()
 			err = op.Connect(ctx, &cfg.Database)
 			if err != nil {
 				return fmt.Errorf("failed to connect to database: %w", err)
@@ -147,7 +147,7 @@ Examples:
 			defer op.Close()
 
 			// Create populator
-			populator := populate.NewPopulator(op)
+			populator := iopopulate.NewPopulator(op)
 
 			// Run population
 			lg.Info("starting database population")

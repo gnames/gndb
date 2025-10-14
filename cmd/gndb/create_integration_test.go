@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/database"
-	"github.com/gnames/gndb/internal/io/schema"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
+	ioschema "github.com/gnames/gndb/internal/io/schema"
 	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ func TestCreateCommand_Integration(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
@@ -39,7 +39,7 @@ func TestCreateCommand_Integration(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 
 	// Create schema manager
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 
 	// Execute schema creation
 	err = sm.Create(ctx, cfg)
@@ -95,7 +95,7 @@ func TestCreateCommand_Integration_Idempotent(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
@@ -104,7 +104,7 @@ func TestCreateCommand_Integration_Idempotent(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 
 	// Create schema manager
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 
 	// First creation
 	err = sm.Create(ctx, cfg)
@@ -138,7 +138,7 @@ func TestCreateCommand_Integration_HasTables(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
@@ -152,7 +152,7 @@ func TestCreateCommand_Integration_HasTables(t *testing.T) {
 	assert.False(t, hasTables, "Database should have no tables initially")
 
 	// Create schema
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err)
 

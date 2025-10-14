@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/database"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
 	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,7 +42,7 @@ func TestPgxOperator_Connect(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	ctx := context.Background()
 
 	err := op.Connect(ctx, iotesting.GetTestDatabaseConfig())
@@ -61,7 +61,7 @@ func TestPgxOperator_Connect_InvalidHost(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	ctx := context.Background()
 
 	cfg := iotesting.GetTestDatabaseConfig()
@@ -76,7 +76,7 @@ func TestPgxOperator_TableExists(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	ctx := context.Background()
 
 	err := op.Connect(ctx, iotesting.GetTestDatabaseConfig())
@@ -109,7 +109,7 @@ func TestPgxOperator_DropAllTables(t *testing.T) {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	ctx := context.Background()
 
 	err := op.Connect(ctx, iotesting.GetTestDatabaseConfig())

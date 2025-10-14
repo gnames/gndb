@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/database"
-	"github.com/gnames/gndb/internal/io/schema"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
+	ioschema "github.com/gnames/gndb/internal/io/schema"
 	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/gnames/gndb/pkg/populate"
 	"github.com/gnames/gnuuid"
@@ -32,14 +32,14 @@ func TestProcessNameStrings_Integration(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Setup database
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
 
 	// Clean up and create schema
 	_ = op.DropAllTables(ctx)
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err, "Schema creation should succeed")
 
@@ -141,14 +141,14 @@ func TestProcessNameStrings_EmptyGNName(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Setup database
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
 
 	// Clean up and create schema
 	_ = op.DropAllTables(ctx)
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err)
 
@@ -206,14 +206,14 @@ func TestProcessNameStrings_LargeBatch(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Setup database
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
 
 	// Clean up and create schema
 	_ = op.DropAllTables(ctx)
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err)
 

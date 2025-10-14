@@ -1,10 +1,9 @@
-
 package lifecycle_test
 
 import (
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/populate"
+	iopopulate "github.com/gnames/gndb/internal/io/populate"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +16,7 @@ func TestPopulatorContract(t *testing.T) {
 	// The following line is a compile-time check.
 	// If populate.PopulatorImpl does not implement lifecycle.Populator,
 	// this code will fail to compile.
-	var _ lifecycle.Populator = &populate.PopulatorImpl{}
+	var _ lifecycle.Populator = &iopopulate.PopulatorImpl{}
 
 	// This assertion is a runtime check to confirm the test was executed.
 	assert.True(t, true, "populate.PopulatorImpl should implement lifecycle.Populator")

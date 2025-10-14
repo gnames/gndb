@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gnames/gndb/internal/io/database"
-	"github.com/gnames/gndb/internal/io/optimize"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
+	iooptimize "github.com/gnames/gndb/internal/io/optimize"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +19,7 @@ func getOptimizeCmd() *cobra.Command {
 			ctx := context.Background()
 
 			// Create database operator
-			op := database.NewPgxOperator()
+			op := iodatabase.NewPgxOperator()
 			err := op.Connect(ctx, &cfg.Database)
 			if err != nil {
 				return fmt.Errorf("failed to connect to database: %w", err)
@@ -27,7 +27,7 @@ func getOptimizeCmd() *cobra.Command {
 			defer op.Close()
 
 			// Create optimizer
-			optimizer := optimize.NewOptimizer(op)
+			optimizer := iooptimize.NewOptimizer(op)
 
 			// Run optimization
 			lg.Info("starting database optimization")

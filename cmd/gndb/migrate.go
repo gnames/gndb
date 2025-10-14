@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	io_database "github.com/gnames/gndb/internal/io/database"
-	io_schema "github.com/gnames/gndb/internal/io/schema"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
+	ioschema "github.com/gnames/gndb/internal/io/schema"
 	"github.com/gnames/gndb/pkg/database"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/spf13/cobra"
@@ -26,7 +26,7 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 	cfg := getConfig()
 
 	// Create database operator
-	var op database.Operator = io_database.NewPgxOperator()
+	var op database.Operator = iodatabase.NewPgxOperator()
 	if err := op.Connect(ctx, &cfg.Database); err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -36,7 +36,7 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 		cfg.Database.User, cfg.Database.Host, cfg.Database.Port, cfg.Database.Database)
 
 	// Create schema manager
-	var sm lifecycle.SchemaManager = io_schema.NewManager(op)
+	var sm lifecycle.SchemaManager = ioschema.NewManager(op)
 
 	// Run GORM AutoMigrate to migrate schema
 	fmt.Println("Applying database migrations...")

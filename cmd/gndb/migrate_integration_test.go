@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gnames/gndb/internal/io/database"
-	"github.com/gnames/gndb/internal/io/schema"
+	iodatabase "github.com/gnames/gndb/internal/io/database"
+	ioschema "github.com/gnames/gndb/internal/io/schema"
 	iotesting "github.com/gnames/gndb/internal/io/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ func TestMigrateCommand_Integration(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
@@ -39,7 +39,7 @@ func TestMigrateCommand_Integration(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 
 	// Create schema manager
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 
 	// First, create the initial schema
 	err = sm.Create(ctx, cfg)
@@ -90,7 +90,7 @@ func TestMigrateCommand_Integration_Idempotent(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
@@ -99,7 +99,7 @@ func TestMigrateCommand_Integration_Idempotent(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 
 	// Create schema manager
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 
 	// Create initial schema
 	err = sm.Create(ctx, cfg)
@@ -141,7 +141,7 @@ func TestMigrateCommand_Integration_WithoutInitialSchema(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := database.NewPgxOperator()
+	op := iodatabase.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
@@ -155,7 +155,7 @@ func TestMigrateCommand_Integration_WithoutInitialSchema(t *testing.T) {
 	require.False(t, hasTables, "Database should be empty initially")
 
 	// Create schema manager
-	sm := schema.NewManager(op)
+	sm := ioschema.NewManager(op)
 
 	// Run migration on empty database (should create schema)
 	err = sm.Migrate(ctx, cfg)

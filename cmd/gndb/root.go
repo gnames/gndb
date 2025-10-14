@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gnames/gndb/internal/io/config"
-	pkgconfig "github.com/gnames/gndb/pkg/config"
+	ioconfig "github.com/gnames/gndb/internal/io/config"
+	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
 var (
 	cfgFile string
-	cfg     *pkgconfig.Config
+	cfg     *config.Config
 	lg      *slog.Logger
 )
 
@@ -39,14 +39,14 @@ For more information, see the project's README file.`,
 			// Auto-generate config file on first run if it doesn't exist
 			if cfgFile == "" {
 				// Check if default config exists
-				exists, err := config.ConfigFileExists()
+				exists, err := ioconfig.ConfigFileExists()
 				if err != nil {
 					return fmt.Errorf("failed to check config file: %w", err)
 				}
 
 				if !exists {
 					// Generate default config
-					generatedPath, err := config.GenerateDefaultConfig()
+					generatedPath, err := ioconfig.GenerateDefaultConfig()
 					if err != nil {
 						// Only warn, don't fail - can use defaults
 						fmt.Printf("Warning: could not generate config file: %v\n", err)
@@ -57,7 +57,7 @@ For more information, see the project's README file.`,
 			}
 
 			// Load configuration
-			result, err := config.Load(cfgFile)
+			result, err := ioconfig.Load(cfgFile)
 			if err != nil {
 				return fmt.Errorf("failed to load configuration: %w", err)
 			}
@@ -99,6 +99,6 @@ For more information, see the project's README file.`,
 }
 
 // getConfig returns the loaded configuration (for use in subcommands)
-func getConfig() *pkgconfig.Config {
+func getConfig() *config.Config {
 	return cfg
 }
