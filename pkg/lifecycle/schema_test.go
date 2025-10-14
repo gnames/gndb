@@ -3,7 +3,7 @@ package lifecycle_test
 import (
 	"testing"
 
-	ioschema "github.com/gnames/gndb/internal/io/schema"
+	"github.com/gnames/gndb/internal/ioschema"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/stretchr/testify/assert"
 )

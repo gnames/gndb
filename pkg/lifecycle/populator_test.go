@@ -3,7 +3,7 @@ package lifecycle_test
 import (
 	"testing"
 
-	iopopulate "github.com/gnames/gndb/internal/io/populate"
+	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/stretchr/testify/assert"
 )

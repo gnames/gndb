@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	ioconfig "github.com/gnames/gndb/internal/io/config"
-	iodatabase "github.com/gnames/gndb/internal/io/database"
-	iopopulate "github.com/gnames/gndb/internal/io/populate"
-	ioschema "github.com/gnames/gndb/internal/io/schema"
-	iotesting "github.com/gnames/gndb/internal/io/testing"
+	"github.com/gnames/gndb/internal/ioconfig"
+	"github.com/gnames/gndb/internal/iodb"
+	"github.com/gnames/gndb/internal/iopopulate"
+	"github.com/gnames/gndb/internal/ioschema"
+	"github.com/gnames/gndb/internal/iotesting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func TestPopulateCommand_E2E(t *testing.T) {
 	cfg.JobsNumber = 2
 
 	// Create database operator
-	op := iodatabase.NewPgxOperator()
+	op := iodb.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
@@ -252,7 +252,7 @@ func TestPopulateCommand_E2E_NoSources(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := iodatabase.NewPgxOperator()
+	op := iodb.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
@@ -324,7 +324,7 @@ func TestPopulateCommand_E2E_FilteredSource(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := iodatabase.NewPgxOperator()
+	op := iodb.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()

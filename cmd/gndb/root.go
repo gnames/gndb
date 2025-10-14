@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	ioconfig "github.com/gnames/gndb/internal/io/config"
+	"github.com/gnames/gndb/internal/ioconfig"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/logger"
 	"github.com/spf13/cobra"

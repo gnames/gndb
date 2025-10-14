@@ -3,7 +3,7 @@ package lifecycle_test
 import (
 	"testing"
 
-	iooptimize "github.com/gnames/gndb/internal/io/optimize"
+	"github.com/gnames/gndb/internal/iooptimize"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/stretchr/testify/assert"
 )

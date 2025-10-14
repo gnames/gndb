@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	ioconfig "github.com/gnames/gndb/internal/io/config"
-	iodatabase "github.com/gnames/gndb/internal/io/database"
-	iopopulate "github.com/gnames/gndb/internal/io/populate"
+	"github.com/gnames/gndb/internal/ioconfig"
+	"github.com/gnames/gndb/internal/iodb"
+	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/pkg/populate"
 	"github.com/spf13/cobra"
 )
@@ -139,7 +139,7 @@ Examples:
 			cfg.Populate.ReleaseDate = releaseDate
 
 			// Create database operator
-			op := iodatabase.NewPgxOperator()
+			op := iodb.NewPgxOperator()
 			err = op.Connect(ctx, &cfg.Database)
 			if err != nil {
 				return fmt.Errorf("failed to connect to database: %w", err)

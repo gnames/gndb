@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	iodatabase "github.com/gnames/gndb/internal/io/database"
-	ioschema "github.com/gnames/gndb/internal/io/schema"
-	"github.com/gnames/gndb/pkg/database"
+	"github.com/gnames/gndb/internal/iodb"
+	"github.com/gnames/gndb/internal/ioschema"
+	"github.com/gnames/gndb/pkg/db"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/spf13/cobra"
 )
@@ -53,7 +53,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	cfg := getConfig()
 
 	// Create database operator
-	var op database.Operator = iodatabase.NewPgxOperator()
+	var op db.Operator = iodb.NewPgxOperator()
 	if err := op.Connect(ctx, &cfg.Database); err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}

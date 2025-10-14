@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	iodatabase "github.com/gnames/gndb/internal/io/database"
-	ioschema "github.com/gnames/gndb/internal/io/schema"
-	iotesting "github.com/gnames/gndb/internal/io/testing"
+	"github.com/gnames/gndb/internal/iodb"
+	"github.com/gnames/gndb/internal/ioschema"
+	"github.com/gnames/gndb/internal/iotesting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +30,7 @@ func TestCreateCommand_Integration(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := iodatabase.NewPgxOperator()
+	op := iodb.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err, "Should connect to database")
 	defer op.Close()
@@ -95,7 +95,7 @@ func TestCreateCommand_Integration_Idempotent(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := iodatabase.NewPgxOperator()
+	op := iodb.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
@@ -138,7 +138,7 @@ func TestCreateCommand_Integration_HasTables(t *testing.T) {
 	cfg := iotesting.GetTestConfig()
 
 	// Create database operator
-	op := iodatabase.NewPgxOperator()
+	op := iodb.NewPgxOperator()
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
