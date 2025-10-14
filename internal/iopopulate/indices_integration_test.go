@@ -13,6 +13,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestProcessNameIndices_FlatClassification(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	cfg := iotesting.GetTestConfig()
+
+	// Setup database
+	op := iodb.NewPgxOperator()
+	err := op.Connect(ctx, &cfg.Database)
+	require.NoError(t, err, "Should connect to database")
+	defer op.Close()
+
+	// Clean up and create schema
+	_ = op.DropAllTables(ctx)
+	sm := ioschema.NewManager(op)
+	err = sm.Create(ctx, cfg)
+	require.NoError(t, err, "Schema creation should succeed")
+
+	// Open real SFGA test data (1002-vascan)
+	testdataDir := "../../testdata"
+	cacheDir, err := prepareCacheDir()
+	require.NoError(t, err)
+
+	source := populate.DataSourceConfig{
+		ID:     1002, // vascan
+		Parent: testdataDir,
+	}
+
+	sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+	require.NoError(t, err, "Should fetch test SFGA")
+
+	sfgaDB, err := openSFGA(sqlitePath)
+	require.NoError(t, err, "Should open SFGA database")
+	defer sfgaDB.Close()
+
+}
+
 // Note: This is an integration test that uses real SFGA test data (vascan 1002).
 // Skip with: go test -short
 
@@ -76,7 +115,9 @@ func TestProcessNameIndices_Integration(t *testing.T) {
 
 	// Verify: Check that name_string_indices table was populated
 	var count int
-	err = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1", source.ID).Scan(&count)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1", source.ID).
+		Scan(&count)
 	require.NoError(t, err, "Should query name_string_indices count")
 	assert.Greater(t, count, 0, "name_string_indices table should have records")
 
@@ -146,14 +187,29 @@ func TestProcessNameIndices_Integration(t *testing.T) {
 
 	// Verify: Classification strings are pipe-delimited
 	assert.Contains(t, sampleRecord.Classification, "|", "Classification should be pipe-delimited")
-	assert.Contains(t, sampleRecord.ClassificationRanks, "|", "Classification ranks should be pipe-delimited")
-	assert.Contains(t, sampleRecord.ClassificationIDs, "|", "Classification IDs should be pipe-delimited")
+	assert.Contains(
+		t,
+		sampleRecord.ClassificationRanks,
+		"|",
+		"Classification ranks should be pipe-delimited",
+	)
+	assert.Contains(
+		t,
+		sampleRecord.ClassificationIDs,
+		"|",
+		"Classification IDs should be pipe-delimited",
+	)
 
 	// Verify: All three classification strings have same number of elements
 	classificationParts := len(splitByPipe(sampleRecord.Classification))
 	ranksParts := len(splitByPipe(sampleRecord.ClassificationRanks))
 	idsParts := len(splitByPipe(sampleRecord.ClassificationIDs))
-	assert.Equal(t, classificationParts, ranksParts, "Classification and ranks should have same length")
+	assert.Equal(
+		t,
+		classificationParts,
+		ranksParts,
+		"Classification and ranks should have same length",
+	)
 	assert.Equal(t, classificationParts, idsParts, "Classification and IDs should have same length")
 
 	t.Logf("Sample record: %s, status: %s, classification depth: %d",
@@ -211,7 +267,9 @@ func TestProcessNameIndices_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	var firstCount int
-	err = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1", source.ID).Scan(&firstCount)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1", source.ID).
+		Scan(&firstCount)
 	require.NoError(t, err)
 	require.Greater(t, firstCount, 0)
 
@@ -220,7 +278,9 @@ func TestProcessNameIndices_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	var secondCount int
-	err = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1", source.ID).Scan(&secondCount)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1", source.ID).
+		Scan(&secondCount)
 	require.NoError(t, err)
 
 	// Counts should be identical (idempotent)
