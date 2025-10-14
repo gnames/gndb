@@ -20,90 +20,117 @@ tests/
 Go 1.21+: Follow standard conventions
 
 ## Recent Changes
+- 001-gnverifier-db-lifecycle: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 001-gnverifier-db-lifecycle: Added Go 1.25 + pgx/v5 (pgxpool for connection pooling), GORM (AutoMigrate for schema management), cobra (CLI), viper (config), sflib (SFGA data import)
 - 001-gnverifier-db-lifecycle: Added Go 1.21+
 
 <!-- MANUAL ADDITIONS START -->
 
-## Architecture (Refactored v1.3.0)
+## Architecture (v1.4.0 - Flattened Structure)
 
 ### Package Structure
 - **pkg/**: Pure interfaces and types (no I/O)
-  - `config/`: Configuration types
-  - `database/`: DatabaseOperator interface (connection management)
+  - `config/`: Configuration types, validation, defaults
+  - `db/`: DatabaseOperator interface (connection management)
   - `lifecycle/`: SchemaManager, Populator, Optimizer interfaces
   - `schema/`: GORM models for database schema
-  - `logger/`: Logging configuration
+  - `populate/`: Pure populate logic (sources.yaml parsing, filtering)
+  - `templates/`: Embedded config/sources.yaml templates
 
-- **internal/io/**: Impure I/O implementations
-  - `database/`: PgxOperator (PostgreSQL connections via pgxpool)
-  - `schema/`: SchemaManager (GORM AutoMigrate)
-  - `populate/`: Populator (SFGA import via sflib)
-  - `optimize/`: Optimizer (indexes, materialized views)
-  - `config/`: Config loading (viper)
+- **internal/**: Impure I/O implementations (io* prefix convention)
+  - `iodb/`: PgxOperator (PostgreSQL via pgxpool)
+  - `ioschema/`: SchemaManager (GORM AutoMigrate)
+  - `iopopulate/`: Populator (SFGA import via sflib, 5-phase workflow)
+  - `iooptimize/`: Optimizer (indexes, materialized views)
+  - `ioconfig/`: Config loading (viper, YAML/env/flags)
+  - `iotesting/`: Shared test utilities
 
 - **cmd/gndb/**: CLI commands (cobra)
-  - `create`: Create database schema
-  - `migrate`: Apply schema migrations
-  - `populate`: Import SFGA data
-  - `optimize`: Create indexes and optimize
+  - `create`: Create schema
+  - `migrate`: Apply migrations
+  - `populate`: Import SFGA data (5 phases)
+  - `optimize`: Create indexes
 
 ### Design Principles
-1. **Pure/Impure Separation**: Interfaces in pkg/, implementations in internal/io/
-2. **DatabaseOperator Pattern**: Exposes `*pgxpool.Pool` to lifecycle components
-3. **Lifecycle Interfaces**: SchemaManager, Populator, Optimizer for each phase
-4. **GORM AutoMigrate**: Schema versioning handled by GORM
-5. **pgx CopyFrom**: Bulk inserts for 100M+ records performance
+1. **Pure/Impure Separation**: Interfaces in pkg/, implementations in internal/
+2. **Package Naming**: Names match directories; io* prefix for all I/O packages
+3. **No Import Aliases**: Package name = directory name (idiomatic Go)
+4. **Interface-Based**: db.Operator, lifecycle.{SchemaManager,Populator,Optimizer}
+5. **Performance**: pgx CopyFrom for bulk inserts (100M+ records)
 
 ### Key Interfaces
 ```go
-// pkg/database/operator.go
+// pkg/db/operator.go
 type Operator interface {
     Connect(ctx, *config.DatabaseConfig) error
     Pool() *pgxpool.Pool  // For CopyFrom, transactions
     TableExists(ctx, string) (bool, error)
     HasTables(ctx) (bool, error)
     DropAllTables(ctx) error
-}
-
-// pkg/lifecycle/schema.go
-type SchemaManager interface {
-    Create(ctx, *config.Config) error
-    Migrate(ctx, *config.Config) error
+    Close() error
 }
 
 // pkg/lifecycle/populator.go
 type Populator interface {
     Populate(ctx, *config.Config) error
 }
-
-// pkg/lifecycle/optimizer.go
-type Optimizer interface {
-    Optimize(ctx, *config.Config) error
-}
 ```
 
-### Workflow
-1. `gndb create`: DatabaseOperator → SchemaManager.Create() → GORM AutoMigrate
-2. `gndb migrate`: DatabaseOperator → SchemaManager.Migrate() → GORM AutoMigrate
-3. `gndb populate`: DatabaseOperator → Populator.Populate() → sflib + pgx CopyFrom
-4. `gndb optimize`: DatabaseOperator → Optimizer.Optimize() → CREATE INDEX/MATERIALIZED VIEW
+### Populate Workflow (5 Phases)
+**Phase 0: Fetch & Cache SFGA**
+- Download from URL or use local parent directory
+- Cache at `~/.cache/gndb/sfga/{sourceID:04d}.sqlite`
+- Open SQLite database via sflib
 
-### Testing
-- Unit tests: pkg/ packages (pure logic)
-- Contract tests: pkg/lifecycle/*_test.go (interface compliance)
-- Integration tests: cmd/gndb/*_integration_test.go (requires PostgreSQL)
-- Run with `go test -short` to skip integration tests
+**Phase 1: Name Strings**
+- Read from SFGA `name_string` table
+- Parse via gnparser (botanical code, concurrent pool)
+- Insert into `name_strings` table via pgx CopyFrom
+- Files: `internal/iopopulate/names.go`
+
+**Phase 1.5: Hierarchy**
+- Build taxonomy tree from SFGA `taxon` table
+- Store in memory map for breadcrumb generation
+- Files: `internal/iopopulate/hierarchy.go`
+
+**Phase 2: Name Indices**
+- Process taxa (accepted names), synonyms, bare names
+- Link to `name_strings` via name_string_id
+- Insert into `name_string_indices` via CopyFrom
+- Files: `internal/iopopulate/indices.go`
+
+**Phase 3-4: Vernaculars**
+- Phase 3: Vernacular strings → `vernacular_string_indices` table
+- Phase 4: Vernacular indices → `vernacular_name_string_indices` table
+- Files: `internal/iopopulate/vernaculars.go`
+
+**Phase 5: Metadata**
+- Update `data_sources` table with record counts, timestamps
+- Files: `internal/iopopulate/metadata.go`
+
+### Key Files by Responsibility
+- **Orchestration**: `internal/iopopulate/populator.go` (Populate method)
+- **SFGA I/O**: `internal/iopopulate/sfga.go` (download, open)
+- **Cache**: `internal/iopopulate/cache.go` (directory management)
+- **Sources Config**: `pkg/populate/sources.go` (parsing, filtering)
+- **CLI Entry**: `cmd/gndb/populate.go` (flags, validation)
 
 ### Configuration
-- YAML: `~/.config/gndb/config.yaml` or `./gndb.yaml`
-- Environment: `GNDB_DATABASE_HOST`, `GNDB_DATABASE_USER`, etc.
-- CLI flags: `--config`, `--force`
-- Precedence: flags > env vars > config file > defaults
+- Config file: `~/.config/gndb/config.yaml`
+- Sources file: `~/.config/gndb/sources.yaml`
+- Precedence: CLI flags > env vars > YAML > defaults
+- Cache: `~/.cache/gndb/sfga/` (all platforms)
+
+### Testing
+- Contract tests: `pkg/lifecycle/*_test.go` (interface compliance)
+- Unit tests: `pkg/` packages (pure logic)
+- Integration tests: `internal/io*/*_test.go` (require PostgreSQL + SFGA)
+- E2E tests: `cmd/gndb/*_test.go` (full workflows)
+- Run `go test -short` to skip integration tests
 
 ### Database Schema
-- 10 core tables: data_sources, name_strings, canonicals, etc.
-- GORM models in pkg/schema/models.go
-- Collation "C" for scientific name sorting (internal/io/schema/manager.go:82)
+- 10 core tables: data_sources, name_strings, canonicals, name_string_indices, etc.
+- GORM models: `pkg/schema/models.go`
+- Collation "C": Scientific name sorting (internal/ioschema/manager.go)
 
 <!-- MANUAL ADDITIONS END -->

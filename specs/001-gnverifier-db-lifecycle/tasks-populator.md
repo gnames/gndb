@@ -584,9 +584,9 @@
 - `/Users/dimus/code/golang/gndb/specs/001-gnverifier-db-lifecycle/quickstart.md`
 
 **Success Criteria**:
-- [ ] Quickstart updated with real examples
-- [ ] All commands verified
-- [ ] Cache debugging documented
+- [X] Quickstart updated with real examples
+- [X] All commands verified
+- [X] Cache debugging documented
 
 **Dependencies**: T049
 
@@ -609,9 +609,9 @@
 - `/Users/dimus/code/golang/gndb/CLAUDE.md`
 
 **Success Criteria**:
-- [ ] Architecture documented clearly
-- [ ] Under 150 lines total
-- [ ] Key patterns highlighted
+- [X] Architecture documented clearly
+- [X] Under 150 lines total (110 lines)
+- [X] Key patterns highlighted
 
 **Dependencies**: T049
 
