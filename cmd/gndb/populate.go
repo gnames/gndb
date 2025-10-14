@@ -129,6 +129,15 @@ Examples:
 
 			lg.Info("sources loaded", "count", len(filteredSources), "filter", sourcesFilter)
 
+			// Extract source IDs and set in Config for Populate()
+			sourceIDs := make([]int, len(filteredSources))
+			for i, src := range filteredSources {
+				sourceIDs[i] = src.ID
+			}
+			cfg.Populate.SourceIDs = sourceIDs
+			cfg.Populate.ReleaseVersion = releaseVersion
+			cfg.Populate.ReleaseDate = releaseDate
+
 			// Create database operator
 			op := database.NewPgxOperator()
 			err = op.Connect(ctx, &cfg.Database)

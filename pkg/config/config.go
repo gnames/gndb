@@ -70,6 +70,9 @@ type Config struct {
 	// Logging contains application logging settings.
 	Logging LoggingConfig `mapstructure:"logging" yaml:"logging"`
 
+	// Populate contains settings specific to the populate command.
+	Populate PopulateConfig `mapstructure:"populate" yaml:"populate"`
+
 	// JobsNumber is the number of concurrent workers for parallel operations.
 	// Used for gnparser pool size (both botanical and zoological parsers).
 	// A value of 0 (default) auto-detects using runtime.NumCPU().
@@ -154,6 +157,25 @@ type LoggingConfig struct {
 	// Format is the log output format.
 	// Valid values: "json", "text"
 	Format string `mapstructure:"format" yaml:"format"`
+}
+
+// PopulateConfig contains settings specific to the populate command.
+type PopulateConfig struct {
+	// SourceIDs is the list of data source IDs to import.
+	// Empty slice means import all sources from sources.yaml.
+	// The CLI filters sources and passes only the IDs to process.
+	// Populate() will load sources.yaml and look up each source by ID.
+	SourceIDs []int `mapstructure:"source_ids" yaml:"source_ids"`
+
+	// ReleaseVersion overrides the version for the data source being imported.
+	// Only valid when importing a single source (len(SourceIDs) == 1).
+	// The CLI validates this constraint before calling Populate().
+	ReleaseVersion string `mapstructure:"release_version" yaml:"release_version"`
+
+	// ReleaseDate overrides the release date for the data source being imported.
+	// Format: YYYY-MM-DD. Only valid when importing a single source (len(SourceIDs) == 1).
+	// The CLI validates this constraint before calling Populate().
+	ReleaseDate string `mapstructure:"release_date" yaml:"release_date"`
 }
 
 // Validate checks that configuration values are sensible.

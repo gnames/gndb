@@ -496,7 +496,7 @@
 
 ## Phase 4.9: Main Orchestration
 
-### T048: Wire All Phases in Populator.Populate()
+### T048: Wire All Phases in Populator.Populate() ✅
 
 **Description**: Implement main Populate method orchestrating all phases
 
@@ -522,10 +522,10 @@
 - `/Users/dimus/code/golang/gndb/internal/io/populate/populator.go`
 
 **Success Criteria**:
-- [ ] All phases execute in sequence
-- [ ] Error handling works
-- [ ] Context cancellation respected
-- [ ] Progress logged clearly
+- [X] All phases execute in sequence
+- [X] Error handling works
+- [X] Context cancellation respected
+- [X] Progress logged clearly
 
 **Dependencies**: T036, T039, T041, T043, T045, T047
 
@@ -533,7 +533,7 @@
 
 ## Phase 4.10: End-to-End Testing
 
-### T049: Create End-to-End Populate Integration Test
+### T049: Create End-to-End Populate Integration Test ✅
 
 **Description**: Test complete populate workflow from CLI to database
 
@@ -558,10 +558,10 @@
 - `/Users/dimus/code/golang/gndb/cmd/gndb/populate_e2e_test.go` (new)
 
 **Success Criteria**:
-- [ ] E2E test passes
-- [ ] All phases execute
-- [ ] Data verified in database
-- [ ] Idempotent
+- [X] E2E test passes
+- [X] All phases execute
+- [X] Data verified in database
+- [X] Idempotent
 
 **Dependencies**: T048
 
