@@ -53,7 +53,7 @@ func TestProcessNameStrings_Integration(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err, "Should fetch test SFGA")
 
 	sfgaDB, err := openSFGA(sqlitePath)
@@ -227,7 +227,7 @@ func TestProcessNameStrings_LargeBatch(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err)
 
 	sfgaDB, err := openSFGA(sqlitePath)

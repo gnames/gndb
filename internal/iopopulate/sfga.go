@@ -213,11 +213,50 @@ func isSFGAFile(filename string) bool {
 		strings.HasSuffix(filename, ".sqlite.zip")
 }
 
+// SFGAMetadata holds metadata extracted from SFGA filename.
+type SFGAMetadata struct {
+	Filename     string // Full filename
+	Version      string // Version string (e.g., "v1.0.0" or "1.0.0")
+	RevisionDate string // Revision date in YYYY-MM-DD format
+}
+
+// parseSFGAFilename extracts version and revision date from SFGA filename.
+// Expected patterns:
+//   - {ID}_{name}_{date}_v{version}.{ext}  (e.g., "1000_ruhoff_2023-08-22_v1.0.0.sqlite.zip")
+//   - {ID}-{name}-{date}.{ext}              (e.g., "0147-vascan-2025-08-25.sqlite.zip")
+//   - {ID}.{ext}                             (e.g., "1000.sql" - no metadata)
+//   - {ID}_{name}.{ext}                      (e.g., "1000_ruhoff.sqlite")
+//
+// Returns SFGAMetadata with filename, version (if found), and revision date (if found).
+// Empty strings are returned for missing fields - this is graceful and allows for minimal filenames.
+func parseSFGAFilename(filename string) SFGAMetadata {
+	metadata := SFGAMetadata{
+		Filename: filename,
+	}
+
+	// Extract date: YYYY-MM-DD format
+	// Only matches valid calendar dates (not IDs like 1000-2000-3000)
+	datePattern := regexp.MustCompile(`(\d{4}-\d{2}-\d{2})`)
+	if dateMatch := datePattern.FindStringSubmatch(filename); len(dateMatch) > 1 {
+		metadata.RevisionDate = dateMatch[1]
+	}
+
+	// Extract version: v1.0.0 or v1.0 or 1.0.0 format
+	// Must be preceded by underscore, dash, or 'v' to avoid matching IDs
+	// Examples: _v1.0.0, -v2.3, _1.5.2, v3.0
+	versionPattern := regexp.MustCompile(`[_-]v?(\d+\.\d+(?:\.\d+)?)`)
+	if versionMatch := versionPattern.FindStringSubmatch(filename); len(versionMatch) > 1 {
+		metadata.Version = versionMatch[1]
+	}
+
+	return metadata
+}
+
 // fetchSFGA fetches and extracts an SFGA file to the cache directory.
 // For local files, it resolves by ID pattern and uses sflib Archive.Fetch.
 // For URLs, it lists the remote directory to find the matching file by ID.
-// Returns (sqlitePath, warningMessage, error). Warning is non-empty when multiple files found.
-func fetchSFGA(ctx context.Context, source populate.DataSourceConfig, cacheDir string) (string, string, error) {
+// Returns (sqlitePath, metadata, warningMessage, error). Warning is non-empty when multiple files found.
+func fetchSFGA(ctx context.Context, source populate.DataSourceConfig, cacheDir string) (string, SFGAMetadata, string, error) {
 	var sfgaPath string
 	var warning string
 	var err error
@@ -229,15 +268,21 @@ func fetchSFGA(ctx context.Context, source populate.DataSourceConfig, cacheDir s
 		// For URLs, list the directory and find the file matching the ID
 		sfgaPath, warning, err = resolveRemoteSFGAFile(source.Parent, source.ID)
 		if err != nil {
-			return "", "", err
+			return "", SFGAMetadata{}, "", err
 		}
 	} else {
 		// For local directories, resolve the exact filename
 		sfgaPath, warning, err = resolveSFGAFile(source.Parent, source.ID)
 		if err != nil {
-			return "", "", err
+			return "", SFGAMetadata{}, "", err
 		}
 	}
+
+	// Extract filename from path
+	filename := filepath.Base(sfgaPath)
+
+	// Parse metadata from filename
+	metadata := parseSFGAFilename(filename)
 
 	// Create Archive for fetching
 	arc := sflib.NewSfga()
@@ -245,16 +290,16 @@ func fetchSFGA(ctx context.Context, source populate.DataSourceConfig, cacheDir s
 	// Fetch and extract to cache directory
 	err = arc.Fetch(sfgaPath, cacheDir)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to fetch SFGA from %s: %w", sfgaPath, err)
+		return "", SFGAMetadata{}, "", fmt.Errorf("failed to fetch SFGA from %s: %w", sfgaPath, err)
 	}
 
 	// Get the path to the extracted SQLite file
 	sqlitePath := arc.DbPath()
 	if sqlitePath == "" {
-		return "", "", fmt.Errorf("failed to get database path after fetching %s", sfgaPath)
+		return "", SFGAMetadata{}, "", fmt.Errorf("failed to get database path after fetching %s", sfgaPath)
 	}
 
-	return sqlitePath, warning, nil
+	return sqlitePath, metadata, warning, nil
 }
 
 // openSFGA opens a SQLite database and returns a database handle.

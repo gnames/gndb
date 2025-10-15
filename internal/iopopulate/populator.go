@@ -164,7 +164,7 @@ func (p *PopulatorImpl) processSource(
 ) error {
 	// Phase 0: Fetch SFGA (T037)
 	slog.Info("Fetching SFGA", "source_id", source.ID)
-	sqlitePath, warning, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, sfgaMetadata, warning, err := fetchSFGA(ctx, source, cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to fetch SFGA: %w", err)
 	}
@@ -209,7 +209,7 @@ func (p *PopulatorImpl) processSource(
 
 	// Phase 5: Update data source metadata (T047)
 	slog.Info("Phase 5: Updating data source metadata", "source_id", source.ID)
-	err = updateDataSourceMetadata(ctx, p, source, sfgaDB)
+	err = updateDataSourceMetadata(ctx, p, source, sfgaDB, sfgaMetadata)
 	if err != nil {
 		return fmt.Errorf("phase 5 failed (metadata): %w", err)
 	}

@@ -192,7 +192,7 @@ func TestFetchSFGA_LocalDirectory(t *testing.T) {
 
 	// Test fetchSFGA
 	ctx := context.Background()
-	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err)
 	t.Logf("fetchSFGA returned: %s (will remain in cache for inspection)", sqlitePath)
 
@@ -287,7 +287,7 @@ func TestFetchSFGA_URL(t *testing.T) {
 
 	// Test fetchSFGA
 	ctx := context.Background()
-	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
 
 	// Skip if no internet connection or file not available
 	if err != nil {
@@ -341,7 +341,7 @@ func TestOpenSFGA(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err)
 
 	// Test opening the database

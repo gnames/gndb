@@ -108,7 +108,7 @@ func TestUpdateDataSourceMetadata_NewDataSource(t *testing.T) {
 
 	// Test: Update data source metadata (this will fail until T047 is implemented)
 	beforeUpdate := time.Now()
-	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB)
+	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB, SFGAMetadata{})
 	require.NoError(t, err, "updateDataSourceMetadata should succeed")
 	afterUpdate := time.Now()
 
@@ -248,7 +248,7 @@ func TestUpdateDataSourceMetadata_ExistingDataSource(t *testing.T) {
 	}
 
 	// First update
-	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB)
+	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB, SFGAMetadata{})
 	require.NoError(t, err)
 
 	// Verify first update
@@ -278,7 +278,7 @@ func TestUpdateDataSourceMetadata_ExistingDataSource(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Second update (idempotency test)
-	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB)
+	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB, SFGAMetadata{})
 	require.NoError(t, err)
 
 	// Verify second update
@@ -355,7 +355,7 @@ func TestUpdateDataSourceMetadata_EmptyMetadata(t *testing.T) {
 	}
 
 	// Test: Should handle empty metadata gracefully
-	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB)
+	err = updateDataSourceMetadata(ctx, populator, source, sfgaDB, SFGAMetadata{})
 	require.NoError(t, err, "Should handle empty SFGA metadata gracefully")
 
 	// Verify: Data source record was created with sources.yaml data

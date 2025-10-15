@@ -20,6 +20,7 @@ import (
 //  1. SFGA metadata table: title, description, doi
 //  2. Sources.yaml config: title_short, home_url, flags (is_curated, etc.)
 //  3. Database queries: record counts from name_string_indices and vernacular_string_indices
+//  4. SFGA filename: version, revision_date
 //
 // The function follows a DELETE + INSERT pattern for idempotency.
 //
@@ -28,6 +29,7 @@ import (
 //   - p: Populator instance with database connection
 //   - source: DataSourceConfig from sources.yaml with ID and metadata
 //   - sfgaDB: Open SQLite database handle for SFGA source
+//   - sfgaFileMeta: Metadata extracted from SFGA filename (version, date)
 //
 // Returns error if:
 //   - SFGA metadata query fails
@@ -38,6 +40,7 @@ func updateDataSourceMetadata(
 	p *PopulatorImpl,
 	source populate.DataSourceConfig,
 	sfgaDB *sql.DB,
+	sfgaFileMeta SFGAMetadata,
 ) error {
 	slog.Info("Updating data source metadata", "source_id", source.ID)
 
@@ -59,7 +62,7 @@ func updateDataSourceMetadata(
 	}
 
 	// Step 3: Build DataSource record merging SFGA + sources.yaml metadata
-	ds := buildDataSourceRecord(source, sfgaMetadata, recordCount, vernRecordCount)
+	ds := buildDataSourceRecord(source, sfgaMetadata, sfgaFileMeta, recordCount, vernRecordCount)
 
 	// Step 4: Delete existing data source record (for idempotency)
 	err = deleteDataSource(ctx, p, source.ID)
@@ -148,17 +151,17 @@ func queryVernacularIndicesCount(ctx context.Context, p *PopulatorImpl, sourceID
 //   - SFGA provides: title, description, doi
 //   - sources.yaml provides: id, title_short, home_url, flags
 //   - Database queries provide: record_count, vern_record_count
+//   - SFGA filename provides: version, revision_date
 //   - System provides: updated_at (current timestamp)
 //
 // Fields not currently populated (future enhancements):
 //   - UUID: Would come from SFGA or sources.yaml (currently nil)
-//   - Version: Would come from SFGA metadata or filename
-//   - RevisionDate: Would come from SFGA metadata or filename
 //   - Citation: Would come from SFGA metadata
 //   - Authors: Would come from SFGA metadata
 func buildDataSourceRecord(
 	source populate.DataSourceConfig,
 	sfgaMetadata *sfgaMetadata,
+	sfgaFileMeta SFGAMetadata,
 	recordCount int,
 	vernRecordCount int,
 ) schema.DataSource {
@@ -183,8 +186,8 @@ func buildDataSourceRecord(
 		UUID:            uuidStr,
 		Title:           title,
 		TitleShort:      source.TitleShort,
-		Version:         "", // Future: extract from SFGA or filename
-		RevisionDate:    "", // Future: extract from SFGA or filename
+		Version:         sfgaFileMeta.Version,
+		RevisionDate:    sfgaFileMeta.RevisionDate,
 		DOI:             sfgaMetadata.DOI,
 		Citation:        "", // Future: extract from SFGA
 		Authors:         "", // Future: extract from SFGA

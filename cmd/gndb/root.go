@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/gnames/gndb/internal/ioconfig"
+	gndb "github.com/gnames/gndb/pkg"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/logger"
 	"github.com/spf13/cobra"
@@ -56,7 +57,7 @@ Configuration is managed through a gndb.yaml file, environment variables
 (with GNDB_ prefix), and command-line flags.
 
 For more information, see the project's README file.`,
-		Version: Version,
+		Version: fmt.Sprintf("%s (build: %s)", gndb.Version, gndb.Build),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Load configuration
 			result, err := ioconfig.Load(cfgFile)
