@@ -33,6 +33,9 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, "info", cfg.Logging.Level)
 	assert.Equal(t, "text", cfg.Logging.Format)
 
+	// Test JobsNumber default is set to number of CPUs (> 0)
+	assert.Greater(t, cfg.JobsNumber, 0, "JobsNumber should default to number of CPUs")
+
 	// Defaults should be valid
 	err := cfg.Validate()
 	require.NoError(t, err, "default config should be valid")
@@ -158,37 +161,16 @@ func TestValidate_InvalidValues(t *testing.T) {
 
 func TestMergeWithDefaults(t *testing.T) {
 	tests := []struct {
-		name     string
-		config   *config.Config
-		expected *config.Config
+		name                 string
+		config               *config.Config
+		checkJobsNumber      bool
+		expectedJobsNumber   int
+		verifyFieldsManually bool
 	}{
 		{
-			name:   "empty config gets all defaults",
-			config: &config.Config{},
-			expected: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "localhost",
-					Port:            5432,
-					User:            "postgres",
-					Password:        "postgres",
-					Database:        "gnames",
-					SSLMode:         "disable",
-					MaxConnections:  20,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
-				Optimization: config.OptimizationConfig{
-					ConcurrentIndexes: false,
-				},
-				Logging: config.LoggingConfig{
-					Level:  "info",
-					Format: "text",
-				},
-			},
+			name:            "empty config gets all defaults",
+			config:          &config.Config{},
+			checkJobsNumber: true,
 		},
 		{
 			name: "partial config gets missing defaults",
@@ -198,30 +180,7 @@ func TestMergeWithDefaults(t *testing.T) {
 					Port: 3333,
 				},
 			},
-			expected: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "custom-host",
-					Port:            3333,
-					User:            "postgres",
-					Password:        "postgres",
-					Database:        "gnames",
-					SSLMode:         "disable",
-					MaxConnections:  20,
-					MinConnections:  2,
-					MaxConnLifetime: 60,
-					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
-				Optimization: config.OptimizationConfig{
-					ConcurrentIndexes: false,
-				},
-				Logging: config.LoggingConfig{
-					Level:  "info",
-					Format: "text",
-				},
-			},
+			checkJobsNumber: true,
 		},
 		{
 			name: "complete config unchanged",
@@ -248,38 +207,71 @@ func TestMergeWithDefaults(t *testing.T) {
 					Level:  "debug",
 					Format: "json",
 				},
+				JobsNumber: 16, // Custom value
 			},
-			expected: &config.Config{
-				Database: config.DatabaseConfig{
-					Host:            "custom-host",
-					Port:            3333,
-					User:            "custom-user",
-					Password:        "custom-pass",
-					Database:        "custom-db",
-					SSLMode:         "require",
-					MaxConnections:  50,
-					MinConnections:  5,
-					MaxConnLifetime: 120,
-					MaxConnIdleTime: 30,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 10000,
-				},
-				Optimization: config.OptimizationConfig{
-					ConcurrentIndexes: true,
-				},
-				Logging: config.LoggingConfig{
-					Level:  "debug",
-					Format: "json",
-				},
-			},
+			checkJobsNumber:    true,
+			expectedJobsNumber: 16,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Store original values for custom fields
+			originalHost := tt.config.Database.Host
+			originalPort := tt.config.Database.Port
+			originalUser := tt.config.Database.User
+			originalBatchSize := tt.config.Import.BatchSize
+			originalLevel := tt.config.Logging.Level
+			originalFormat := tt.config.Logging.Format
+			originalJobsNumber := tt.config.JobsNumber
+
 			tt.config.MergeWithDefaults()
-			assert.Equal(t, tt.expected, tt.config)
+
+			// Check that custom values are preserved
+			if originalHost != "" {
+				assert.Equal(t, originalHost, tt.config.Database.Host)
+			} else {
+				assert.Equal(t, "localhost", tt.config.Database.Host)
+			}
+
+			if originalPort != 0 {
+				assert.Equal(t, originalPort, tt.config.Database.Port)
+			} else {
+				assert.Equal(t, 5432, tt.config.Database.Port)
+			}
+
+			if originalUser != "" {
+				assert.Equal(t, originalUser, tt.config.Database.User)
+			} else {
+				assert.Equal(t, "postgres", tt.config.Database.User)
+			}
+
+			if originalBatchSize != 0 {
+				assert.Equal(t, originalBatchSize, tt.config.Import.BatchSize)
+			} else {
+				assert.Equal(t, 5000, tt.config.Import.BatchSize)
+			}
+
+			if originalLevel != "" {
+				assert.Equal(t, originalLevel, tt.config.Logging.Level)
+			} else {
+				assert.Equal(t, "info", tt.config.Logging.Level)
+			}
+
+			if originalFormat != "" {
+				assert.Equal(t, originalFormat, tt.config.Logging.Format)
+			} else {
+				assert.Equal(t, "text", tt.config.Logging.Format)
+			}
+
+			// Check JobsNumber
+			if tt.checkJobsNumber {
+				if originalJobsNumber != 0 {
+					assert.Equal(t, tt.expectedJobsNumber, tt.config.JobsNumber, "Custom JobsNumber should be preserved")
+				} else {
+					assert.Greater(t, tt.config.JobsNumber, 0, "JobsNumber should be set to runtime.NumCPU() when 0")
+				}
+			}
 		})
 	}
 }

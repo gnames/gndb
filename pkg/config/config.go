@@ -53,6 +53,7 @@ package config
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 )
 
@@ -270,6 +271,11 @@ func (c *Config) MergeWithDefaults() {
 	if c.Logging.Format == "" {
 		c.Logging.Format = defaults.Logging.Format
 	}
+
+	// Merge JobsNumber
+	if c.JobsNumber == 0 {
+		c.JobsNumber = defaults.JobsNumber
+	}
 }
 
 // Defaults returns a Config with sensible default values.
@@ -301,5 +307,6 @@ func Defaults() *Config {
 			Level:  "info",
 			Format: "text",
 		},
+		JobsNumber: runtime.NumCPU(), // Default to number of CPU threads
 	}
 }

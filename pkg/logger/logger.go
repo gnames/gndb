@@ -23,12 +23,12 @@ func New(cfg *config.LoggingConfig) *slog.Logger {
 
 	switch strings.ToLower(cfg.Format) {
 	case "json":
-		handler = slog.NewJSONHandler(os.Stdout, opts)
+		handler = slog.NewJSONHandler(os.Stderr, opts)
 	case "text", "": // Default to text if empty or invalid
-		handler = slog.NewTextHandler(os.Stdout, opts)
+		handler = slog.NewTextHandler(os.Stderr, opts)
 	default:
 		// Invalid format, default to text
-		handler = slog.NewTextHandler(os.Stdout, opts)
+		handler = slog.NewTextHandler(os.Stderr, opts)
 	}
 
 	return slog.New(handler)

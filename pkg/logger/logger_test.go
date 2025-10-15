@@ -14,10 +14,10 @@ import (
 )
 
 func TestNew_TextFormat(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
+	// Capture stderr
+	old := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	os.Stderr = w
 
 	cfg := &config.LoggingConfig{
 		Level:  "info",
@@ -27,9 +27,9 @@ func TestNew_TextFormat(t *testing.T) {
 	logger := New(cfg)
 	logger.Info("test message", "key", "value")
 
-	// Restore stdout
+	// Restore stderr
 	w.Close()
-	os.Stdout = old
+	os.Stderr = old
 
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)
@@ -43,10 +43,10 @@ func TestNew_TextFormat(t *testing.T) {
 }
 
 func TestNew_JSONFormat(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
+	// Capture stderr
+	old := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	os.Stderr = w
 
 	cfg := &config.LoggingConfig{
 		Level:  "info",
@@ -56,9 +56,9 @@ func TestNew_JSONFormat(t *testing.T) {
 	logger := New(cfg)
 	logger.Info("test message", "key", "value")
 
-	// Restore stdout
+	// Restore stderr
 	w.Close()
-	os.Stdout = old
+	os.Stderr = old
 
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)
@@ -121,10 +121,10 @@ func TestNew_LogLevelFiltering(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Capture stdout
-			old := os.Stdout
+			// Capture stderr
+			old := os.Stderr
 			r, w, _ := os.Pipe()
-			os.Stdout = w
+			os.Stderr = w
 
 			cfg := &config.LoggingConfig{
 				Level:  tt.configLevel,
@@ -134,9 +134,9 @@ func TestNew_LogLevelFiltering(t *testing.T) {
 			logger := New(cfg)
 			tt.logFunc(logger)
 
-			// Restore stdout
+			// Restore stderr
 			w.Close()
-			os.Stdout = old
+			os.Stderr = old
 
 			var buf bytes.Buffer
 			_, err := io.Copy(&buf, r)
@@ -153,10 +153,10 @@ func TestNew_LogLevelFiltering(t *testing.T) {
 }
 
 func TestNew_InvalidLevelDefaultsToInfo(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
+	// Capture stderr
+	old := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	os.Stderr = w
 
 	cfg := &config.LoggingConfig{
 		Level:  "invalid",
@@ -170,9 +170,9 @@ func TestNew_InvalidLevelDefaultsToInfo(t *testing.T) {
 	// Info should be shown
 	logger.Info("info message")
 
-	// Restore stdout
+	// Restore stderr
 	w.Close()
-	os.Stdout = old
+	os.Stderr = old
 
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)
@@ -184,10 +184,10 @@ func TestNew_InvalidLevelDefaultsToInfo(t *testing.T) {
 }
 
 func TestNew_InvalidFormatDefaultsToText(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
+	// Capture stderr
+	old := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	os.Stderr = w
 
 	cfg := &config.LoggingConfig{
 		Level:  "info",
@@ -197,9 +197,9 @@ func TestNew_InvalidFormatDefaultsToText(t *testing.T) {
 	logger := New(cfg)
 	logger.Info("test message")
 
-	// Restore stdout
+	// Restore stderr
 	w.Close()
-	os.Stdout = old
+	os.Stderr = old
 
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)
@@ -217,10 +217,10 @@ func TestNew_InvalidFormatDefaultsToText(t *testing.T) {
 }
 
 func TestNew_EmptyFormatDefaultsToText(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
+	// Capture stderr
+	old := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	os.Stderr = w
 
 	cfg := &config.LoggingConfig{
 		Level:  "info",
@@ -230,9 +230,9 @@ func TestNew_EmptyFormatDefaultsToText(t *testing.T) {
 	logger := New(cfg)
 	logger.Info("test message")
 
-	// Restore stdout
+	// Restore stderr
 	w.Close()
-	os.Stdout = old
+	os.Stderr = old
 
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)
@@ -245,10 +245,10 @@ func TestNew_EmptyFormatDefaultsToText(t *testing.T) {
 }
 
 func TestNew_LoggerIncludesTimestamp(t *testing.T) {
-	// Capture stdout
-	old := os.Stdout
+	// Capture stderr
+	old := os.Stderr
 	r, w, _ := os.Pipe()
-	os.Stdout = w
+	os.Stderr = w
 
 	cfg := &config.LoggingConfig{
 		Level:  "info",
@@ -258,9 +258,9 @@ func TestNew_LoggerIncludesTimestamp(t *testing.T) {
 	logger := New(cfg)
 	logger.Info("test message")
 
-	// Restore stdout
+	// Restore stderr
 	w.Close()
-	os.Stdout = old
+	os.Stderr = old
 
 	var buf bytes.Buffer
 	_, err := io.Copy(&buf, r)
