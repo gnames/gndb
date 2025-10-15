@@ -2,6 +2,7 @@ package ioconfig
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -93,6 +94,7 @@ func GenerateDefaultConfig() (string, error) {
 		if err := os.WriteFile(configPath, []byte(templates.ConfigYAML), 0644); err != nil {
 			return "", fmt.Errorf("failed to write config file: %w", err)
 		}
+		slog.Info("Created config file", "path", configPath)
 	}
 
 	// Write sources.yaml if it doesn't exist
@@ -100,6 +102,7 @@ func GenerateDefaultConfig() (string, error) {
 		if err := os.WriteFile(sourcesPath, []byte(templates.SourcesYAML), 0644); err != nil {
 			return "", fmt.Errorf("failed to write sources file: %w", err)
 		}
+		slog.Info("Created sources file", "path", sourcesPath)
 	}
 
 	// Ensure files are synced to disk

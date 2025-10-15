@@ -89,6 +89,21 @@ Examples:
 				)
 			}
 
+			// Display configuration warnings (non-fatal issues)
+			if len(sourcesConfig.Warnings) > 0 {
+				lg.Warn("configuration warnings detected", "count", len(sourcesConfig.Warnings))
+				for _, warning := range sourcesConfig.Warnings {
+					lg.Warn("configuration issue",
+						"file", sourcesYAMLPath,
+						"data_source_id", warning.DataSourceID,
+						"field", warning.Field,
+						"issue", warning.Message,
+						"fix", warning.Suggestion,
+					)
+				}
+				lg.Info("data sources with warnings will be imported but may have limited functionality")
+			}
+
 			// Filter sources based on --sources flag
 			filteredSources, err := populate.FilterSources(
 				sourcesConfig.DataSources,

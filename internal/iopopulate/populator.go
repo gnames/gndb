@@ -164,9 +164,12 @@ func (p *PopulatorImpl) processSource(
 ) error {
 	// Phase 0: Fetch SFGA (T037)
 	slog.Info("Fetching SFGA", "source_id", source.ID)
-	sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, warning, err := fetchSFGA(ctx, source, cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to fetch SFGA: %w", err)
+	}
+	if warning != "" {
+		slog.Warn("Multiple SFGA files found", "source_id", source.ID, "details", warning)
 	}
 
 	// Phase 0: Open SFGA database (T037)

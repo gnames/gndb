@@ -17,6 +17,28 @@ var (
 )
 
 func getRootCmd() *cobra.Command {
+	// Auto-generate config file on first run if it doesn't exist
+	// This runs before any command or flag processing, ensuring configs
+	// are created even when just running 'gndb -V' or 'gndb --help'
+	if cfgFile == "" {
+		exists, err := ioconfig.ConfigFileExists()
+		if err == nil {
+			if !exists {
+				// Generate default config
+				_, err := ioconfig.GenerateDefaultConfig()
+				if err != nil {
+					// Silently continue - config generation is best-effort at this stage
+					// Errors will be reported later if config is actually needed
+				}
+			} else {
+				// Config files already exist - inform the user
+				configPath, _ := ioconfig.GetDefaultConfigPath()
+				sourcesPath, _ := ioconfig.GetDefaultSourcesPath()
+				slog.Info("Using existing config files", "config", configPath, "sources", sourcesPath)
+			}
+		}
+	}
+
 	rootCmd := &cobra.Command{
 		Use:   "gndb",
 		Short: "GNdb manages GNverifier database lifecycle",
@@ -36,26 +58,6 @@ Configuration is managed through a gndb.yaml file, environment variables
 For more information, see the project's README file.`,
 		Version: Version,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Auto-generate config file on first run if it doesn't exist
-			if cfgFile == "" {
-				// Check if default config exists
-				exists, err := ioconfig.ConfigFileExists()
-				if err != nil {
-					return fmt.Errorf("failed to check config file: %w", err)
-				}
-
-				if !exists {
-					// Generate default config
-					generatedPath, err := ioconfig.GenerateDefaultConfig()
-					if err != nil {
-						// Only warn, don't fail - can use defaults
-						fmt.Printf("Warning: could not generate config file: %v\n", err)
-					} else {
-						fmt.Printf("Generated default config at: %s\n", generatedPath)
-					}
-				}
-			}
-
 			// Load configuration
 			result, err := ioconfig.Load(cfgFile)
 			if err != nil {

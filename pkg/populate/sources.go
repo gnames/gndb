@@ -28,6 +28,17 @@ type SourcesConfig struct {
 
 	// Logging contains logging and progress settings.
 	Logging LoggingConfig `yaml:"logging,omitempty"`
+
+	// Warnings holds non-fatal validation warnings (not serialized)
+	Warnings []ValidationWarning `yaml:"-"`
+}
+
+// ValidationWarning represents a non-fatal configuration issue.
+type ValidationWarning struct {
+	DataSourceID int    // ID of the data source
+	Field        string // Field name that has the issue
+	Message      string // Description of the issue
+	Suggestion   string // How to fix it
 }
 
 // DataSourceConfig represents configuration for a single data source.
@@ -147,24 +158,28 @@ func (c *SourcesConfig) Validate() error {
 
 	// Validate each data source
 	for i := range c.DataSources {
-		if err := c.DataSources[i].Validate(); err != nil {
+		warnings, err := c.DataSources[i].Validate(i + 1)
+		if err != nil {
 			return fmt.Errorf("data source %d: %w", i+1, err)
 		}
+		c.Warnings = append(c.Warnings, warnings...)
 	}
 
 	return nil
 }
 
 // Validate checks a single data source configuration.
-func (d *DataSourceConfig) Validate() error {
+// Returns a slice of warnings (non-fatal issues) and an error (fatal issues).
+func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
+	var warnings []ValidationWarning
 	// ID is required
 	if d.ID == 0 {
-		return fmt.Errorf("id is required")
+		return nil, fmt.Errorf("id is required")
 	}
 
 	// Parent is required
 	if d.Parent == "" {
-		return fmt.Errorf("parent directory or URL is required")
+		return nil, fmt.Errorf("parent directory or URL is required")
 	}
 
 	// Check if parent is URL or local directory
@@ -176,7 +191,7 @@ func (d *DataSourceConfig) Validate() error {
 		if strings.HasPrefix(parentPath, "~/") {
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
-				return fmt.Errorf("failed to expand ~: %w", err)
+				return nil, fmt.Errorf("failed to expand ~: %w", err)
 			}
 			parentPath = filepath.Join(homeDir, parentPath[2:])
 		}
@@ -184,77 +199,115 @@ func (d *DataSourceConfig) Validate() error {
 		// Check if directory exists
 		stat, err := os.Stat(parentPath)
 		if os.IsNotExist(err) {
-			return fmt.Errorf("parent directory does not exist: %s", d.Parent)
+			return nil, fmt.Errorf("parent directory does not exist: %s", d.Parent)
 		}
 		if err != nil {
-			return fmt.Errorf("failed to check parent directory: %w", err)
+			return nil, fmt.Errorf("failed to check parent directory: %w", err)
 		}
 		if !stat.IsDir() {
-			return fmt.Errorf("parent path is not a directory: %s", d.Parent)
+			return nil, fmt.Errorf("parent path is not a directory: %s", d.Parent)
 		}
 	}
 
 	// Validate data source type if provided
 	if d.DataSourceType != "" {
 		if d.DataSourceType != "taxonomic" && d.DataSourceType != "nomenclatural" {
-			return fmt.Errorf("invalid data_source_type: must be 'taxonomic' or 'nomenclatural'")
+			return nil, fmt.Errorf("invalid data_source_type: must be 'taxonomic' or 'nomenclatural'")
 		}
 	}
 
-	// Validate outlink configuration
+	// Validate outlink configuration (generate warnings, not errors)
 	if d.IsOutlinkReady {
+		outlinkValid := true
+		var outlinkIssue string
+		var outlinkSuggestion string
+
 		if d.OutlinkURL == "" {
-			return fmt.Errorf("outlink_url is required when is_outlink_ready is true")
-		}
-		if !strings.Contains(d.OutlinkURL, "{}") {
-			return fmt.Errorf("outlink_url must contain {} placeholder for ID substitution")
-		}
-		if d.OutlinkIDColumn == "" {
-			return fmt.Errorf("outlink_id_column is required when is_outlink_ready is true")
-		}
+			outlinkValid = false
+			outlinkIssue = "outlink_url is required when is_outlink_ready is true"
+			outlinkSuggestion = "Set 'outlink_url' with a URL template containing {} placeholder, or set 'is_outlink_ready: false'"
+		} else if !strings.Contains(d.OutlinkURL, "{}") {
+			outlinkValid = false
+			outlinkIssue = "outlink_url must contain {} placeholder for ID substitution"
+			outlinkSuggestion = fmt.Sprintf("Update 'outlink_url: %s' to include {} where the ID should be inserted", d.OutlinkURL)
+		} else if d.OutlinkIDColumn == "" {
+			outlinkValid = false
+			outlinkIssue = "outlink_id_column is required when is_outlink_ready is true"
+			outlinkSuggestion = "Set 'outlink_id_column' to a valid table.column (e.g., 'taxon.col__id', 'name.col__alternative_id')"
+		} else {
+			// Validate outlink_id_column format: "table.column"
+			parts := strings.Split(d.OutlinkIDColumn, ".")
+			if len(parts) != 2 {
+				outlinkValid = false
+				outlinkIssue = fmt.Sprintf("invalid outlink_id_column format '%s': must be 'table.column'", d.OutlinkIDColumn)
+				outlinkSuggestion = "Change to format 'table.column' (e.g., 'taxon.col__id', 'name.col__alternative_id')"
+			} else {
+				tableName := parts[0]
+				columnName := parts[1]
 
-		// Validate outlink_id_column format: "table.column"
-		parts := strings.Split(d.OutlinkIDColumn, ".")
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid outlink_id_column format: must be 'table.column' (e.g., 'taxon.col__id')")
-		}
+				// Define valid table.column combinations based on SFGA schema
+				// Note: Only name and taxon tables are supported (synonym table complicates import logic)
+				validCombinations := map[string][]string{
+					"name": {
+						"col__id",
+						"col__alternative_id",
+					},
+					"taxon": {
+						"col__id",
+						"col__alternative_id",
+						"gn__local_id",
+						"gn__global_id",
+					},
+				}
 
-		tableName := parts[0]
-		columnName := parts[1]
-
-		// Validate table name
-		validTables := []string{"taxon", "name", "synonym"}
-		validTable := false
-		for _, t := range validTables {
-			if tableName == t {
-				validTable = true
-				break
+				// Validate table exists
+				allowedColumns, validTable := validCombinations[tableName]
+				if !validTable {
+					outlinkValid = false
+					var validTables []string
+					for table := range validCombinations {
+						validTables = append(validTables, table)
+					}
+					outlinkIssue = fmt.Sprintf("invalid table '%s' in outlink_id_column", tableName)
+					outlinkSuggestion = fmt.Sprintf("Change table to one of: %v", validTables)
+				} else {
+					// Validate column exists for this table
+					validColumn := false
+					for _, col := range allowedColumns {
+						if columnName == col {
+							validColumn = true
+							break
+						}
+					}
+					if !validColumn {
+						outlinkValid = false
+						// Build list of all valid table.column combinations for error message
+						var allValidCombinations []string
+						for table, columns := range validCombinations {
+							for _, col := range columns {
+								allValidCombinations = append(allValidCombinations, fmt.Sprintf("%s.%s", table, col))
+							}
+						}
+						outlinkIssue = fmt.Sprintf("invalid outlink_id_column '%s.%s': column not valid for this table", tableName, columnName)
+						outlinkSuggestion = fmt.Sprintf("Use one of these valid combinations: %v", allValidCombinations)
+					}
+				}
 			}
 		}
-		if !validTable {
-			return fmt.Errorf("invalid table in outlink_id_column: must be one of %v", validTables)
-		}
 
-		// Validate column name
-		validColumns := []string{"col__id", "col__name_id", "col__local_id", "col__alternative_id"}
-		validColumn := false
-		for _, c := range validColumns {
-			if columnName == c {
-				validColumn = true
-				break
-			}
-		}
-		if !validColumn {
-			return fmt.Errorf("invalid column in outlink_id_column: must be one of %v", validColumns)
-		}
-
-		// Exception: synonym.col__alternative_id is not allowed (synonym table lacks this column)
-		if tableName == "synonym" && columnName == "col__alternative_id" {
-			return fmt.Errorf("synonym.col__alternative_id is not allowed: synonym table does not have col__alternative_id column")
+		// If outlink configuration is invalid, disable it and generate warning
+		if !outlinkValid {
+			d.IsOutlinkReady = false
+			warnings = append(warnings, ValidationWarning{
+				DataSourceID: d.ID,
+				Field:        "outlink configuration",
+				Message:      outlinkIssue,
+				Suggestion:   outlinkSuggestion,
+			})
 		}
 	}
 
-	return nil
+	return warnings, nil
 }
 
 // ParseFilename extracts metadata from SFGA filename.

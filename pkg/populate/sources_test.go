@@ -305,33 +305,6 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 			},
 			expectedErr: "invalid data_source_type",
 		},
-		{
-			name: "outlink_ready without outlink_url",
-			setupFunc: func(tmpDir string) string {
-				parentDir := filepath.Join(tmpDir, "parent")
-				_ = os.MkdirAll(parentDir, 0755)
-				return fmt.Sprintf(`data_sources:
-  - id: 1
-    parent: %s
-    is_outlink_ready: true
-`, parentDir)
-			},
-			expectedErr: "outlink_url is required",
-		},
-		{
-			name: "outlink_url without placeholder",
-			setupFunc: func(tmpDir string) string {
-				parentDir := filepath.Join(tmpDir, "parent")
-				_ = os.MkdirAll(parentDir, 0755)
-				return fmt.Sprintf(`data_sources:
-  - id: 1
-    parent: %s
-    is_outlink_ready: true
-    outlink_url: "https://example.com/taxon/123"
-`, parentDir)
-			},
-			expectedErr: "must contain {} placeholder",
-		},
 	}
 
 	for _, tt := range tests {
@@ -356,6 +329,101 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 func TestLoadSourcesConfig_FileNotFound(t *testing.T) {
 	_, err := populate.LoadSourcesConfig("nonexistent.yaml")
 	assert.Error(t, err)
+}
+
+func TestLoadSourcesConfig_OutlinkWarnings(t *testing.T) {
+	tests := []struct {
+		name            string
+		setupFunc       func(tmpDir string) string
+		expectedWarning string
+	}{
+		{
+			name: "outlink_ready without outlink_url",
+			setupFunc: func(tmpDir string) string {
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
+				return fmt.Sprintf(`data_sources:
+  - id: 1
+    parent: %s
+    is_outlink_ready: true
+`, parentDir)
+			},
+			expectedWarning: "outlink_url is required",
+		},
+		{
+			name: "outlink_url without placeholder",
+			setupFunc: func(tmpDir string) string {
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
+				return fmt.Sprintf(`data_sources:
+  - id: 1
+    parent: %s
+    is_outlink_ready: true
+    outlink_url: "https://example.com/taxon/123"
+`, parentDir)
+			},
+			expectedWarning: "must contain {} placeholder",
+		},
+		{
+			name: "invalid outlink_id_column table",
+			setupFunc: func(tmpDir string) string {
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
+				return fmt.Sprintf(`data_sources:
+  - id: 1
+    parent: %s
+    is_outlink_ready: true
+    outlink_url: "https://example.com/{}"
+    outlink_id_column: "invalid_table.col__id"
+`, parentDir)
+			},
+			expectedWarning: "invalid table 'invalid_table'",
+		},
+		{
+			name: "invalid outlink_id_column column",
+			setupFunc: func(tmpDir string) string {
+				parentDir := filepath.Join(tmpDir, "parent")
+				_ = os.MkdirAll(parentDir, 0755)
+				return fmt.Sprintf(`data_sources:
+  - id: 1
+    parent: %s
+    is_outlink_ready: true
+    outlink_url: "https://example.com/{}"
+    outlink_id_column: "taxon.invalid_column"
+`, parentDir)
+			},
+			expectedWarning: "column not valid for this table",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir, err := os.MkdirTemp("", "sources-test-*")
+			require.NoError(t, err)
+			defer os.RemoveAll(tmpDir)
+
+			yamlContent := tt.setupFunc(tmpDir)
+
+			configPath := filepath.Join(tmpDir, "sources.yaml")
+			err = os.WriteFile(configPath, []byte(yamlContent), 0644)
+			require.NoError(t, err)
+
+			config, err := populate.LoadSourcesConfig(configPath)
+			require.NoError(t, err, "Should not return error for outlink issues")
+			require.NotNil(t, config)
+
+			// Should have warnings
+			assert.Greater(t, len(config.Warnings), 0, "Should have warnings")
+			if len(config.Warnings) > 0 {
+				assert.Contains(t, config.Warnings[0].Message, tt.expectedWarning)
+				assert.Equal(t, 1, config.Warnings[0].DataSourceID)
+				assert.NotEmpty(t, config.Warnings[0].Suggestion)
+			}
+
+			// Outlink should be disabled
+			assert.False(t, config.DataSources[0].IsOutlinkReady, "IsOutlinkReady should be set to false")
+		})
+	}
 }
 
 func TestGenerateExampleConfig(t *testing.T) {
@@ -573,49 +641,31 @@ func TestValidateOutlinkIDColumn_ValidFormats(t *testing.T) {
 		name            string
 		outlinkIDColumn string
 	}{
+		// Valid taxon columns
 		{
 			name:            "taxon.col__id",
 			outlinkIDColumn: "taxon.col__id",
-		},
-		{
-			name:            "taxon.col__name_id",
-			outlinkIDColumn: "taxon.col__name_id",
-		},
-		{
-			name:            "taxon.col__local_id",
-			outlinkIDColumn: "taxon.col__local_id",
 		},
 		{
 			name:            "taxon.col__alternative_id",
 			outlinkIDColumn: "taxon.col__alternative_id",
 		},
 		{
+			name:            "taxon.gn__local_id",
+			outlinkIDColumn: "taxon.gn__local_id",
+		},
+		{
+			name:            "taxon.gn__global_id",
+			outlinkIDColumn: "taxon.gn__global_id",
+		},
+		// Valid name columns
+		{
 			name:            "name.col__id",
 			outlinkIDColumn: "name.col__id",
 		},
 		{
-			name:            "name.col__name_id",
-			outlinkIDColumn: "name.col__name_id",
-		},
-		{
-			name:            "name.col__local_id",
-			outlinkIDColumn: "name.col__local_id",
-		},
-		{
 			name:            "name.col__alternative_id",
 			outlinkIDColumn: "name.col__alternative_id",
-		},
-		{
-			name:            "synonym.col__id",
-			outlinkIDColumn: "synonym.col__id",
-		},
-		{
-			name:            "synonym.col__name_id",
-			outlinkIDColumn: "synonym.col__name_id",
-		},
-		{
-			name:            "synonym.col__local_id",
-			outlinkIDColumn: "synonym.col__local_id",
 		},
 	}
 
@@ -655,37 +705,37 @@ func TestValidateOutlinkIDColumn_InvalidFormats(t *testing.T) {
 	tests := []struct {
 		name            string
 		outlinkIDColumn string
-		expectedErr     string
+		expectedWarning string
 	}{
 		{
 			name:            "no dot",
 			outlinkIDColumn: "taxon_col__id",
-			expectedErr:     "invalid outlink_id_column format: must be 'table.column'",
+			expectedWarning: "invalid outlink_id_column format",
 		},
 		{
 			name:            "too many dots",
 			outlinkIDColumn: "taxon.col__id.extra",
-			expectedErr:     "invalid outlink_id_column format: must be 'table.column'",
+			expectedWarning: "invalid outlink_id_column format",
 		},
 		{
 			name:            "invalid table name",
 			outlinkIDColumn: "invalid_table.col__id",
-			expectedErr:     "invalid table in outlink_id_column: must be one of",
+			expectedWarning: "invalid table",
 		},
 		{
 			name:            "invalid column name",
 			outlinkIDColumn: "taxon.invalid_column",
-			expectedErr:     "invalid column in outlink_id_column: must be one of",
+			expectedWarning: "column not valid for this table",
 		},
 		{
-			name:            "synonym.col__alternative_id not allowed",
-			outlinkIDColumn: "synonym.col__alternative_id",
-			expectedErr:     "synonym.col__alternative_id is not allowed",
+			name:            "synonym table not supported",
+			outlinkIDColumn: "synonym.col__id",
+			expectedWarning: "invalid table",
 		},
 		{
 			name:            "empty string",
 			outlinkIDColumn: "",
-			expectedErr:     "outlink_id_column is required when is_outlink_ready is true",
+			expectedWarning: "outlink_id_column is required",
 		},
 	}
 
@@ -713,9 +763,18 @@ func TestValidateOutlinkIDColumn_InvalidFormats(t *testing.T) {
 			err = os.WriteFile(configPath, []byte(yamlContent), 0644)
 			require.NoError(t, err)
 
-			_, err = populate.LoadSourcesConfig(configPath)
-			assert.Error(t, err, "Should reject invalid format: %s", tt.outlinkIDColumn)
-			assert.Contains(t, err.Error(), tt.expectedErr)
+			config, err := populate.LoadSourcesConfig(configPath)
+			require.NoError(t, err, "Should not return error for invalid outlink format: %s", tt.outlinkIDColumn)
+			require.NotNil(t, config)
+
+			// Should have warnings
+			assert.Greater(t, len(config.Warnings), 0, "Should have warnings for invalid format: %s", tt.outlinkIDColumn)
+			if len(config.Warnings) > 0 {
+				assert.Contains(t, config.Warnings[0].Message, tt.expectedWarning)
+			}
+
+			// Outlink should be disabled
+			assert.False(t, config.DataSources[0].IsOutlinkReady, "IsOutlinkReady should be disabled")
 		})
 	}
 }

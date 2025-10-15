@@ -61,7 +61,7 @@
 data_sources:
   # Catalogue of Life
   - id: 1
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "Catalogue of Life"
     home_url: "https://www.catalogueoflife.org/"
     data_url: "http://www.catalogueoflife.org/DCA_Export/archive.php"
@@ -73,7 +73,7 @@ data_sources:
 
   # Wikispecies
   - id: 2
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "Wikispecies"
     home_url: "https://species.wikimedia.org/wiki/Main_Page"
     data_url: "http://dumps.wikimedia.org/specieswiki/latest/specieswiki-latest-pages-articles.xml.bz2"
@@ -84,7 +84,7 @@ data_sources:
 
   # ITIS
   - id: 3
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title: "Integrated Taxonomic Information System"
     title_short: "ITIS"
     home_url: "https://www.itis.gov/"
@@ -97,7 +97,7 @@ data_sources:
 
   # NCBI
   - id: 4
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title: "National Center for Biotechnology Information"
     title_short: "NCBI"
     home_url: "https://www.ncbi.nlm.nih.gov/"
@@ -108,7 +108,7 @@ data_sources:
 
   # GRIN Plant Taxonomy
   - id: 6
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title: "USDA National Plant Germplasm System"
     title_short: "GRIN Plant Taxonomy"
     home_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/abouttaxonomy"
@@ -120,7 +120,7 @@ data_sources:
 
   # WoRMS
   - id: 9
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "WoRMS"
     home_url: "https://marinespecies.org"
     is_curated: true
@@ -131,7 +131,7 @@ data_sources:
 
   # EOL
   - id: 12
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "EOL"
     home_url: "https://eol.org"
     data_url: "https://eol.org/data/provider_ids.csv.gz"
@@ -142,14 +142,14 @@ data_sources:
 
   # VASCAN
   - id: 147
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "VASCAN"
     is_curated: true
     has_classification: true
 
   # IPNI
   - id: 167
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "IPNI"
     home_url: "https://www.ipni.org/"
     is_curated: true
@@ -159,7 +159,7 @@ data_sources:
 
   # Arctos
   - id: 170
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "Arctos"
     home_url: "https://arctosdb.org/"
     is_auto_curated: true
@@ -170,7 +170,7 @@ data_sources:
 
   # PaleoBioDB
   - id: 172
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "PaleoBioDB"
     home_url: "https://paleobiodb.org/#/"
     is_curated: true
@@ -178,7 +178,7 @@ data_sources:
 
   # iNaturalist
   - id: 180
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "iNaturalist"
     home_url: "https://inaturalist.org/"
     data_url: "https://www.inaturalist.org/taxa/inaturalist-taxonomy.dwca.zip"
@@ -190,7 +190,7 @@ data_sources:
 
   # World Flora Online
   - id: 196
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "World Flora Online"
     home_url: "https://worldfloraonline.org"
     description: "An Online Flora of All Known Plants"
@@ -202,7 +202,7 @@ data_sources:
 
   # MycoBank
   - id: 203
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "MycoBank"
     home_url: "https://www.mycobank.org"
     is_curated: true
@@ -212,14 +212,14 @@ data_sources:
 
   # Ruhoff 1980
   - id: 206
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "Ruhoff 1980"
     home_url: "https://doi.org/10.5479/si.00810282.294"
     is_auto_curated: true
 
   # LPSN
   - id: 208
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "LPSN"
     home_url: "https://lpsn.dsmz.de/"
     data_url: "https://lpsn.dsmz.de/downloads"
@@ -231,7 +231,7 @@ data_sources:
 
   # TAXREF
   - id: 210
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "TAXREF"
     home_url: "https://inpn.mnhn.fr/programme/referentiel-taxonomique-taxref"
     data_url: "https://ipt.gbif.fr/resource?r=taxref"
@@ -240,12 +240,12 @@ data_sources:
 
   # World Plants
   - id: 211
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "World Plants"
 
   # World Ferns
   - id: 212
-    parent: http://opendata.globalnames.org/sfga/latest/
+    parent: http://opendata.globalnames.org/sfga/
     title_short: "World Ferns"
 # ============================================================================
 # Template for Custom Data Sources

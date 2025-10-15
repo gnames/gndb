@@ -29,11 +29,11 @@ func TestResolveSFGAFile(t *testing.T) {
 			expectError:   false,
 		},
 		{
-			name:          "multiple files with same ID - error",
+			name:          "multiple files with same ID - selects latest",
 			id:            2,
 			setupFiles:    []string{"0002_worms_2025-01-01.sqlite.zip", "0002_worms_2025-02-01.sqlite.zip"},
-			expectError:   true,
-			errorContains: "found 2 files matching",
+			expectedMatch: "0002_worms_2025-02-01.sqlite.zip",
+			expectError:   false,
 		},
 		{
 			name:          "no files match - warning but continue",
@@ -73,7 +73,7 @@ func TestResolveSFGAFile(t *testing.T) {
 			}
 
 			// Test resolveSFGAFile
-			result, err := resolveSFGAFile(tmpDir, tt.id)
+			result, warning, err := resolveSFGAFile(tmpDir, tt.id)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -83,7 +83,87 @@ func TestResolveSFGAFile(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, filepath.Join(tmpDir, tt.expectedMatch), result)
+
+				// Check for warning when multiple files found
+				if len(tt.setupFiles) > 1 {
+					assert.NotEmpty(t, warning, "should have warning when multiple files found")
+					assert.Contains(t, warning, "selected latest")
+					t.Logf("Warning: %s", warning)
+				} else {
+					assert.Empty(t, warning, "should not have warning for single file")
+				}
 			}
+		})
+	}
+}
+
+func TestSelectLatestFile(t *testing.T) {
+	tests := []struct {
+		name      string
+		filenames []string
+		expected  string
+	}{
+		{
+			name:      "empty list",
+			filenames: []string{},
+			expected:  "",
+		},
+		{
+			name:      "single file",
+			filenames: []string{"0001_col_2025-01-15.sqlite.zip"},
+			expected:  "0001_col_2025-01-15.sqlite.zip",
+		},
+		{
+			name:      "multiple files - selects latest by date",
+			filenames: []string{"0002_worms_2025-01-01.sqlite.zip", "0002_worms_2025-02-01.sqlite.zip", "0002_worms_2024-12-31.sqlite.zip"},
+			expected:  "0002_worms_2025-02-01.sqlite.zip",
+		},
+		{
+			name:      "files without dates - prefers sqlite.zip",
+			filenames: []string{"0003_itis.sql", "0003_itis.sqlite.zip"},
+			expected:  "0003_itis.sqlite.zip",
+		},
+		{
+			name:      "mixed with and without dates - prefers dated file",
+			filenames: []string{"0004_source.sqlite.zip", "0004_source_2025-01-15.sqlite.zip"},
+			expected:  "0004_source_2025-01-15.sqlite.zip",
+		},
+		{
+			name:      "different date formats - only YYYY-MM-DD recognized",
+			filenames: []string{"0005_a_2025-01-15.sqlite.zip", "0005_b_20250120.sqlite.zip"},
+			expected:  "0005_a_2025-01-15.sqlite.zip",
+		},
+		{
+			name:      "same date - prefers sqlite.zip over sql.zip",
+			filenames: []string{"0006_source_2025-01-15.sql.zip", "0006_source_2025-01-15.sqlite.zip"},
+			expected:  "0006_source_2025-01-15.sqlite.zip",
+		},
+		{
+			name:      "same date - prefers sql.zip over sqlite",
+			filenames: []string{"0007_source_2025-01-15.sqlite", "0007_source_2025-01-15.sql.zip"},
+			expected:  "0007_source_2025-01-15.sql.zip",
+		},
+		{
+			name:      "same date - prefers sqlite over sql",
+			filenames: []string{"0008_source_2025-01-15.sql", "0008_source_2025-01-15.sqlite"},
+			expected:  "0008_source_2025-01-15.sqlite",
+		},
+		{
+			name:      "priority order: sqlite.zip > sql.zip > sqlite > sql",
+			filenames: []string{"0009_a_2025-01-15.sql", "0009_b_2025-01-15.sqlite", "0009_c_2025-01-15.sql.zip", "0009_d_2025-01-15.sqlite.zip"},
+			expected:  "0009_d_2025-01-15.sqlite.zip",
+		},
+		{
+			name:      "later date wins over higher priority",
+			filenames: []string{"0010_old_2025-01-01.sqlite.zip", "0010_new_2025-02-01.sql"},
+			expected:  "0010_new_2025-02-01.sql",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := selectLatestFile(tt.filenames)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -112,7 +192,7 @@ func TestFetchSFGA_LocalDirectory(t *testing.T) {
 
 	// Test fetchSFGA
 	ctx := context.Background()
-	sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err)
 	t.Logf("fetchSFGA returned: %s (will remain in cache for inspection)", sqlitePath)
 
@@ -132,6 +212,61 @@ func TestFetchSFGA_LocalDirectory(t *testing.T) {
 	assert.Greater(t, count, 0, "should have some name records")
 }
 
+func TestResolveRemoteSFGAFile(t *testing.T) {
+	tests := []struct {
+		name      string
+		baseURL   string
+		id        int
+		wantMatch string // substring that should be in the result
+		wantErr   bool
+	}{
+		{
+			name:      "find file with ID 206",
+			baseURL:   "http://opendata.globalnames.org/sfga/",
+			id:        206,
+			wantMatch: "0206",
+			wantErr:   false,
+		},
+		{
+			name:      "find file with ID 196",
+			baseURL:   "http://opendata.globalnames.org/sfga/",
+			id:        196,
+			wantMatch: "0196",
+			wantErr:   false,
+		},
+		{
+			name:    "non-existent ID should fail",
+			baseURL: "http://opendata.globalnames.org/sfga/",
+			id:      9999,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, warning, err := resolveRemoteSFGAFile(tt.baseURL, tt.id)
+			_ = warning // May be used in future test assertions
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			// Skip if no internet connection
+			if err != nil && (strings.Contains(err.Error(), "no such host") ||
+				strings.Contains(err.Error(), "connection refused")) {
+				t.Skipf("skipping: no internet connection: %v", err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Contains(t, result, tt.wantMatch)
+			assert.True(t, isSFGAFile(result), "result should be a valid SFGA file")
+			t.Logf("Resolved file: %s", result)
+		})
+	}
+}
+
 func TestFetchSFGA_URL(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -147,18 +282,18 @@ func TestFetchSFGA_URL(t *testing.T) {
 	// This test validates URL fetching logic even if file not found
 	source := populate.DataSourceConfig{
 		ID:     206,
-		Parent: "http://opendata.globalnames.org/sfga/latest/",
+		Parent: "http://opendata.globalnames.org/sfga/",
 	}
 
 	// Test fetchSFGA
 	ctx := context.Background()
-	sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
 
 	// Skip if no internet connection or file not available
 	if err != nil {
 		if strings.Contains(err.Error(), "no such host") ||
-		   strings.Contains(err.Error(), "connection refused") ||
-		   strings.Contains(err.Error(), "context deadline exceeded") {
+			strings.Contains(err.Error(), "connection refused") ||
+			strings.Contains(err.Error(), "context deadline exceeded") {
 			t.Skipf("skipping URL test: no internet connection or server unavailable: %v", err)
 		}
 		// If it's a different error (like file not found on server), that's still useful to know
@@ -206,7 +341,7 @@ func TestOpenSFGA(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, err := fetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err)
 
 	// Test opening the database
