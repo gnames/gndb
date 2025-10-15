@@ -80,9 +80,9 @@ type DataSourceConfig struct {
 	HasClassification bool `yaml:"has_classification,omitempty"` // Has hierarchical taxonomy
 
 	// Outlink configuration (for generating links to original records)
-	IsOutlinkReady bool   `yaml:"is_outlink_ready,omitempty"` // Can generate outlinks
-	OutlinkURL     string `yaml:"outlink_url,omitempty"`      // URL template with {} placeholder
-	OutlinkIDField string `yaml:"outlink_id_field,omitempty"` // record_id, local_id, global_id, name_id, canonical
+	IsOutlinkReady  bool   `yaml:"is_outlink_ready,omitempty"`  // Can generate outlinks
+	OutlinkURL      string `yaml:"outlink_url,omitempty"`       // URL template with {} placeholder
+	OutlinkIDColumn string `yaml:"outlink_id_column,omitempty"` // table.column format (e.g., "taxon.col__id", "name.col__alternative_id")
 }
 
 // ImportConfig contains settings for the import process.
@@ -209,21 +209,48 @@ func (d *DataSourceConfig) Validate() error {
 		if !strings.Contains(d.OutlinkURL, "{}") {
 			return fmt.Errorf("outlink_url must contain {} placeholder for ID substitution")
 		}
-		if d.OutlinkIDField == "" {
-			d.OutlinkIDField = "record_id" // Default to record_id
-		} else {
-			// Validate outlink_id_field
-			validFields := []string{"record_id", "local_id", "global_id", "name_id", "canonical", "canonical_full"}
-			valid := false
-			for _, f := range validFields {
-				if d.OutlinkIDField == f {
-					valid = true
-					break
-				}
+		if d.OutlinkIDColumn == "" {
+			return fmt.Errorf("outlink_id_column is required when is_outlink_ready is true")
+		}
+
+		// Validate outlink_id_column format: "table.column"
+		parts := strings.Split(d.OutlinkIDColumn, ".")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid outlink_id_column format: must be 'table.column' (e.g., 'taxon.col__id')")
+		}
+
+		tableName := parts[0]
+		columnName := parts[1]
+
+		// Validate table name
+		validTables := []string{"taxon", "name", "synonym"}
+		validTable := false
+		for _, t := range validTables {
+			if tableName == t {
+				validTable = true
+				break
 			}
-			if !valid {
-				return fmt.Errorf("invalid outlink_id_field: must be one of %v", validFields)
+		}
+		if !validTable {
+			return fmt.Errorf("invalid table in outlink_id_column: must be one of %v", validTables)
+		}
+
+		// Validate column name
+		validColumns := []string{"col__id", "col__name_id", "col__local_id", "col__alternative_id"}
+		validColumn := false
+		for _, c := range validColumns {
+			if columnName == c {
+				validColumn = true
+				break
 			}
+		}
+		if !validColumn {
+			return fmt.Errorf("invalid column in outlink_id_column: must be one of %v", validColumns)
+		}
+
+		// Exception: synonym.col__alternative_id is not allowed (synonym table lacks this column)
+		if tableName == "synonym" && columnName == "col__alternative_id" {
+			return fmt.Errorf("synonym.col__alternative_id is not allowed: synonym table does not have col__alternative_id column")
 		}
 	}
 
@@ -346,6 +373,35 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 	}
 
 	return filtered, nil
+}
+
+// ExtractOutlinkID extracts the outlink ID from a column value.
+// If the column name ends with "col__alternative_id", it extracts the value
+// after "gnoutlink:" from a comma-separated list of namespace:value pairs.
+// Otherwise, it returns the value as-is.
+//
+// Examples:
+//   - ExtractOutlinkID("taxon.col__id", "12345") → "12345"
+//   - ExtractOutlinkID("taxon.col__alternative_id", "wikidata:Q123,gnoutlink:Homo_sapiens") → "Homo_sapiens"
+//   - ExtractOutlinkID("name.col__alternative_id", "gnoutlink:url-encoded-name") → "url-encoded-name"
+//   - ExtractOutlinkID("taxon.col__alternative_id", "wikidata:Q123") → "" (no gnoutlink namespace)
+func ExtractOutlinkID(columnName, value string) string {
+	// If column is not col__alternative_id, return value as-is
+	if !strings.HasSuffix(columnName, "col__alternative_id") {
+		return value
+	}
+
+	// Extract gnoutlink: namespace from comma-separated list
+	parts := strings.Split(value, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(part, "gnoutlink:") {
+			return strings.TrimPrefix(part, "gnoutlink:")
+		}
+	}
+
+	// gnoutlink namespace not found
+	return ""
 }
 
 // GenerateExampleConfig creates an example configuration file with all official sources.

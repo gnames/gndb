@@ -12,6 +12,47 @@
 #   gndb populate --sources-config /path/to/custom-sources.yaml  # Edge case: custom location
 #
 # Configuration settings (batch_size, concurrent_jobs, logging, etc.) are in config.yaml
+#
+# Outlink Configuration:
+#   outlink_url: URL template with {} placeholder for the ID
+#   outlink_id_column: SFGA table.column (format: "table.column")
+#
+#   Allowed Columns:
+#     Direct columns (used as-is):
+#       - "taxon.col__id"         : Taxon identifier
+#       - "taxon.col__name_id"    : Name identifier in taxon context
+#       - "taxon.col__local_id"   : Local/source-specific identifier
+#       - "name.col__id"          : Name record identifier
+#       - "name.col__name_id"     : Nomenclatural name identifier
+#       - "name.col__local_id"    : Local name identifier
+#       - "synonym.col__id"       : Synonym identifier
+#
+#     Alternative ID columns (auto-extracts "gnoutlink:" namespace):
+#       - "taxon.col__alternative_id"  : Extracts gnoutlink:value from comma-separated list
+#                                        (synonyms get accepted taxon's value - points to accepted page)
+#       - "name.col__alternative_id"   : Extracts gnoutlink:value from comma-separated list
+#                                        (synonyms get their own name's value - preserved resolution)
+#
+#   gnoutlink Namespace Convention:
+#     Store transformed IDs in col__alternative_id during SFGA creation:
+#       Format: "namespace1:id1,namespace2:id2,gnoutlink:transformed_id"
+#       Example: "wikidata:Q123,gnoutlink:Homo_sapiens" → extracts "Homo_sapiens"
+#
+#     Use cases:
+#       - URL encoding: "gnoutlink:Homo%20sapiens"
+#       - Space replacement: "gnoutlink:Homo_sapiens"
+#       - String extraction: "gnoutlink:123456" (from "urn:lsid:...123456")
+#       - Case transformation: "gnoutlink:homo-sapiens"
+#
+#   Table Availability by Record Type:
+#     - "taxon.*"   : Taxa & synonyms only (bare names get empty outlink_id)
+#     - "name.*"    : All record types (taxa, synonyms, AND bare names)
+#     - "synonym.*" : Synonyms only
+#
+#   Common Patterns:
+#     - Taxonomic databases (CoL, ITIS, WoRMS): "taxon.col__id"
+#     - Nomenclatural databases (IPNI, MycoBank): "name.col__name_id"
+#     - Complex transformations: "taxon.col__alternative_id" or "name.col__alternative_id"
 
 # ============================================================================
 # Data Sources
@@ -28,7 +69,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
-    outlink_id_field: "record_id"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
   # Wikispecies
   - id: 2
@@ -39,7 +80,7 @@ data_sources:
     is_curated: true
     is_outlink_ready: true
     outlink_url: "http://species.wikimedia.org/wiki/{}"
-    outlink_id_field: "canonical_full"
+    outlink_id_column: "name.col__alternative_id" # Custom: canonical_full with spaces→underscores (prepared in SFGA)
 
   # ITIS
   - id: 3
@@ -52,7 +93,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value={}#null"
-    outlink_id_field: "record_id"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: TSN (taxon serial number)
 
   # NCBI
   - id: 4
@@ -63,7 +104,7 @@ data_sources:
     data_url: "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"
     is_outlink_ready: true
     outlink_url: "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name={}&lvl=0&srchmode=1&keep=1&unlock"
-    outlink_id_field: "canonical"
+    outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical (prepared in SFGA)
 
   # GRIN Plant Taxonomy
   - id: 6
@@ -75,7 +116,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/taxonomydetail?id={}"
-    outlink_id_field: "record_id"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
   # WoRMS
   - id: 9
@@ -86,7 +127,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://www.marinespecies.org/aphia.php?p=taxdetails&id={}"
-    outlink_id_field: "record_id"
+    outlink_id_column: "taxon.col__alternative_id" # Custom: last part of col__id after ':' split (prepared in SFGA)
 
   # EOL
   - id: 12
@@ -97,7 +138,7 @@ data_sources:
     is_auto_curated: true
     is_outlink_ready: true
     outlink_url: "https://eol.org/pages/{}"
-    outlink_id_field: "name_id"
+    outlink_id_column: "name.col__name_id" # Uses name ID (available for all record types including bare names)
 
   # VASCAN
   - id: 147
@@ -114,7 +155,7 @@ data_sources:
     is_curated: true
     is_outlink_ready: true
     outlink_url: "https://www.ipni.org/n/{}"
-    outlink_id_field: "name_id"
+    outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
 
   # Arctos
   - id: 170
@@ -125,7 +166,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://arctos.database.museum/name/{}"
-    outlink_id_field: "canonical_full"
+    outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical_full (prepared in SFGA)
 
   # PaleoBioDB
   - id: 172
@@ -145,7 +186,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://www.inaturalist.org/taxa/{}"
-    outlink_id_field: "record_id"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
   # World Flora Online
   - id: 196
@@ -157,7 +198,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://list.worldfloraonline.org/{}"
-    outlink_id_field: "name_id"
+    outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
 
   # MycoBank
   - id: 203
@@ -167,7 +208,7 @@ data_sources:
     is_curated: true
     is_outlink_ready: true
     outlink_url: "https://www.mycobank.org/page/Name details page/{}"
-    outlink_id_field: "name_id"
+    outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
 
   # Ruhoff 1980
   - id: 206
@@ -186,7 +227,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "{}"
-    outlink_id_field: "local_id"
+    outlink_id_column: "taxon.gn__local_id" # Uses local_id which is the full URL
 
   # TAXREF
   - id: 210
@@ -224,4 +265,4 @@ data_sources:
 #   has_classification: false
 #   is_outlink_ready: false
 #   outlink_url: "https://example.org/{}"
-#   outlink_id_field: "record_id"
+#   outlink_id_column: "taxon.col__id"  # Use "taxon.col__id" for taxonomic or "name.col__name_id" for nomenclatural

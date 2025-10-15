@@ -192,7 +192,7 @@ func (p *PopulatorImpl) processSource(
 
 	// Phase 2: Process name indices with classification (T043)
 	slog.Info("Phase 2: Processing name indices", "source_id", source.ID)
-	err = processNameIndices(ctx, p, sfgaDB, source.ID, hierarchy, cfg)
+	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, cfg)
 	if err != nil {
 		return fmt.Errorf("phase 2 failed (name indices): %w", err)
 	}

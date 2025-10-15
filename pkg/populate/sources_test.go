@@ -184,7 +184,7 @@ func TestLoadSourcesConfig_FullConfig(t *testing.T) {
     has_classification: true
     is_outlink_ready: true
     outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
-    outlink_id_field: record_id
+    outlink_id_column: "taxon.col__id"
 `
 	tmpfile, err := os.CreateTemp("", "sources-*.yaml")
 	require.NoError(t, err)
@@ -212,7 +212,7 @@ func TestLoadSourcesConfig_FullConfig(t *testing.T) {
 	assert.True(t, ds.HasClassification)
 	assert.Equal(t, "https://www.catalogueoflife.org/data/taxon/{}", ds.OutlinkURL)
 	assert.True(t, ds.IsOutlinkReady)
-	assert.Equal(t, "record_id", ds.OutlinkIDField)
+	assert.Equal(t, "taxon.col__id", ds.OutlinkIDColumn)
 }
 
 func TestLoadSourcesConfig_MultipleDataSources(t *testing.T) {
@@ -331,21 +331,6 @@ func TestLoadSourcesConfig_ValidationErrors(t *testing.T) {
 `, parentDir)
 			},
 			expectedErr: "must contain {} placeholder",
-		},
-		{
-			name: "invalid outlink_id_field",
-			setupFunc: func(tmpDir string) string {
-				parentDir := filepath.Join(tmpDir, "parent")
-				_ = os.MkdirAll(parentDir, 0755)
-				return fmt.Sprintf(`data_sources:
-  - id: 1
-    parent: %s
-    is_outlink_ready: true
-    outlink_url: "https://example.com/taxon/{}"
-    outlink_id_field: "invalid_field"
-`, parentDir)
-			},
-			expectedErr: "invalid outlink_id_field",
 		},
 	}
 
@@ -571,6 +556,261 @@ func TestParentPath_EdgeCases(t *testing.T) {
 				assert.Equal(t, tt.id, config.DataSources[0].ID)
 				assert.Equal(t, parentPath, config.DataSources[0].Parent)
 			}
+		})
+	}
+}
+
+func TestValidateOutlinkIDColumn_ValidFormats(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "sources-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	parentDir := filepath.Join(tmpDir, "parent")
+	err = os.MkdirAll(parentDir, 0755)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		outlinkIDColumn string
+	}{
+		{
+			name:            "taxon.col__id",
+			outlinkIDColumn: "taxon.col__id",
+		},
+		{
+			name:            "taxon.col__name_id",
+			outlinkIDColumn: "taxon.col__name_id",
+		},
+		{
+			name:            "taxon.col__local_id",
+			outlinkIDColumn: "taxon.col__local_id",
+		},
+		{
+			name:            "taxon.col__alternative_id",
+			outlinkIDColumn: "taxon.col__alternative_id",
+		},
+		{
+			name:            "name.col__id",
+			outlinkIDColumn: "name.col__id",
+		},
+		{
+			name:            "name.col__name_id",
+			outlinkIDColumn: "name.col__name_id",
+		},
+		{
+			name:            "name.col__local_id",
+			outlinkIDColumn: "name.col__local_id",
+		},
+		{
+			name:            "name.col__alternative_id",
+			outlinkIDColumn: "name.col__alternative_id",
+		},
+		{
+			name:            "synonym.col__id",
+			outlinkIDColumn: "synonym.col__id",
+		},
+		{
+			name:            "synonym.col__name_id",
+			outlinkIDColumn: "synonym.col__name_id",
+		},
+		{
+			name:            "synonym.col__local_id",
+			outlinkIDColumn: "synonym.col__local_id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			yamlContent := fmt.Sprintf(`data_sources:
+  - id: 1
+    parent: %s
+    is_outlink_ready: true
+    outlink_url: "https://example.com/taxon/{}"
+    outlink_id_column: "%s"
+`, parentDir, tt.outlinkIDColumn)
+
+			configPath := filepath.Join(tmpDir, "sources_"+tt.name+".yaml")
+			err = os.WriteFile(configPath, []byte(yamlContent), 0644)
+			require.NoError(t, err)
+
+			config, err := populate.LoadSourcesConfig(configPath)
+			assert.NoError(t, err, "Should accept valid format: %s", tt.outlinkIDColumn)
+			if err == nil {
+				require.Len(t, config.DataSources, 1)
+				assert.Equal(t, tt.outlinkIDColumn, config.DataSources[0].OutlinkIDColumn)
+			}
+		})
+	}
+}
+
+func TestValidateOutlinkIDColumn_InvalidFormats(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "sources-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	parentDir := filepath.Join(tmpDir, "parent")
+	err = os.MkdirAll(parentDir, 0755)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		outlinkIDColumn string
+		expectedErr     string
+	}{
+		{
+			name:            "no dot",
+			outlinkIDColumn: "taxon_col__id",
+			expectedErr:     "invalid outlink_id_column format: must be 'table.column'",
+		},
+		{
+			name:            "too many dots",
+			outlinkIDColumn: "taxon.col__id.extra",
+			expectedErr:     "invalid outlink_id_column format: must be 'table.column'",
+		},
+		{
+			name:            "invalid table name",
+			outlinkIDColumn: "invalid_table.col__id",
+			expectedErr:     "invalid table in outlink_id_column: must be one of",
+		},
+		{
+			name:            "invalid column name",
+			outlinkIDColumn: "taxon.invalid_column",
+			expectedErr:     "invalid column in outlink_id_column: must be one of",
+		},
+		{
+			name:            "synonym.col__alternative_id not allowed",
+			outlinkIDColumn: "synonym.col__alternative_id",
+			expectedErr:     "synonym.col__alternative_id is not allowed",
+		},
+		{
+			name:            "empty string",
+			outlinkIDColumn: "",
+			expectedErr:     "outlink_id_column is required when is_outlink_ready is true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var yamlContent string
+			if tt.outlinkIDColumn == "" {
+				yamlContent = fmt.Sprintf(`data_sources:
+  - id: 1
+    parent: %s
+    is_outlink_ready: true
+    outlink_url: "https://example.com/taxon/{}"
+`, parentDir)
+			} else {
+				yamlContent = fmt.Sprintf(`data_sources:
+  - id: 1
+    parent: %s
+    is_outlink_ready: true
+    outlink_url: "https://example.com/taxon/{}"
+    outlink_id_column: "%s"
+`, parentDir, tt.outlinkIDColumn)
+			}
+
+			configPath := filepath.Join(tmpDir, "sources_"+tt.name+".yaml")
+			err = os.WriteFile(configPath, []byte(yamlContent), 0644)
+			require.NoError(t, err)
+
+			_, err = populate.LoadSourcesConfig(configPath)
+			assert.Error(t, err, "Should reject invalid format: %s", tt.outlinkIDColumn)
+			assert.Contains(t, err.Error(), tt.expectedErr)
+		})
+	}
+}
+
+func TestExtractOutlinkID(t *testing.T) {
+	tests := []struct {
+		name       string
+		columnName string
+		value      string
+		expected   string
+	}{
+		{
+			name:       "direct column returns value as-is",
+			columnName: "col__id",
+			value:      "123456",
+			expected:   "123456",
+		},
+		{
+			name:       "col__name_id returns value as-is",
+			columnName: "col__name_id",
+			value:      "name_789",
+			expected:   "name_789",
+		},
+		{
+			name:       "col__local_id returns value as-is",
+			columnName: "col__local_id",
+			value:      "local_123",
+			expected:   "local_123",
+		},
+		{
+			name:       "alternative_id with gnoutlink namespace",
+			columnName: "col__alternative_id",
+			value:      "gnoutlink:Homo_sapiens",
+			expected:   "Homo_sapiens",
+		},
+		{
+			name:       "alternative_id with multiple namespaces",
+			columnName: "col__alternative_id",
+			value:      "wikidata:Q123,gbif:456789,gnoutlink:Species_name",
+			expected:   "Species_name",
+		},
+		{
+			name:       "alternative_id with gnoutlink at start",
+			columnName: "col__alternative_id",
+			value:      "gnoutlink:abc123,wikidata:Q999",
+			expected:   "abc123",
+		},
+		{
+			name:       "alternative_id with spaces around commas",
+			columnName: "col__alternative_id",
+			value:      "wikidata:Q123 , gnoutlink:encoded_id , gbif:789",
+			expected:   "encoded_id",
+		},
+		{
+			name:       "alternative_id without gnoutlink namespace",
+			columnName: "col__alternative_id",
+			value:      "wikidata:Q123,gbif:456",
+			expected:   "",
+		},
+		{
+			name:       "alternative_id with empty gnoutlink value",
+			columnName: "col__alternative_id",
+			value:      "wikidata:Q123,gnoutlink:,gbif:456",
+			expected:   "",
+		},
+		{
+			name:       "alternative_id gnoutlink only",
+			columnName: "col__alternative_id",
+			value:      "gnoutlink:single_value",
+			expected:   "single_value",
+		},
+		{
+			name:       "alternative_id with URL-encoded value",
+			columnName: "col__alternative_id",
+			value:      "gnoutlink:Homo%20sapiens%20%28L.%29",
+			expected:   "Homo%20sapiens%20%28L.%29",
+		},
+		{
+			name:       "empty value returns empty",
+			columnName: "col__id",
+			value:      "",
+			expected:   "",
+		},
+		{
+			name:       "alternative_id empty value returns empty",
+			columnName: "col__alternative_id",
+			value:      "",
+			expected:   "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := populate.ExtractOutlinkID(tt.columnName, tt.value)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

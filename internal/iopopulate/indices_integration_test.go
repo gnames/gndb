@@ -110,7 +110,7 @@ func TestProcessNameIndices_Integration(t *testing.T) {
 	populator := &PopulatorImpl{operator: op}
 
 	// Test: Process name indices (this will fail until T043 is implemented)
-	err = processNameIndices(ctx, populator, sfgaDB, source.ID, hierarchy, cfg)
+	err = processNameIndices(ctx, populator, sfgaDB, &source, hierarchy, cfg)
 	require.NoError(t, err, "processNameIndices should succeed")
 
 	// Verify: Check that name_string_indices table was populated
@@ -219,6 +219,208 @@ func TestProcessNameIndices_Integration(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 }
 
+func TestProcessNameIndices_OutlinkIDs_Integration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	ctx := context.Background()
+	cfg := iotesting.GetTestConfig()
+
+	// Setup database
+	op := iodb.NewPgxOperator()
+	err := op.Connect(ctx, &cfg.Database)
+	require.NoError(t, err)
+	defer op.Close()
+
+	_ = op.DropAllTables(ctx)
+	sm := ioschema.NewManager(op)
+	err = sm.Create(ctx, cfg)
+	require.NoError(t, err)
+
+	// Use CoL small test data (1001)
+	testdataDir := "../../testdata"
+
+	t.Run("taxon.col__id - taxa and synonyms get IDs, bare names empty", func(t *testing.T) {
+		source := populate.DataSourceConfig{
+			ID:              1001,
+			Parent:          testdataDir,
+			OutlinkIDColumn: "taxon.col__id",
+			IsOutlinkReady:  true,
+			OutlinkURL:      "https://www.catalogueoflife.org/data/taxon/{}",
+		}
+
+		cacheDir, err := prepareCacheDir()
+		require.NoError(t, err)
+
+		sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+		require.NoError(t, err)
+
+		sfgaDB, err := openSFGA(sqlitePath)
+		require.NoError(t, err)
+		defer sfgaDB.Close()
+
+		hierarchy, err := buildHierarchy(ctx, sfgaDB, 4)
+		require.NoError(t, err)
+
+		populator := &PopulatorImpl{operator: op}
+
+		// Process with outlink ID
+		err = processNameIndices(ctx, populator, sfgaDB, &source, hierarchy, cfg)
+		require.NoError(t, err)
+
+		// Verify: Taxa should have outlink IDs (taxon.col__id)
+		var taxaWithOutlink int
+		err = op.Pool().QueryRow(ctx, `
+			SELECT COUNT(*) FROM name_string_indices
+			WHERE data_source_id = $1
+			AND record_id NOT LIKE 'bare-name-%'
+			AND record_id NOT IN (
+				SELECT record_id FROM name_string_indices WHERE accepted_record_id != record_id
+			)
+			AND outlink_id != ''
+			AND outlink_id IS NOT NULL
+		`, source.ID).Scan(&taxaWithOutlink)
+		require.NoError(t, err)
+		assert.Greater(t, taxaWithOutlink, 0, "Taxa should have outlink IDs")
+
+		// Note: CoL small dataset may not have synonyms, so we just verify count is >= 0
+		var synonymsWithOutlink int
+		err = op.Pool().QueryRow(ctx, `
+			SELECT COUNT(*) FROM name_string_indices
+			WHERE data_source_id = $1
+			AND accepted_record_id != record_id
+			AND outlink_id != ''
+			AND outlink_id IS NOT NULL
+		`, source.ID).Scan(&synonymsWithOutlink)
+		require.NoError(t, err)
+		t.Logf("Synonyms with outlink IDs: %d", synonymsWithOutlink)
+
+		// Verify: Bare names should have empty outlink IDs (no taxon)
+		var bareNamesWithOutlink int
+		err = op.Pool().QueryRow(ctx, `
+			SELECT COUNT(*) FROM name_string_indices
+			WHERE data_source_id = $1
+			AND record_id LIKE 'bare-name-%'
+			AND outlink_id != ''
+			AND outlink_id IS NOT NULL
+		`, source.ID).Scan(&bareNamesWithOutlink)
+		require.NoError(t, err)
+		assert.Equal(t, 0, bareNamesWithOutlink, "Bare names should have empty outlink IDs (no taxon table)")
+
+		// Verify: Sample a few records to check outlink_id format
+		var sampleOutlinkID string
+		err = op.Pool().QueryRow(ctx, `
+			SELECT outlink_id FROM name_string_indices
+			WHERE data_source_id = $1
+			AND outlink_id != ''
+			LIMIT 1
+		`, source.ID).Scan(&sampleOutlinkID)
+		require.NoError(t, err)
+		assert.NotEmpty(t, sampleOutlinkID, "Sample outlink ID should not be empty")
+		t.Logf("Sample taxon outlink ID: %s", sampleOutlinkID)
+
+		// Clean up for next test
+		_, err = op.Pool().Exec(ctx, "DELETE FROM name_string_indices WHERE data_source_id = $1", source.ID)
+		require.NoError(t, err)
+	})
+
+	t.Run("name.col__id - all record types get IDs", func(t *testing.T) {
+		source := populate.DataSourceConfig{
+			ID:              1001,
+			Parent:          testdataDir,
+			OutlinkIDColumn: "name.col__id",
+			IsOutlinkReady:  true,
+			OutlinkURL:      "https://example.org/name/{}",
+		}
+
+		cacheDir, err := prepareCacheDir()
+		require.NoError(t, err)
+
+		sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+		require.NoError(t, err)
+
+		sfgaDB, err := openSFGA(sqlitePath)
+		require.NoError(t, err)
+		defer sfgaDB.Close()
+
+		hierarchy, err := buildHierarchy(ctx, sfgaDB, 4)
+		require.NoError(t, err)
+
+		populator := &PopulatorImpl{operator: op}
+
+		// Process with name.col__id
+		err = processNameIndices(ctx, populator, sfgaDB, &source, hierarchy, cfg)
+		require.NoError(t, err)
+
+		// Verify: ALL records should have outlink IDs (name table available for all)
+		var totalRecords int
+		err = op.Pool().QueryRow(ctx, `
+			SELECT COUNT(*) FROM name_string_indices
+			WHERE data_source_id = $1
+		`, source.ID).Scan(&totalRecords)
+		require.NoError(t, err)
+
+		var recordsWithOutlink int
+		err = op.Pool().QueryRow(ctx, `
+			SELECT COUNT(*) FROM name_string_indices
+			WHERE data_source_id = $1
+			AND outlink_id != ''
+			AND outlink_id IS NOT NULL
+		`, source.ID).Scan(&recordsWithOutlink)
+		require.NoError(t, err)
+
+		assert.Equal(t, totalRecords, recordsWithOutlink, "All records (taxa, synonyms, bare names) should have outlink IDs from name table")
+
+		// Clean up for next test
+		_, err = op.Pool().Exec(ctx, "DELETE FROM name_string_indices WHERE data_source_id = $1", source.ID)
+		require.NoError(t, err)
+	})
+
+	t.Run("empty outlink column - all records have empty outlink_id", func(t *testing.T) {
+		source := populate.DataSourceConfig{
+			ID:              1001,
+			Parent:          testdataDir,
+			OutlinkIDColumn: "", // No outlink configuration
+			IsOutlinkReady:  false,
+		}
+
+		cacheDir, err := prepareCacheDir()
+		require.NoError(t, err)
+
+		sqlitePath, err := fetchSFGA(ctx, source, cacheDir)
+		require.NoError(t, err)
+
+		sfgaDB, err := openSFGA(sqlitePath)
+		require.NoError(t, err)
+		defer sfgaDB.Close()
+
+		hierarchy, err := buildHierarchy(ctx, sfgaDB, 4)
+		require.NoError(t, err)
+
+		populator := &PopulatorImpl{operator: op}
+
+		// Process without outlink configuration
+		err = processNameIndices(ctx, populator, sfgaDB, &source, hierarchy, cfg)
+		require.NoError(t, err)
+
+		// Verify: No records should have outlink IDs
+		var recordsWithOutlink int
+		err = op.Pool().QueryRow(ctx, `
+			SELECT COUNT(*) FROM name_string_indices
+			WHERE data_source_id = $1
+			AND outlink_id != ''
+			AND outlink_id IS NOT NULL
+		`, source.ID).Scan(&recordsWithOutlink)
+		require.NoError(t, err)
+
+		assert.Equal(t, 0, recordsWithOutlink, "No records should have outlink IDs when not configured")
+	})
+
+	// Clean up
+	_ = op.DropAllTables(ctx)
+}
+
 // TestProcessNameIndices_Idempotency tests that running processNameIndices twice
 // produces the same result (old data is cleaned before import).
 func TestProcessNameIndices_Idempotency(t *testing.T) {
@@ -263,7 +465,7 @@ func TestProcessNameIndices_Idempotency(t *testing.T) {
 	populator := &PopulatorImpl{operator: op}
 
 	// First import
-	err = processNameIndices(ctx, populator, sfgaDB, source.ID, hierarchy, cfg)
+	err = processNameIndices(ctx, populator, sfgaDB, &source, hierarchy, cfg)
 	require.NoError(t, err)
 
 	var firstCount int
@@ -274,7 +476,7 @@ func TestProcessNameIndices_Idempotency(t *testing.T) {
 	require.Greater(t, firstCount, 0)
 
 	// Second import (should clean old data first)
-	err = processNameIndices(ctx, populator, sfgaDB, source.ID, hierarchy, cfg)
+	err = processNameIndices(ctx, populator, sfgaDB, &source, hierarchy, cfg)
 	require.NoError(t, err)
 
 	var secondCount int
@@ -382,8 +584,13 @@ func TestProcessNameIndices_BareNames(t *testing.T) {
 	hierarchy := make(map[string]*hNode)
 	populator := &PopulatorImpl{operator: op}
 
+	// Create minimal source config for test
+	source := populate.DataSourceConfig{
+		ID: 9999,
+	}
+
 	// Process - all names should become bare names
-	err = processNameIndices(ctx, populator, sfgaDB, 9999, hierarchy, cfg)
+	err = processNameIndices(ctx, populator, sfgaDB, &source, hierarchy, cfg)
 	require.NoError(t, err)
 
 	// Verify: All names should be bare names

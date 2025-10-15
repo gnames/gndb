@@ -10,9 +10,76 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gndb/pkg/populate"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
 )
+
+// buildOutlinkColumn maps table.column format to query alias for SELECT.
+// Returns column expression (e.g., "t.col__id", "n.col__name_id") or empty string if table not available.
+//
+// Parameters:
+//   - outlinkColumn: Format "table.column" (e.g., "taxon.col__id", "name.col__alternative_id")
+//   - queryType: One of "taxa", "synonyms", "bare_names"
+//
+// Table availability by query type:
+//   - "taxa":       taxon→t, name→n
+//   - "synonyms":   taxon→t (accepted), synonym→s, name→n
+//   - "bare_names": name→name (no alias)
+//
+// Returns empty string if:
+//   - outlinkColumn is empty
+//   - table not available for the query type
+func buildOutlinkColumn(outlinkColumn, queryType string) string {
+	if outlinkColumn == "" {
+		return ""
+	}
+
+	// Parse table.column format
+	parts := strings.Split(outlinkColumn, ".")
+	if len(parts) != 2 {
+		return "" // Invalid format
+	}
+
+	tableName := parts[0]
+	columnName := parts[1]
+
+	// Map table to query alias based on query type
+	var alias string
+	switch queryType {
+	case "taxa":
+		switch tableName {
+		case "taxon":
+			alias = "t"
+		case "name":
+			alias = "n"
+		default:
+			return "" // Table not available in taxa query
+		}
+	case "synonyms":
+		switch tableName {
+		case "taxon":
+			alias = "t" // Accepted taxon
+		case "synonym":
+			alias = "s"
+		case "name":
+			alias = "n"
+		default:
+			return "" // Table not available in synonyms query
+		}
+	case "bare_names":
+		switch tableName {
+		case "name":
+			alias = "name" // No alias in bare names query
+		default:
+			return "" // Only name table available in bare names query
+		}
+	default:
+		return "" // Unknown query type
+	}
+
+	return alias + "." + columnName
+}
 
 // processNameIndices imports name indices from SFGA into the database.
 // It handles three scenarios:
@@ -25,37 +92,37 @@ func processNameIndices(
 	ctx context.Context,
 	p *PopulatorImpl,
 	sfgaDB *sql.DB,
-	sourceID int,
+	source *populate.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) error {
-	slog.Info("Processing name indices", "sourceID", sourceID)
+	slog.Info("Processing name indices", "sourceID", source.ID)
 
 	// Clean old data for this source
-	err := cleanNameIndices(ctx, p, sourceID)
+	err := cleanNameIndices(ctx, p, source.ID)
 	if err != nil {
 		return err
 	}
 
 	// Process taxa (accepted names with classification)
-	err = processTaxa(ctx, p, sfgaDB, sourceID, hierarchy, cfg)
+	err = processTaxa(ctx, p, sfgaDB, source, hierarchy, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to process taxa: %w", err)
 	}
 
 	// Process synonyms (linked to accepted taxa)
-	err = processSynonyms(ctx, p, sfgaDB, sourceID, hierarchy, cfg)
+	err = processSynonyms(ctx, p, sfgaDB, source, hierarchy, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to process synonyms: %w", err)
 	}
 
 	// Process bare names (orphans not in taxon/synonym)
-	err = processBareNames(ctx, p, sfgaDB, sourceID, cfg)
+	err = processBareNames(ctx, p, sfgaDB, source, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to process bare names: %w", err)
 	}
 
-	slog.Info("Name indices processing complete", "sourceID", sourceID)
+	slog.Info("Name indices processing complete", "sourceID", source.ID)
 	return nil
 }
 
@@ -79,11 +146,14 @@ func processTaxa(
 	ctx context.Context,
 	p *PopulatorImpl,
 	sfgaDB *sql.DB,
-	sourceID int,
+	source *populate.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) error {
 	slog.Info("Processing taxa (accepted names)")
+
+	// Build outlink column expression if configured
+	outlinkCol := buildOutlinkColumn(source.OutlinkIDColumn, "taxa")
 
 	// Query taxa with flat classification fields
 	query := `
@@ -93,7 +163,15 @@ func processTaxa(
 			t.col__kingdom, t.sf__kingdom_id, t.col__phylum, t.sf__phylum_id,
 			t.col__subphylum, t.sf__subphylum_id, t.col__class, t.sf__class_id,
 			t.col__order, t.sf__order_id, t.col__family, t.sf__family_id,
-			t.col__genus, t.sf__genus_id, t.col__species, t.sf__species_id
+			t.col__genus, t.sf__genus_id, t.col__species, t.sf__species_id`
+
+	// Add outlink column if available
+	if outlinkCol != "" {
+		query += `,
+			` + outlinkCol
+	}
+
+	query += `
 		FROM taxon t
 		JOIN name n ON n.col__id = t.col__name_id
 	`
@@ -113,15 +191,23 @@ func processTaxa(
 		var kingdom, kingdomID, phylum, phylumID, subphylum, subphylumID sql.NullString
 		var class, classID, order, orderID, family, familyID sql.NullString
 		var genus, genusID, species, speciesID sql.NullString
+		var outlinkIDRaw sql.NullString
 
-		err := rows.Scan(
+		scanArgs := []interface{}{
 			&taxonID, &nameID, &nameString,
 			&codeID, &rankID, &statusID,
 			&kingdom, &kingdomID, &phylum, &phylumID,
 			&subphylum, &subphylumID, &class, &classID,
 			&order, &orderID, &family, &familyID,
 			&genus, &genusID, &species, &speciesID,
-		)
+		}
+
+		// Add outlink ID to scan if column was selected
+		if outlinkCol != "" {
+			scanArgs = append(scanArgs, &outlinkIDRaw)
+		}
+
+		err := rows.Scan(scanArgs...)
 		if err != nil {
 			return fmt.Errorf("failed to scan taxon row: %w", err)
 		}
@@ -169,12 +255,23 @@ func processTaxa(
 		// Generate UUID for name string
 		nameStringID := gnuuid.New(nameString).String()
 
+		// Extract outlink ID if available
+		outlinkID := ""
+		if outlinkIDRaw.Valid {
+			// Get the column name from the outlink column config
+			parts := strings.Split(source.OutlinkIDColumn, ".")
+			if len(parts) == 2 {
+				columnName := parts[1]
+				outlinkID = populate.ExtractOutlinkID(columnName, outlinkIDRaw.String)
+			}
+		}
+
 		// Create record for bulk insert
 		record := []interface{}{
-			sourceID,            // data_source_id
+			source.ID,           // data_source_id
 			taxonID,             // record_id
 			nameStringID,        // name_string_id
-			"",                  // outlink_id (not implemented yet)
+			outlinkID,           // outlink_id
 			"",                  // global_id (not in SFGA)
 			nameID,              // name_id
 			nameID,              // local_id
@@ -226,7 +323,7 @@ func processSynonyms(
 	ctx context.Context,
 	p *PopulatorImpl,
 	sfgaDB *sql.DB,
-	sourceID int,
+	source *populate.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) error {
@@ -247,6 +344,9 @@ func processSynonyms(
 		return nil
 	}
 
+	// Build outlink column expression if configured
+	outlinkCol := buildOutlinkColumn(source.OutlinkIDColumn, "synonyms")
+
 	// Query synonyms with their accepted taxon info
 	query := `
 		SELECT
@@ -255,7 +355,15 @@ func processSynonyms(
 			t.col__kingdom, t.sf__kingdom_id, t.col__phylum, t.sf__phylum_id,
 			t.col__subphylum, t.sf__subphylum_id, t.col__class, t.sf__class_id,
 			t.col__order, t.sf__order_id, t.col__family, t.sf__family_id,
-			t.col__genus, t.sf__genus_id, t.col__species, t.sf__species_id
+			t.col__genus, t.sf__genus_id, t.col__species, t.sf__species_id`
+
+	// Add outlink column if available
+	if outlinkCol != "" {
+		query += `,
+			` + outlinkCol
+	}
+
+	query += `
 		FROM synonym s
 		JOIN name n ON n.col__id = s.col__name_id
 		JOIN taxon t ON t.col__id = s.col__taxon_id
@@ -275,15 +383,23 @@ func processSynonyms(
 		var kingdom, kingdomID, phylum, phylumID, subphylum, subphylumID sql.NullString
 		var class, classID, order, orderID, family, familyID sql.NullString
 		var genus, genusID, species, speciesID sql.NullString
+		var outlinkIDRaw sql.NullString
 
-		err := rows.Scan(
+		scanArgs := []interface{}{
 			&synonymID, &taxonID, &nameID, &nameString,
 			&codeID, &rankID, &statusID,
 			&kingdom, &kingdomID, &phylum, &phylumID,
 			&subphylum, &subphylumID, &class, &classID,
 			&order, &orderID, &family, &familyID,
 			&genus, &genusID, &species, &speciesID,
-		)
+		}
+
+		// Add outlink ID to scan if column was selected
+		if outlinkCol != "" {
+			scanArgs = append(scanArgs, &outlinkIDRaw)
+		}
+
+		err := rows.Scan(scanArgs...)
 		if err != nil {
 			return fmt.Errorf("failed to scan synonym row: %w", err)
 		}
@@ -330,11 +446,22 @@ func processSynonyms(
 
 		nameStringID := gnuuid.New(nameString).String()
 
+		// Extract outlink ID if available
+		outlinkID := ""
+		if outlinkIDRaw.Valid {
+			// Get the column name from the outlink column config
+			parts := strings.Split(source.OutlinkIDColumn, ".")
+			if len(parts) == 2 {
+				columnName := parts[1]
+				outlinkID = populate.ExtractOutlinkID(columnName, outlinkIDRaw.String)
+			}
+		}
+
 		record := []interface{}{
-			sourceID,
+			source.ID,
 			synonymID, // record_id (synonym's own ID)
 			nameStringID,
-			"",
+			outlinkID,
 			"",
 			nameID,
 			nameID,
@@ -384,17 +511,28 @@ func processBareNames(
 	ctx context.Context,
 	p *PopulatorImpl,
 	sfgaDB *sql.DB,
-	sourceID int,
+	source *populate.DataSourceConfig,
 	cfg *config.Config,
 ) error {
 	slog.Info("Processing bare names")
 
+	// Build outlink column expression if configured
+	outlinkCol := buildOutlinkColumn(source.OutlinkIDColumn, "bare_names")
+
 	// Query names not in taxon or synonym
 	query := `
-		SELECT col__id, col__scientific_name, gn__scientific_name_string,
-		       col__code_id, col__rank_id
+		SELECT name.col__id, name.col__scientific_name, name.gn__scientific_name_string,
+		       name.col__code_id, name.col__rank_id`
+
+	// Add outlink column if available
+	if outlinkCol != "" {
+		query += `,
+			` + outlinkCol
+	}
+
+	query += `
 		FROM name
-		WHERE col__id NOT IN (
+		WHERE name.col__id NOT IN (
 			SELECT col__name_id FROM taxon
 			UNION
 			SELECT col__name_id FROM synonym
@@ -412,8 +550,16 @@ func processBareNames(
 
 	for rows.Next() {
 		var nameID, sciName, gnName, codeID, rankID string
+		var outlinkIDRaw sql.NullString
 
-		err := rows.Scan(&nameID, &sciName, &gnName, &codeID, &rankID)
+		scanArgs := []interface{}{&nameID, &sciName, &gnName, &codeID, &rankID}
+
+		// Add outlink ID to scan if column was selected
+		if outlinkCol != "" {
+			scanArgs = append(scanArgs, &outlinkIDRaw)
+		}
+
+		err := rows.Scan(scanArgs...)
 		if err != nil {
 			return fmt.Errorf("failed to scan bare name row: %w", err)
 		}
@@ -427,11 +573,22 @@ func processBareNames(
 		nameStringID := gnuuid.New(nameString).String()
 		recordID := "bare-name-" + nameID
 
+		// Extract outlink ID if available
+		outlinkID := ""
+		if outlinkIDRaw.Valid {
+			// Get the column name from the outlink column config
+			parts := strings.Split(source.OutlinkIDColumn, ".")
+			if len(parts) == 2 {
+				columnName := parts[1]
+				outlinkID = populate.ExtractOutlinkID(columnName, outlinkIDRaw.String)
+			}
+		}
+
 		record := []interface{}{
-			sourceID,
+			source.ID,
 			recordID, // record_id with "bare-name-" prefix
 			nameStringID,
-			"",
+			outlinkID,
 			"",
 			nameID,
 			nameID,

@@ -311,6 +311,60 @@
 
 ## Phase 4.6: Name Indices Processing (Phase 2 Part 2)
 
+### T041.5: [P] Add Outlink Column Configuration with gnoutlink Namespace Support ✅
+
+**Description**: Add outlink_id_column field using "table.column" format with automatic `gnoutlink:` namespace extraction from col__alternative_id
+
+**Actions**:
+1. Update `pkg/populate/sources.go`:
+   - Add `OutlinkIDColumn string` field to `DataSourceConfig`
+   - Format: `"table.column"` (e.g., "taxon.col__id", "name.col__alternative_id")
+   - Update Validate() to check OutlinkIDColumn format if IsOutlinkReady=true:
+     * Must contain exactly one dot: `table.column`
+     * Table must be one of: "taxon", "name", "synonym"
+     * Column must be one of: "col__id", "col__name_id", "col__local_id", "col__alternative_id"
+     * Exception: "synonym.col__alternative_id" is NOT allowed (synonym table lacks this column)
+   - Add helper `ExtractOutlinkID(columnName, value string) string`:
+     * If columnName ends with "col__alternative_id": Extract value after "gnoutlink:" from comma-separated list
+     * Else: Return value as-is
+     * Example: "gbif:123,gnoutlink:Homo_sapiens" → "Homo_sapiens"
+2. Update template `pkg/templates/sources.yaml`:
+   - Document the gnoutlink namespace convention:
+     * Direct columns: "taxon.col__id", "name.col__name_id" (use value as-is)
+     * Alternative ID: "taxon.col__alternative_id", "name.col__alternative_id" (auto-extract gnoutlink:)
+     * Format in SFGA: "namespace1:id1,gnoutlink:transformed_id"
+   - Document table availability by record type:
+     * "taxon.*" - Taxa & synonyms only (bare names get empty)
+     * "name.*" - All record types (taxa, synonyms, bare names)
+     * "synonym.*" - Synonyms only
+3. Write unit tests in `sources_test.go`:
+   - Validate(): Test valid formats "taxon.col__id", "name.col__alternative_id"
+   - Validate(): Test invalid formats (no dot, wrong table, wrong column)
+   - ExtractOutlinkID(): Test direct column (returns value as-is)
+   - ExtractOutlinkID(): Test alternative_id with gnoutlink namespace
+   - ExtractOutlinkID(): Test alternative_id with multiple namespaces
+   - ExtractOutlinkID(): Test alternative_id without gnoutlink (returns empty)
+
+**File Paths**:
+- `/home/dimus/code/golang/gndb/pkg/populate/sources.go`
+- `/home/dimus/code/golang/gndb/pkg/populate/sources_test.go`
+- `/home/dimus/code/golang/gndb/pkg/templates/sources.yaml`
+
+**Success Criteria**:
+- [x] OutlinkIDColumn field uses "table.column" format
+- [x] Validation enforces allowed table and column names
+- [x] ExtractOutlinkID() auto-detects col__alternative_id and extracts gnoutlink:
+- [x] Template documents gnoutlink namespace convention
+- [x] Unit tests cover validation and extraction logic
+
+**Dependencies**: T035 (sources filtering)
+
+**Note**: Complex transformations (URL encoding, string replacement) should be done during SFGA creation and stored in col__alternative_id with "gnoutlink:" prefix. This preserves original SFGA data while supporting custom outlink IDs.
+
+**Synonym Table Limitation**: The synonym table does not have col__alternative_id. When using "taxon.col__alternative_id", synonyms will get the accepted taxon's outlink ID (pointing to the accepted taxon's page). If synonym-specific outlinks are needed, transformations must be stored in "name.col__alternative_id" instead.
+
+---
+
 ### T042: [P] Write Integration Test for Name Indices Import ✅
 
 **Description**: Create failing test for name indices with classification
@@ -366,6 +420,75 @@
 - [x] Synonyms linked to accepted taxa via AcceptedRecordID
 
 **Dependencies**: T041, T042
+
+---
+
+### T043.5: Read Outlink ID from SFGA Columns During Import ✅
+
+**Description**: Update name indices processing to read outlink_id from SFGA tables and populate name_string_indices.outlink_id column
+
+**Actions**:
+1. Add helper function in `internal/iopopulate/indices.go`:
+   ```go
+   // buildOutlinkColumn maps table.column format to query alias
+   // Returns column expression for SELECT or empty string if not available
+   func buildOutlinkColumn(outlinkColumn string, queryType string) string
+   ```
+   - Parse `"table.column"` format (e.g., "taxon.col__id" → table="taxon", column="col__id")
+   - Map table name to query alias based on queryType:
+     * "taxa": taxon→t, name→n
+     * "synonyms": taxon→t (accepted), synonym→s, name→n
+     * "bare_names": name→name (no alias)
+   - Return formatted column (e.g., "t.col__id", "n.col__name_id") or empty if table not available
+   - Write unit tests for buildOutlinkColumn with all combinations
+
+2. Update `internal/iopopulate/indices.go`:
+   - Add `source DataSourceConfig` parameter to `processNameIndices()`, `processTaxa()`, `processSynonyms()`, `processBareNames()`
+   - In each function:
+     * Call `buildOutlinkColumn(source.OutlinkIDColumn, queryType)`
+     * If result not empty, add to SELECT: `, {result} AS outlink_id`
+     * Scan outlink_id from query results
+     * Insert into name_string_indices.outlink_id via bulk insert
+   - Example for processTaxa():
+     ```go
+     outlinkCol := buildOutlinkColumn(source.OutlinkIDColumn, "taxa")
+     query := `SELECT t.col__id, n.col__id, n.gn__scientific_name_string, ...`
+     if outlinkCol != "" {
+         query += `, ` + outlinkCol + ` AS outlink_id`
+     }
+     query += ` FROM taxon t JOIN name n ON n.col__id = t.col__name_id`
+     
+     // Scan including outlink_id
+     var outlinkID string
+     err := rows.Scan(&taxonID, &nameID, &nameString, ..., &outlinkID)
+     
+     // Use in bulk insert to name_string_indices
+     record := []interface{}{sourceID, recordID, nameStringID, outlinkID, ...}
+     ```
+
+3. Update integration test in `indices_integration_test.go`:
+   - Test "taxon.col__id": Taxa & synonyms get value, bare names get empty
+   - Test "name.col__id": All record types get value (including bare names)
+   - Test with is_outlink_ready=false (all get empty)
+   - Verify name_string_indices.outlink_id populated correctly
+
+**File Paths**:
+- `/home/dimus/code/golang/gndb/internal/iopopulate/indices.go`
+- `/home/dimus/code/golang/gndb/internal/iopopulate/indices_test.go`
+- `/home/dimus/code/golang/gndb/internal/iopopulate/indices_integration_test.go`
+
+**Success Criteria**:
+- [x] buildOutlinkColumn() correctly maps table.column to query aliases
+- [x] Taxa records populate outlink_id in name_string_indices
+- [x] Synonyms records populate outlink_id in name_string_indices
+- [x] Bare names populate outlink_id if using name table (e.g., "name.col__id")
+- [x] Bare names get empty outlink_id if using taxon table (e.g., "taxon.col__id")
+- [x] Integration test verifies all scenarios
+- [x] Unit tests for buildOutlinkColumn pass
+
+**Dependencies**: T041.5, T043
+
+**Note**: This change requires updating the `processNameIndices()` call site in `populator.go` (T048) to pass the source config.
 
 ---
 
@@ -619,10 +742,10 @@
 
 ## Summary
 
-**Total Tasks**: 18 (T034-T051)
+**Total Tasks**: 20 (T034-T051, including T041.5 and T043.5)
 **Completed**: 4 (T034 ✅, T035 ✅, T036 ✅, T037 ✅)
-**Parallel Tasks**: 10 (T034, T035, T037, T038, T040, T042, T044, T046, T050, T051)
-**Critical Path**: T034→T036→T037→T039→T041→T043→T045→T047→T048→T049→T050
+**Parallel Tasks**: 11 (T034, T035, T037, T038, T040, T041.5, T042, T044, T046, T050, T051)
+**Critical Path**: T034→T036→T037→T039→T041→T041.5→T043→T043.5→T045→T047→T048→T049→T050
 
 **Phase Breakdown**:
 - Phase 4.1: Cache Setup (T034) - 1 task [P] ✅
@@ -630,13 +753,13 @@
 - Phase 4.3: SFGA Fetching (T037) - 1 task [P] ✅
 - Phase 4.4: Name Strings (T038-T039) - 2 tasks, 1 [P]
 - Phase 4.5: Hierarchy (T040-T041) - 2 tasks, 1 [P]
-- Phase 4.6: Name Indices (T042-T043) - 2 tasks, 1 [P]
+- Phase 4.6: Name Indices (T041.5, T042-T043, T043.5) - 4 tasks, 2 [P]
 - Phase 4.7: Vernaculars (T044-T045) - 2 tasks, 1 [P]
 - Phase 4.8: Metadata (T046-T047) - 2 tasks, 1 [P]
 - Phase 4.9: Orchestration (T048) - 1 task
 - Phase 4.10: Testing & Docs (T049-T051) - 3 tasks, 2 [P]
 
-**Estimated Effort**: 13-17 hours focused work (4 tasks complete)
+**Estimated Effort**: 15-19 hours focused work (4 tasks complete, 2 new tasks added)
 
 **Key Patterns**:
 - TDD: Integration tests before implementation
@@ -647,9 +770,11 @@
 **Next Steps**:
 1. T038: Write Integration Test for Name Strings Import
 2. T039: Implement Name Strings Processing
-3. Continue through phases 4.5-4.9 (hierarchy, indices, vernaculars, metadata)
-4. T048: Wire all phases in main Populate() orchestration
-5. T049-T051: End-to-end testing and documentation
+3. T041.5: Implement Outlink ID Extraction Logic (NEW - for outlink URL templates)
+4. Continue through phases 4.5-4.9 (hierarchy, indices with outlink IDs, vernaculars, metadata)
+5. T043.5: Update Name Indices Processing to Use Outlink IDs (NEW)
+6. T048: Wire all phases in main Populate() orchestration
+7. T049-T051: End-to-end testing and documentation
 
 ---
 
