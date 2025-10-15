@@ -153,7 +153,7 @@ func TestProcessNameStrings_EmptyGNName(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create an in-memory SFGA with empty gn__scientific_name_string
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 

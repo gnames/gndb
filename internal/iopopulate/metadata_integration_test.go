@@ -47,7 +47,7 @@ func TestUpdateDataSourceMetadata_NewDataSource(t *testing.T) {
 	require.NoError(t, err, "Schema creation should succeed")
 
 	// Create test SFGA with metadata
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -204,7 +204,7 @@ func TestUpdateDataSourceMetadata_ExistingDataSource(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create test SFGA
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -328,7 +328,7 @@ func TestUpdateDataSourceMetadata_EmptyMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create test SFGA with empty/null metadata
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 

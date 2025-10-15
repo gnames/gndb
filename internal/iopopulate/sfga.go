@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/gnames/gndb/pkg/populate"
-	_ "github.com/mattn/go-sqlite3" // SQLite driver
+	_ "modernc.org/sqlite" // Pure Go SQLite driver (no CGo)
 	"github.com/sfborg/sflib"
 )
 
@@ -309,8 +309,8 @@ func openSFGA(sqlitePath string) (*sql.DB, error) {
 		return nil, fmt.Errorf("SFGA file does not exist: %s", sqlitePath)
 	}
 
-	// Open SQLite database
-	db, err := sql.Open("sqlite3", sqlitePath)
+	// Open SQLite database (using modernc.org/sqlite pure Go driver)
+	db, err := sql.Open("sqlite", sqlitePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open SQLite database %s: %w", sqlitePath, err)
 	}

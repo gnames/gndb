@@ -9,7 +9,6 @@ require (
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
-	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/sfborg/sflib v0.4.6
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
@@ -17,8 +16,8 @@ require (
 	golang.org/x/sync v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.6.0
-	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.0
+	modernc.org/sqlite v1.38.2
 )
 
 require (
@@ -66,5 +65,4 @@ require (
 	modernc.org/libc v1.66.7 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.38.2 // indirect
 )

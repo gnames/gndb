@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/gnames/gndb/pkg/populate"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -195,7 +195,7 @@ func TestGetBreadcrumbs_FlatClassificationFallback(t *testing.T) {
 	ctx := context.Background()
 
 	// Create minimal SFGA with single node (no hierarchy)
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -263,7 +263,7 @@ func TestGetBreadcrumbs_MissingParent(t *testing.T) {
 	ctx := context.Background()
 
 	// Create SFGA with missing parent reference
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -314,7 +314,7 @@ func TestBuildHierarchy_SelfReferencingParent(t *testing.T) {
 
 	ctx := context.Background()
 
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -359,7 +359,7 @@ func TestGetBreadcrumbs_WithFlatClassificationTrue(t *testing.T) {
 	ctx := context.Background()
 
 	// Create SFGA with complete hierarchy
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 

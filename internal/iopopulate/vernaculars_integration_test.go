@@ -45,7 +45,7 @@ func TestProcessVernaculars_Integration(t *testing.T) {
 	require.NoError(t, err, "Schema creation should succeed")
 
 	// Create test SFGA with vernacular data
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -179,7 +179,7 @@ func TestProcessVernaculars_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create test SFGA
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
@@ -253,7 +253,7 @@ func TestProcessVernaculars_EmptyTable(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create empty SFGA
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 

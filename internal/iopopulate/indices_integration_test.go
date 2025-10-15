@@ -514,7 +514,7 @@ func TestProcessNameIndices_BareNames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create minimal SFGA with only names (no taxon/synonym tables)
-	sfgaDB, err := sql.Open("sqlite3", ":memory:")
+	sfgaDB, err := sql.Open("sqlite", ":memory:")
 	require.NoError(t, err)
 	defer sfgaDB.Close()
 
