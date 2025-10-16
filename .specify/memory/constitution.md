@@ -1,11 +1,11 @@
 <!--
 SYNC IMPACT REPORT
-Version: 1.3.2 → 1.4.0
-Change Type: MINOR (added new principle)
+Version: 1.4.1 → 1.5.0
+Change Type: MINOR (new principle)
 Modified Principles:
   - None
 Added Sections:
-  - IX. User-Centric Error Handling
+  - X. User-Friendly Documentation
 Removed Sections:
   - None
 Templates Status:
@@ -13,7 +13,7 @@ Templates Status:
   ✅ .specify/templates/spec-template.md (no changes needed)
   ✅ .specify/templates/tasks-template.md (no changes needed)
 Rationale:
-  - A new principle was added to guide the tone and behavior of the application's error handling, making it more user-friendly.
+  - Added a new principle to mandate user-friendly documentation with terminal colors to improve readability and user experience.
 -->
 
 # GNdb Constitution
@@ -62,7 +62,7 @@ internal/io/ ──X── cmd/       (FORBIDDEN)
 - Red-Green-Refactor cycle is strictly enforced
 - No feature is complete without passing tests
 
-**Rationale**: TDD ensures code correctness, prevents regressions, and serves as living documentation for expected behavior.
+**Rationale**: TDD ensures code correctness, prevents regressions, and serves as living documentation for a given behavior.
 
 ### IV. CLI-First Interface
 - All functionality MUST be exposed via command-line interface
@@ -145,13 +145,26 @@ This project is designed for hybrid human-LLM collaboration and rapid contributo
 
 **Rationale**: Contributors (human or LLM) should understand a module in <5 minutes. Every abstraction is a tax on comprehension. Optimize for change velocity, not architectural purity. This enables rapid onboarding and sustained contributor engagement.
 
-### IX. User-Centric Error Handling
-- `gndb` MUST treat users as partners, not adversaries.
-- Error messages MUST be clear, concise, and actionable. They must explain (1) what went wrong, (2) why it went wrong, and (3) how to fix it.
-- The system SHOULD be resilient. When processing multiple data sources, an error with one source should not halt the entire process if it is possible to continue.
-- The tone of all user-facing communication MUST be helpful and encouraging. Avoid technical jargon and error codes where possible.
+### IX. Dual-Channel Communication
+- The CLI MUST distinguish between user-facing and developer-facing output.
+- **User-Facing Output (`STDOUT`)**:
+    - Progress messages MUST be clear, concise, and keep the user informed of the application's state.
+    - For every distinct error condition, there MUST be a corresponding well-formatted documentation block. This documentation should include a title, a clear explanation of the problem, and actionable steps for resolution. It is intended for the user and MUST be printed to `STDOUT`.
+- **Developer-Facing Output (`STDERR`)**:
+    - Technical error details, stack traces, and verbose logging MUST be directed to `STDERR`. This channel is for developers and system administrators.
+- The tone of all user-facing communication MUST be helpful and encouraging.
 
-**Rationale**: A user-friendly and forgiving interface fosters a positive user experience. It empowers users to resolve issues independently and encourages continued use of the tool, turning potential frustration into a learning opportunity. This approach builds trust and makes `gndb` feel like a reliable assistant.
+**Rationale**: Separating user-friendly guidance from technical logs allows `gndb` to serve two audiences simultaneously. Users receive clear, actionable help on `STDOUT` without being overwhelmed by technical jargon, while developers can diagnose issues using the detailed logs on `STDERR`. This dual-channel approach improves usability for end-users and maintains a high level of debuggability for developers.
+
+### X. User-Friendly Documentation
+- Documentation, especially for the CLI, MUST be user-friendly.
+- Use terminal colors to enhance readability and draw attention to important information.
+- Headers and titles SHOULD be in a distinct color (e.g., green).
+- Important warnings or dangerous operations SHOULD be highlighted in a cautionary color (e.g., red).
+- Key points or highlights SHOULD be in another distinct color (e.g., yellow).
+- The color scheme SHOULD be consistent across the application.
+
+**Rationale**: Using colors in terminal output makes the documentation more engaging and easier to parse visually. It helps users quickly identify the most critical pieces of information, improving the overall user experience.
 
 ## Development Workflow
 
@@ -218,4 +231,4 @@ This constitution supersedes all other development practices and patterns. Amend
 - Complexity introduced MUST solve real problems, not imagined ones
 - When in doubt, choose simplicity over sophistication
 
-**Version**: 1.4.0 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-16
+**Version**: 1.5.0 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-16

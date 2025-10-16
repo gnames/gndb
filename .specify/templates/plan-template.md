@@ -81,6 +81,24 @@
 - [ ] Configuration schema documented and validated at startup
 - [ ] Fail-fast with clear errors for invalid configuration
 
+**VII. Development principles.**
+- [ ] Follow KISS and Do Not Repeat Yourself principles.
+
+**VIII. Contributor-First Minimalism (NON-NEGOTIABLE)**
+- [ ] Write the simplest code that solves the problem
+- [ ] Create abstractions only when they improve comprehension or testability
+- [ ] No "just in case" code
+
+**IX. Dual-Channel Communication**
+- [ ] User-facing output (STDOUT) is separated from developer-facing output (STDERR).
+- [ ] Well-formatted error documentation is provided on STDOUT for users.
+- [ ] Technical logs and stack traces are directed to STDERR.
+
+**X. User-Friendly Documentation**
+- [ ] Use terminal colors to enhance readability.
+- [ ] Headers and titles are in a distinct color.
+- [ ] Warnings or dangerous operations are highlighted.
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -254,4 +272,4 @@ directories captured above]
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v1.0.0 - See `.specify/memory/constitution.md`*
+*Based on Constitution v1.5.0 - See `.specify/memory/constitution.md`*
