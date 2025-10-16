@@ -2,18 +2,72 @@
 
 ## Decision: Follow `gnidump rebuild` Logic
 
-**Rationale**: The user has specified that the logic for the `optimize` command should follow the `rebuild` command from the `gnidump` project. This approach is production-tested and directly addresses the requirements for optimizing the `gnverifier` database.
+**Rationale**: The `gndb optimize` command replicates the production-tested `gnidump rebuild` workflow. This approach is proven in production use for gnverifier compatibility and ensures the database is optimized exactly as expected by gnverifier's query patterns.
 
-**Alternatives considered**: A new implementation from scratch was considered but rejected in favor of a proven, existing implementation.
+**Alternatives considered**: A new optimization implementation from scratch was considered but rejected in favor of the proven gnidump approach to ensure compatibility and leverage production battle-testing.
 
-## Key Implementation Steps from `gnidump rebuild`
+**Reference**: gnidump implementation at `${HOME}/code/golang/gnidump/`
+- Main orchestration: `internal/io/buildio/buildio.go`
+- CLI command: `cmd/rebuild.go`
 
-The following steps have been identified from the user's instructions and analysis of the `gnidump` project:
+## Complete 5-Step Workflow from `gnidump rebuild`
 
-1.  **Remove Orphaned `name_strings`**: Delete records from the `name_strings` table that are not referenced in the `name_string_indices` table. This is a data cleanup step.
+Analysis of gnidump source code reveals the following 5-step process (order preserved from production):
 
-2.  **Parse Names and Generate Canonical Forms**: For each name string, parse it to generate its canonical form, full canonical form, and stemmed canonical form. This is a CPU-intensive data processing step.
+### Step 1: Reparse Names (`db_reparse.go`)
+- **Purpose**: Update all name_strings with latest gnparser algorithms and cache results
+- **Operation**:
+  - Load all name_strings from database
+  - Parse using gnparser with concurrent workers (gnidump uses 50)
+  - Update database: canonical_id, canonical_full_id, canonical_stem_id, bacteria, virus, surrogate, parse_quality
+  - Insert missing canonical records into canonicals, canonical_stems, canonical_fulls tables
+  - **Cache parsed results in kvSci (key-value store) keyed by UUID v5** for use in Step 4
+- **Why needed**: Parser algorithms improve over time; reparsing applies latest classification logic
+- **gndb adaptation**: Use Config.JobsNumber for worker count (defaults to runtime.NumCPU()) instead of hardcoded 50
 
-3.  **Extract and Link Words**: Extract words from the canonical forms and authorships. Link these words back to the `name_strings` table. This enables faster searching.
+### Step 2: Fix Vernacular Language (`db_vern.go`)
+- **Purpose**: Normalize language codes using gnlang library
+- **Operation**:
+  - Convert 2-letter codes to 3-letter ISO codes
+  - Store original in language_orig before normalization
+  - Make all codes lowercase
+- **Why needed**: Consistent language codes enable reliable vernacular lookups
+- **gndb adaptation**: Use Config.JobsNumber for parallel workers
 
-4.  **Create Materialized View**: Generate a materialized view to denormalize data for faster query performance. The exact structure of this view needs to be determined from the `gnidump` source code.
+### Step 3: Remove Orphans (`db_views.go`)
+- **Purpose**: Clean up unreferenced records
+- **Operations** (in order):
+  1. Delete orphan name_strings not in name_string_indices
+  2. Delete orphan canonicals not referenced by name_strings
+  3. Delete orphan canonical_fulls not referenced by name_strings
+  4. Delete orphan canonical_stems not referenced by name_strings
+- **Why needed**: Reduces database size and improves query performance
+- **Note**: Done after reparsing (not before) to maintain exact gnidump workflow order for safety
+
+### Step 4: Create Words (`words.go`)
+- **Purpose**: Extract individual words for fuzzy matching
+- **Operation**:
+  - Extract words from name_strings using **cached parsed results from kvSci** (Step 1)
+  - **No re-parsing** - reuses parsed data keyed by UUID v5
+  - Store in words table with normalized and modified forms
+  - Create word_name_strings junction table linking words to names and canonicals
+  - Process in batches (use Config.Import.BatchSize)
+- **Why needed**: Enables word-level fuzzy matching in gnverifier
+
+### Step 5: Create Verification Materialized View (`db_views.go`)
+- **Purpose**: Denormalize data for fast verification queries
+- **Operation**:
+  - Drop existing `verification` materialized view if exists
+  - Create single `verification` materialized view (see data-model.md for SQL)
+  - Create 3 indexes: canonical_id, name_string_id, year
+- **Why needed**: Pre-joins tables for O(1) verification lookups instead of expensive runtime joins
+
+## Additional gndb Enhancements
+
+**VACUUM ANALYZE**: gnidump rebuild does NOT run VACUUM ANALYZE. gndb optimize will add this per FR-004 requirement as Step 6.
+
+**Configurable Concurrency**: gnidump hardcodes 50 workers for reparsing. gndb will use Config.JobsNumber to adapt to diverse hardware (from laptops to servers). This supports the use case where gndb is used by many people with varying hardware capabilities, unlike gnidump which was designed for single-user scenarios.
+
+**User-Friendly Output**: Per Constitution Principle X, gndb optimize must add colored terminal output for progress updates to STDOUT. gnidump does not have this - it's a gndb enhancement following the dual-channel communication principle (user messages to STDOUT, technical logs to STDERR).
+
+**Temporary Cache Strategy**: gndb optimize will use `~/.cache/gndb/optimize/` for temporary key-value store (kvSci) during the optimization process. This store caches parsed scientific name data from Step 1 (reparse) for reuse in Step 4 (word extraction), avoiding re-parsing 100M+ names. Unlike the persistent SFGA cache (`~/.cache/gndb/sfga/`), the optimize cache is **ephemeral** - created at start, cleaned up at end. Note: Vernacular names are not parsed, only language-normalized, so no kvVern needed.
