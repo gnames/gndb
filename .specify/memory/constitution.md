@@ -1,28 +1,19 @@
 <!--
 SYNC IMPACT REPORT
-Version: 1.3.0 → 1.3.2
-Change Type: MINOR (added enforcement rules to existing principle)
+Version: 1.3.2 → 1.4.0
+Change Type: MINOR (added new principle)
 Modified Principles:
-  - II. Pure/Impure Code Separation (added Import Direction Rules)
-  - VIII. Contributor-First Minimalism (clarified abstraction criteria)
-Added Sections: Import Direction Rules, Dependency Flow diagram
-Removed Sections: None
-Changes:
-  - Added explicit import constraints: pkg/ cannot import cmd/ or internal/io/
-  - Added visual dependency flow diagram with FORBIDDEN paths
-  - Clarified cmd/ is the wiring layer that may import both pkg/ and internal/io/
-  - Emphasized architectural drift prevention through strict import rules
-  - VIII: Clarified that good abstractions (comprehension, testability) are encouraged
-  - VIII: Added "Encouraged" section to balance "Discouraged" section
-  - VIII: Removed dogmatic "Rule of Three" in favor of value-based assessment
+  - None
+Added Sections:
+  - IX. User-Centric Error Handling
+Removed Sections:
+  - None
 Templates Status:
   ✅ .specify/templates/plan-template.md (no changes needed)
   ✅ .specify/templates/spec-template.md (no changes needed)
   ✅ .specify/templates/tasks-template.md (no changes needed)
 Rationale:
-  - Import rules were implicit; making them explicit prevents architectural violations
-  - Dependency flow diagram provides visual clarity for contributors
-  - Abstraction guidance now balances minimalism with practical benefits
+  - A new principle was added to guide the tone and behavior of the application's error handling, making it more user-friendly.
 -->
 
 # GNdb Constitution
@@ -154,6 +145,14 @@ This project is designed for hybrid human-LLM collaboration and rapid contributo
 
 **Rationale**: Contributors (human or LLM) should understand a module in <5 minutes. Every abstraction is a tax on comprehension. Optimize for change velocity, not architectural purity. This enables rapid onboarding and sustained contributor engagement.
 
+### IX. User-Centric Error Handling
+- `gndb` MUST treat users as partners, not adversaries.
+- Error messages MUST be clear, concise, and actionable. They must explain (1) what went wrong, (2) why it went wrong, and (3) how to fix it.
+- The system SHOULD be resilient. When processing multiple data sources, an error with one source should not halt the entire process if it is possible to continue.
+- The tone of all user-facing communication MUST be helpful and encouraging. Avoid technical jargon and error codes where possible.
+
+**Rationale**: A user-friendly and forgiving interface fosters a positive user experience. It empowers users to resolve issues independently and encourages continued use of the tool, turning potential frustration into a learning opportunity. This approach builds trust and makes `gndb` feel like a reliable assistant.
+
 ## Development Workflow
 
 ### Testing Requirements
@@ -219,4 +218,4 @@ This constitution supersedes all other development practices and patterns. Amend
 - Complexity introduced MUST solve real problems, not imagined ones
 - When in doubt, choose simplicity over sophistication
 
-**Version**: 1.3.2 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-09
+**Version**: 1.4.0 | **Ratified**: 2025-10-01 | **Last Amended**: 2025-10-16
