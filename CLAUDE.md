@@ -6,6 +6,8 @@ Auto-generated from all feature plans. Last updated: 2025-10-02
 - Go 1.21+ (001-gnverifier-db-lifecycle)
 - Go 1.25 + pgx/v5 (pgxpool for connection pooling), GORM (AutoMigrate for schema management), cobra (CLI), viper (config), sflib (SFGA data import) (001-gnverifier-db-lifecycle)
 - PostgreSQL (primary), SQLite (SFGA format data sources) (001-gnverifier-db-lifecycle)
+- Go 1.21+ + pgx/v5 (database operations), gnparser (name parsing), gnlang (language normalization), gnlib/gnuuid (UUID v5 for cache keys) (002-optimize)
+- PostgreSQL (primary database), temporary key-value store at `~/.cache/gndb/optimize/` (ephemeral parse cache) (002-optimize)
 
 ## Project Structure
 ```
@@ -20,9 +22,9 @@ tests/
 Go 1.21+: Follow standard conventions
 
 ## Recent Changes
+- 002-optimize: Added Go 1.21+ + pgx/v5 (database operations), gnparser (name parsing), gnlang (language normalization), gnlib/gnuuid (UUID v5 for cache keys)
 - 001-gnverifier-db-lifecycle: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 001-gnverifier-db-lifecycle: Added Go 1.25 + pgx/v5 (pgxpool for connection pooling), GORM (AutoMigrate for schema management), cobra (CLI), viper (config), sflib (SFGA data import)
-- 001-gnverifier-db-lifecycle: Added Go 1.21+
 
 <!-- MANUAL ADDITIONS START -->
 
