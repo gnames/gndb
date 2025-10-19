@@ -21,8 +21,8 @@ func TestDefaults(t *testing.T) {
 	assert.Equal(t, 60, cfg.Database.MaxConnLifetime)
 	assert.Equal(t, 10, cfg.Database.MaxConnIdleTime)
 
-	// Test import batch size default
-	assert.Equal(t, 5000, cfg.Import.BatchSize)
+	// Test database batch size default
+	assert.Equal(t, 50000, cfg.Database.BatchSize)
 
 	// Test optimization defaults
 	assert.False(t, cfg.Optimization.ConcurrentIndexes)
@@ -59,9 +59,7 @@ func TestValidate_InvalidValues(t *testing.T) {
 					MinConnections:  2,
 					MaxConnLifetime: 60,
 					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
+					BatchSize:       50000,
 				},
 				Logging: config.LoggingConfig{
 					Format: "invalid",
@@ -82,9 +80,6 @@ func TestValidate_InvalidValues(t *testing.T) {
 					MaxConnLifetime: 60,
 					MaxConnIdleTime: 10,
 				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
 				Logging: config.LoggingConfig{
 					Level: "invalid",
 				},
@@ -104,9 +99,6 @@ func TestValidate_InvalidValues(t *testing.T) {
 					MaxConnLifetime: 60,
 					MaxConnIdleTime: 10,
 				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
 			},
 			errMsg: "database.min_connections cannot exceed max_connections",
 		},
@@ -123,9 +115,6 @@ func TestValidate_InvalidValues(t *testing.T) {
 					MaxConnLifetime: -1,
 					MaxConnIdleTime: 10,
 				},
-				Import: config.ImportConfig{
-					BatchSize: 5000,
-				},
 			},
 			errMsg: "database.max_conn_lifetime cannot be negative",
 		},
@@ -141,12 +130,10 @@ func TestValidate_InvalidValues(t *testing.T) {
 					MinConnections:  2,
 					MaxConnLifetime: 60,
 					MaxConnIdleTime: 10,
-				},
-				Import: config.ImportConfig{
-					BatchSize: -100,
+					BatchSize:       -100,
 				},
 			},
-			errMsg: "import.batch_size cannot be negative",
+			errMsg: "database.batch_size cannot be negative",
 		},
 	}
 
@@ -197,9 +184,6 @@ func TestMergeWithDefaults(t *testing.T) {
 					MaxConnLifetime: 120,
 					MaxConnIdleTime: 30,
 				},
-				Import: config.ImportConfig{
-					BatchSize: 10000,
-				},
 				Optimization: config.OptimizationConfig{
 					ConcurrentIndexes: true,
 				},
@@ -220,7 +204,7 @@ func TestMergeWithDefaults(t *testing.T) {
 			originalHost := tt.config.Database.Host
 			originalPort := tt.config.Database.Port
 			originalUser := tt.config.Database.User
-			originalBatchSize := tt.config.Import.BatchSize
+			originalBatchSize := tt.config.Database.BatchSize
 			originalLevel := tt.config.Logging.Level
 			originalFormat := tt.config.Logging.Format
 			originalJobsNumber := tt.config.JobsNumber
@@ -247,9 +231,9 @@ func TestMergeWithDefaults(t *testing.T) {
 			}
 
 			if originalBatchSize != 0 {
-				assert.Equal(t, originalBatchSize, tt.config.Import.BatchSize)
+				assert.Equal(t, originalBatchSize, tt.config.Database.BatchSize)
 			} else {
-				assert.Equal(t, 5000, tt.config.Import.BatchSize)
+				assert.Equal(t, 50000, tt.config.Database.BatchSize)
 			}
 
 			if originalLevel != "" {
@@ -289,9 +273,6 @@ func TestValidate_CompleteConfig(t *testing.T) {
 			MinConnections:  5,
 			MaxConnLifetime: 120,
 			MaxConnIdleTime: 30,
-		},
-		Import: config.ImportConfig{
-			BatchSize: 5000,
 		},
 		Optimization: config.OptimizationConfig{
 			ConcurrentIndexes: true,

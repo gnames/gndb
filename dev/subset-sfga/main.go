@@ -27,20 +27,14 @@ import (
 	"strings"
 
 	"github.com/gnames/gndb/internal/ioconfig"
-	_ "modernc.org/sqlite"
 	"github.com/sfborg/sflib"
+	_ "modernc.org/sqlite"
 )
 
 // Configuration constants
 const (
 	// Target number of name_string records to extract
 	targetNameStrings = 3000
-
-	// Minimum records to include from each edge case category
-	minEdgeCaseRecords = 50
-
-	// Maximum hierarchy depth to fully preserve (all parents included)
-	maxHierarchyDepth = 20
 )
 
 func main() {
@@ -753,7 +747,9 @@ func createSubset(ctx context.Context, logger *slog.Logger, sourceURL, outputPat
 	if err != nil {
 		return fmt.Errorf("failed to attach source database: %w", err)
 	}
-	defer outputDB.ExecContext(ctx, "DETACH DATABASE source")
+	defer func() {
+		_, _ = outputDB.ExecContext(ctx, "DETACH DATABASE source")
+	}()
 
 	// Copy name table records first (referenced by taxon.name_string_id)
 	nameCount, err := copyNameRecords(ctx, logger, outputDB, taxonIDs)

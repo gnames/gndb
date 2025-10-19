@@ -50,7 +50,7 @@ func Load(configPath string) (*LoadResult, error) {
 	v.SetDefault("database.min_connections", defaults.Database.MinConnections)
 	v.SetDefault("database.max_conn_lifetime", defaults.Database.MaxConnLifetime)
 	v.SetDefault("database.max_conn_idle_time", defaults.Database.MaxConnIdleTime)
-	v.SetDefault("import.batch_size", defaults.Import.BatchSize)
+	v.SetDefault("database.batch_size", defaults.Database.BatchSize)
 	v.SetDefault("optimization.concurrent_indexes", defaults.Optimization.ConcurrentIndexes)
 	v.SetDefault("logging.level", defaults.Logging.Level)
 	v.SetDefault("logging.format", defaults.Logging.Format)

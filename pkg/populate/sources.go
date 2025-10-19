@@ -145,7 +145,7 @@ func (c *SourcesConfig) Validate() error {
 
 	// Set import defaults
 	if c.Import.BatchSize == 0 {
-		c.Import.BatchSize = 5000
+		c.Import.BatchSize = 50000
 	}
 	if c.Import.ConcurrentJobs == 0 {
 		c.Import.ConcurrentJobs = 4

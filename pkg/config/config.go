@@ -27,9 +27,13 @@
 //	GNDB_DATABASE_MAX_CONN_LIFETIME - Max connection lifetime in minutes (int, default: 60)
 //	GNDB_DATABASE_MAX_CONN_IDLE_TIME - Max connection idle time in minutes (int, default: 10)
 //
+// Database operations:
+//
+//	GNDB_DATABASE_BATCH_SIZE        - Batch size for bulk operations (int, default: 50000)
+//
 // Import configuration:
 //
-//	GNDB_IMPORT_BATCH_SIZE          - Batch size for imports (int, default: 5000)
+//	GNDB_IMPORT_WITH_FLAT_CLASSIFICATION - Use flat classification (bool, default: false)
 //
 // Optimization configuration:
 //
@@ -119,15 +123,16 @@ type DatabaseConfig struct {
 	// MaxConnIdleTime is the maximum duration (in minutes) a connection can be idle.
 	// Idle connections beyond this time are closed to free resources.
 	MaxConnIdleTime int `mapstructure:"max_conn_idle_time" yaml:"max_conn_idle_time"`
+
+	// BatchSize defines the number of records to process per batch for bulk operations.
+	// Used in both populate (data import) and optimize (word extraction) phases.
+	// Larger batches are faster but use more memory. Tune based on available RAM.
+	// Typical values: 5000-100000 depending on record size and available memory.
+	BatchSize int `mapstructure:"batch_size" yaml:"batch_size"`
 }
 
 // ImportConfig contains settings for SFGA data import.
 type ImportConfig struct {
-	// BatchSize defines the number of records to insert per transaction
-	// during SFGA import. Applies to all record types.
-	// Larger batches are faster but use more memory. Tune based on available RAM.
-	BatchSize int `mapstructure:"batch_size" yaml:"batch_size"`
-
 	// WithFlatClassification is true if the 'flat' version of classification
 	// is preferable instead of parent/child hierarchical classification.
 	// Note: If flat classification does not exist in SFGA, classification breadcrumbs
@@ -183,8 +188,8 @@ type PopulateConfig struct {
 // Does NOT require fields to be non-empty - missing values will be filled with defaults.
 func (c *Config) Validate() error {
 	// Validate batch size is positive if set
-	if c.Import.BatchSize < 0 {
-		return fmt.Errorf("import.batch_size cannot be negative")
+	if c.Database.BatchSize < 0 {
+		return fmt.Errorf("database.batch_size cannot be negative")
 	}
 
 	// Validate connection pool settings if set
@@ -255,10 +260,8 @@ func (c *Config) MergeWithDefaults() {
 	if c.Database.MaxConnIdleTime == 0 {
 		c.Database.MaxConnIdleTime = defaults.Database.MaxConnIdleTime
 	}
-
-	// Merge import config
-	if c.Import.BatchSize == 0 {
-		c.Import.BatchSize = defaults.Import.BatchSize
+	if c.Database.BatchSize == 0 {
+		c.Database.BatchSize = defaults.Database.BatchSize
 	}
 
 	// Merge optimization config - ConcurrentIndexes defaults to false, which is the zero value
@@ -288,13 +291,14 @@ func Defaults() *Config {
 			Password:        "postgres",
 			Database:        "gnames",
 			SSLMode:         "disable",
-			MaxConnections:  20, // Allows 20 concurrent workers for import
-			MinConnections:  2,  // Keep 2 connections warm
-			MaxConnLifetime: 60, // 1 hour in minutes
-			MaxConnIdleTime: 10, // 10 minutes
+			MaxConnections:  20,    // Allows 20 concurrent workers for import
+			MinConnections:  2,     // Keep 2 connections warm
+			MaxConnLifetime: 60,    // 1 hour in minutes
+			MaxConnIdleTime: 10,    // 10 minutes
+			BatchSize:       50000, // Batch size for bulk operations (populate, optimize)
 		},
 		Import: ImportConfig{
-			BatchSize: 5000,
+			WithFlatClassification: false,
 		},
 		Optimization: OptimizationConfig{
 			ConcurrentIndexes: false, // Faster for initial setup, locks tables

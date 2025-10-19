@@ -25,12 +25,8 @@ func getRootCmd() *cobra.Command {
 		exists, err := ioconfig.ConfigFileExists()
 		if err == nil {
 			if !exists {
-				// Generate default config
-				_, err := ioconfig.GenerateDefaultConfig()
-				if err != nil {
-					// Silently continue - config generation is best-effort at this stage
-					// Errors will be reported later if config is actually needed
-				}
+				// Generate default config (best-effort, errors will be reported later if config is actually needed)
+				_, _ = ioconfig.GenerateDefaultConfig()
 			} else {
 				// Config files already exist - inform the user
 				configPath, _ := ioconfig.GetDefaultConfigPath()

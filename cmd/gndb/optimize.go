@@ -51,7 +51,7 @@ Examples:
 				cfg.JobsNumber = jobs
 			}
 			if cmd.Flags().Changed("batch-size") {
-				cfg.Import.BatchSize = batchSize
+				cfg.Database.BatchSize = batchSize
 			}
 
 			// Create database operator
@@ -81,7 +81,7 @@ Examples:
 
 <em>Optimizing your database for gnverifier...</em>
 
-This may take several minutes for large databases.
+This may take several hours for large databases.
 Workers: <em>%d</em>
 `,
 				[]any{cfg.JobsNumber},
@@ -91,7 +91,7 @@ Workers: <em>%d</em>
 			// Run optimization
 			lg.Info("starting database optimization",
 				"workers", cfg.JobsNumber,
-				"batch_size", cfg.Import.BatchSize,
+				"batch_size", cfg.Database.BatchSize,
 			)
 
 			// Optimize (errors propagate from iooptimize package)

@@ -69,7 +69,7 @@ logging:
 				"GNDB_DATABASE_SSL_MODE":               "require",
 				"GNDB_DATABASE_MAX_CONNECTIONS":        "50",
 				"GNDB_DATABASE_MIN_CONNECTIONS":        "5",
-				"GNDB_IMPORT_BATCH_SIZE":               "10000",
+				"GNDB_DATABASE_BATCH_SIZE":             "10000",
 				"GNDB_OPTIMIZATION_CONCURRENT_INDEXES": "true",
 				"GNDB_LOGGING_LEVEL":                   "debug",
 				"GNDB_LOGGING_FORMAT":                  "json",
@@ -84,7 +84,7 @@ logging:
 				cfg.Database.SSLMode = "require"
 				cfg.Database.MaxConnections = 50
 				cfg.Database.MinConnections = 5
-				cfg.Import.BatchSize = 10000
+				cfg.Database.BatchSize = 10000
 				cfg.Optimization.ConcurrentIndexes = true
 				cfg.Optimization.StatisticsTargets = nil
 				cfg.Logging.Level = "debug"
@@ -98,15 +98,15 @@ logging:
 			name:          "no config file, env vars only",
 			configContent: "", // No config file
 			envVars: map[string]string{
-				"GNDB_DATABASE_HOST":     "env-only-host",
-				"GNDB_DATABASE_USER":     "testuser",
-				"GNDB_IMPORT_BATCH_SIZE": "8000",
+				"GNDB_DATABASE_HOST":       "env-only-host",
+				"GNDB_DATABASE_USER":       "testuser",
+				"GNDB_DATABASE_BATCH_SIZE": "8000",
 			},
 			expectedConfig: func() *config.Config {
 				cfg := config.Defaults()
 				cfg.Database.Host = "env-only-host"
 				cfg.Database.User = "testuser"
-				cfg.Import.BatchSize = 8000
+				cfg.Database.BatchSize = 8000
 				cfg.Optimization.StatisticsTargets = nil
 				return cfg
 			},

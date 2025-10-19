@@ -292,7 +292,7 @@ func processTaxa(
 		}
 
 		// Bulk insert when batch is full
-		if len(records) >= cfg.Import.BatchSize {
+		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
 			if err != nil {
 				return err
@@ -481,7 +481,7 @@ func processSynonyms(
 			progressReport(count, "synonyms")
 		}
 
-		if len(records) >= cfg.Import.BatchSize {
+		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
 			if err != nil {
 				return err
@@ -608,7 +608,7 @@ func processBareNames(
 			progressReport(count, "bare names")
 		}
 
-		if len(records) >= cfg.Import.BatchSize {
+		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
 			if err != nil {
 				return err
