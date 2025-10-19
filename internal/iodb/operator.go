@@ -37,7 +37,7 @@ func (p *PgxOperator) Connect(ctx context.Context, cfg *config.DatabaseConfig) e
 	// Configure pool
 	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return fmt.Errorf("failed to parse connection string: %w", err)
+		return NewConnectionError(cfg.Host, cfg.Port, cfg.Database, cfg.User, err)
 	}
 
 	// Set pool parameters from config
@@ -49,13 +49,13 @@ func (p *PgxOperator) Connect(ctx context.Context, cfg *config.DatabaseConfig) e
 	// Create pool
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
-		return fmt.Errorf("failed to create connection pool: %w", err)
+		return NewConnectionError(cfg.Host, cfg.Port, cfg.Database, cfg.User, err)
 	}
 
 	// Verify connection
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
-		return fmt.Errorf("failed to ping database: %w", err)
+		return NewConnectionError(cfg.Host, cfg.Port, cfg.Database, cfg.User, err)
 	}
 
 	p.pool = pool
@@ -109,10 +109,25 @@ func (p *PgxOperator) HasTables(ctx context.Context) (bool, error) {
 	var hasTables bool
 	err := p.pool.QueryRow(ctx, query).Scan(&hasTables)
 	if err != nil {
-		return false, fmt.Errorf("failed to check for tables: %w", err)
+		return false, NewTableCheckError(err)
 	}
 
 	return hasTables, nil
+}
+
+// CheckReadyForOptimization verifies the database is ready for optimization.
+// Returns an error if the database is empty or not populated.
+func (p *PgxOperator) CheckReadyForOptimization(ctx context.Context, cfg *config.DatabaseConfig) error {
+	hasTables, err := p.HasTables(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !hasTables {
+		return NewEmptyDatabaseError(cfg.Host, cfg.Database)
+	}
+
+	return nil
 }
 
 // DropAllTables drops all tables in the public schema.
