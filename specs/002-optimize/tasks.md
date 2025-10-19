@@ -101,7 +101,7 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T004: Implement loadNamesForReparse function
+### T004: Implement loadNamesForReparse function ✅
 **File**: `internal/iooptimize/reparse.go`
 **Description**: Load all name_strings from database for reparsing
 **Details**:
@@ -111,6 +111,18 @@ This task list implements the `gndb optimize` command following the production-t
 - Context cancellation support
 **Reference**: gnidump loadReparse() in db_reparse.go
 **Test**: T003 should start passing for load phase
+**Status**: ✅ COMPLETE
+
+**Implementation Summary**:
+- Created `internal/iooptimize/reparse.go` with `reparsed` struct and `loadNamesForReparse` function
+- Function queries all name_strings from database: id, name, canonical_id, canonical_full_id, canonical_stem_id, bacteria, virus, surrogate, parse_quality
+- Sends each name to input channel for processing
+- Progress logging every 100,000 names with speed metrics (using humanize)
+- Context cancellation properly handled in select statement
+- Added 2 unit tests in `reparse_test.go`:
+  - `TestLoadNamesForReparse_Unit`: Verifies all names are loaded correctly ✅
+  - `TestLoadNamesForReparse_ContextCancellation`: Verifies context cancellation works ✅
+- All tests passing ✅
 
 ---
 

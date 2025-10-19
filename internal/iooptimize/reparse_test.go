@@ -3,12 +3,12 @@ package iooptimize
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/ioschema"
 	"github.com/gnames/gndb/internal/iotesting"
-	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gnuuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -365,9 +365,147 @@ func TestReparseNames_VirusNames(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 }
 
-// Helper function placeholder - will be implemented in T004-T008
-func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Config) error {
-	// This function will be implemented in tasks T004-T008
-	// For now, return an error to make the test fail (TDD red phase)
-	return errNotImplemented("reparseNames")
+// TestLoadNamesForReparse_Unit tests the loadNamesForReparse function in isolation.
+// This is a unit test for T004 implementation.
+func TestLoadNamesForReparse_Unit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	cfg := iotesting.GetTestConfig()
+
+	// Setup database
+	op := iodb.NewPgxOperator()
+	err := op.Connect(ctx, &cfg.Database)
+	require.NoError(t, err)
+	defer op.Close()
+
+	// Clean up and create schema
+	_ = op.DropAllTables(ctx)
+	sm := ioschema.NewManager(op)
+	err = sm.Create(ctx, cfg)
+	require.NoError(t, err)
+
+	// Insert test name_strings
+	testData := []struct {
+		id   string
+		name string
+	}{
+		{gnuuid.New("Homo sapiens").String(), "Homo sapiens"},
+		{gnuuid.New("Mus musculus").String(), "Mus musculus"},
+		{gnuuid.New("Felis catus").String(), "Felis catus"},
+	}
+
+	for _, td := range testData {
+		query := `
+			INSERT INTO name_strings (id, name, cardinality, canonical_id, canonical_full_id, canonical_stem_id, virus, bacteria, surrogate, parse_quality)
+			VALUES ($1, $2, NULL, NULL, NULL, NULL, false, false, false, 0)
+		`
+		_, err = op.Pool().Exec(ctx, query, td.id, td.name)
+		require.NoError(t, err)
+	}
+
+	// Create optimizer
+	optimizer := &OptimizerImpl{operator: op}
+
+	// Create channel to receive names
+	chIn := make(chan reparsed, 10)
+
+	// Launch loadNamesForReparse in goroutine
+	go func() {
+		defer close(chIn)
+		err := loadNamesForReparse(ctx, optimizer, chIn)
+		assert.NoError(t, err, "loadNamesForReparse should succeed")
+	}()
+
+	// Collect all loaded names
+	loaded := make(map[string]string)
+	for r := range chIn {
+		loaded[r.nameStringID] = r.name
+	}
+
+	// Verify all names were loaded
+	assert.Equal(t, len(testData), len(loaded), "Should load all names")
+	for _, td := range testData {
+		name, found := loaded[td.id]
+		assert.True(t, found, "Should find name ID: %s", td.id)
+		assert.Equal(t, td.name, name, "Name should match")
+	}
+
+	// Clean up
+	_ = op.DropAllTables(ctx)
+}
+
+// TestLoadNamesForReparse_ContextCancellation tests that loadNamesForReparse
+// properly handles context cancellation.
+func TestLoadNamesForReparse_ContextCancellation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	cfg := iotesting.GetTestConfig()
+
+	// Setup database
+	op := iodb.NewPgxOperator()
+	err := op.Connect(ctx, &cfg.Database)
+	require.NoError(t, err)
+	defer op.Close()
+
+	// Clean up and create schema
+	_ = op.DropAllTables(ctx)
+	sm := ioschema.NewManager(op)
+	err = sm.Create(ctx, cfg)
+	require.NoError(t, err)
+
+	// Insert many names to ensure cancellation happens mid-stream
+	for i := 0; i < 100; i++ {
+		name := fmt.Sprintf("Species name %d", i)
+		id := gnuuid.New(name).String()
+		query := `
+			INSERT INTO name_strings (id, name, cardinality, canonical_id, canonical_full_id, canonical_stem_id, virus, bacteria, surrogate, parse_quality)
+			VALUES ($1, $2, NULL, NULL, NULL, NULL, false, false, false, 0)
+		`
+		_, err = op.Pool().Exec(ctx, query, id, name)
+		require.NoError(t, err)
+	}
+
+	// Create optimizer
+	optimizer := &OptimizerImpl{operator: op}
+
+	// Create cancellable context
+	cancelCtx, cancel := context.WithCancel(ctx)
+
+	// Create channel
+	chIn := make(chan reparsed, 10)
+
+	// Launch loadNamesForReparse
+	errCh := make(chan error, 1)
+	go func() {
+		defer close(chIn)
+		errCh <- loadNamesForReparse(cancelCtx, optimizer, chIn)
+	}()
+
+	// Read a few names then cancel
+	count := 0
+	for range chIn {
+		count++
+		if count == 5 {
+			cancel() // Cancel context
+			break
+		}
+	}
+
+	// Drain channel
+	for range chIn {
+	}
+
+	// Wait for error
+	err = <-errCh
+	assert.Error(t, err, "Should return error when context is cancelled")
+	assert.Equal(t, context.Canceled, err, "Error should be context.Canceled")
+
+	// Clean up
+	_ = op.DropAllTables(ctx)
 }

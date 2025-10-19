@@ -56,3 +56,94 @@ The test should fail until the implementation is complete.`,
 		MessageBase: userBase,
 	}
 }
+
+// ReparseQueryError is returned when querying name_strings for reparsing fails.
+type ReparseQueryError struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewReparseQueryError creates a new reparse query error.
+func NewReparseQueryError(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Cannot Load Names for Reparsing</title>
+<warning>Failed to query name_strings table for reparsing.</warning>
+
+<em>How to fix:</em>
+  1. Verify the database connection is active
+  2. Check that name_strings table exists: <em>psql -d gndb_test -c "\d name_strings"</em>
+  3. Ensure the database was populated: <em>gndb populate</em>
+  4. Check PostgreSQL logs for query errors
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return ReparseQueryError{
+		error:       fmt.Errorf("failed to query name_strings for reparsing: %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// ReparseScanError is returned when scanning a row from name_strings fails.
+type ReparseScanError struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewReparseScanError creates a new reparse scan error.
+func NewReparseScanError(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Cannot Read Name String Data</title>
+<warning>Failed to read name_strings row data during reparsing.</warning>
+
+<em>Possible causes:</em>
+  1. Database schema mismatch (try recreating schema)
+  2. Data corruption in name_strings table
+  3. Unexpected NULL values in required fields
+
+<em>How to fix:</em>
+  1. Recreate the database schema: <em>gndb create --drop</em>
+  2. Repopulate the database: <em>gndb populate</em>
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return ReparseScanError{
+		error:       fmt.Errorf("failed to scan name_strings row: %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// ReparseIterationError is returned when iterating over name_strings rows fails.
+type ReparseIterationError struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewReparseIterationError creates a new reparse iteration error.
+func NewReparseIterationError(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Error Reading Name Strings</title>
+<warning>Failed while iterating through name_strings table.</warning>
+
+<em>Possible causes:</em>
+  1. Network connection to database lost
+  2. Database server encountered an error
+  3. Transaction timeout or deadlock
+
+<em>How to fix:</em>
+  1. Check database connection: <em>pg_isready</em>
+  2. Review PostgreSQL logs for errors
+  3. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return ReparseIterationError{
+		error:       fmt.Errorf("error iterating name_strings: %w", cause),
+		MessageBase: userBase,
+	}
+}
