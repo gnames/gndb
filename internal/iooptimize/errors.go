@@ -147,3 +147,100 @@ func NewReparseIterationError(cause error) error {
 		MessageBase: userBase,
 	}
 }
+
+// ReparseTransactionError is returned when beginning a transaction fails.
+type ReparseTransactionError struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewReparseTransactionError creates a new reparse transaction error.
+func NewReparseTransactionError(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Cannot Start Database Transaction</title>
+<warning>Failed to begin transaction for updating name_strings.</warning>
+
+<em>Possible causes:</em>
+  1. Too many concurrent connections to database
+  2. Database server out of resources
+  3. Connection pool exhausted
+
+<em>How to fix:</em>
+  1. Check PostgreSQL max_connections setting
+  2. Reduce --jobs parameter to lower concurrency
+  3. Check database server resource usage (CPU, memory)
+  4. Review PostgreSQL logs for errors
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return ReparseTransactionError{
+		error:       fmt.Errorf("failed to begin transaction: %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// ReparseUpdateError is returned when updating name_strings table fails.
+type ReparseUpdateError struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewReparseUpdateError creates a new reparse update error.
+func NewReparseUpdateError(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Cannot Update Name String</title>
+<warning>Failed to update name_strings table with reparsed data.</warning>
+
+<em>Possible causes:</em>
+  1. Database constraint violation
+  2. Insufficient disk space
+  3. Deadlock or lock timeout
+
+<em>How to fix:</em>
+  1. Check disk space: <em>df -h</em>
+  2. Review PostgreSQL logs for constraint violations
+  3. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return ReparseUpdateError{
+		error:       fmt.Errorf("failed to update name_strings: %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// ReparseInsertError is returned when inserting canonical records fails.
+type ReparseInsertError struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewReparseInsertError creates a new reparse insert error.
+func NewReparseInsertError(table string, cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Cannot Insert Canonical Form</title>
+<warning>Failed to insert record into <em>%s</em> table.</warning>
+
+<em>Possible causes:</em>
+  1. Database constraint violation
+  2. Insufficient disk space
+  3. Table does not exist (schema issue)
+
+<em>How to fix:</em>
+  1. Check disk space: <em>df -h</em>
+  2. Verify table exists: <em>psql -d gndb_test -c "\d %s"</em>
+  3. Recreate schema if needed: <em>gndb create --drop</em>
+
+<em>Technical details:</em> %v`,
+		[]any{table, table, cause},
+	)
+
+	return ReparseInsertError{
+		error:       fmt.Errorf("failed to insert into %s: %w", table, cause),
+		MessageBase: userBase,
+	}
+}

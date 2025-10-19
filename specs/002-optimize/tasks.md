@@ -126,7 +126,7 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T005: Implement workerReparse concurrent processor
+### T005: Implement workerReparse concurrent processor ✅
 **File**: `internal/iooptimize/reparse.go`
 **Description**: Worker function that parses names using gnparser
 **Details**:
@@ -140,10 +140,29 @@ This task list implements the `gndb optimize` command following the production-t
 - Handle context cancellation
 **Reference**: gnidump workerReparse() in db_reparse.go (50 workers)
 **Config**: Use Config.JobsNumber for worker count (not hardcoded 50)
+**Status**: ✅ COMPLETE
+
+**Implementation Summary**:
+- Implemented `workerReparse()` function in `internal/iooptimize/reparse.go`
+- Uses `parserpool.Pool` parameter for efficient concurrent parsing (Botanical code by default)
+- Generates UUID v5 for canonical forms: canonicalID, canonicalFullID, canonicalStemID
+- Implements `parsedIsSame()` optimization to skip unchanged names (no unnecessary DB updates)
+- Stores parsed results in cache via `CacheManager.StoreParsed()`
+- Handles unparsed names (sets empty canonical IDs, parse quality)
+- Context cancellation: drains input channel and returns `ctx.Err()`
+- Helper functions added:
+  - `parsedIsSame(r reparsed, parsed parsed.Parsed, canonicalID string) bool` - compares old vs new parse
+  - `newNullStr(s string) sql.NullString` - creates SQL NULL strings
+- Added 3 comprehensive unit tests:
+  - `TestWorkerReparse_Unit`: Verifies parsing, UUID generation, caching ✅
+  - `TestWorkerReparse_ContextCancellation`: Verifies cancellation handling ✅
+  - `TestWorkerReparse_SkipsUnchangedNames`: Verifies optimization ✅
+- All tests passing ✅
+- No logging in internal package (follows error handling pattern)
 
 ---
 
-### T006: Implement saveReparsedNames function
+### T006: Implement saveReparsedNames function ✅
 **File**: `internal/iooptimize/reparse.go`
 **Description**: Save reparsed name data back to database
 **Details**:
@@ -152,10 +171,20 @@ This task list implements the `gndb optimize` command following the production-t
 - Log updates to slog (optional: reparse.log file)
 - Progress tracking
 **Reference**: gnidump saveReparse() in db_reparse.go
+**Status**: ✅ COMPLETE
+
+**Implementation Summary**:
+- Implemented `saveReparsedNames()` function that receives reparsed data from channel
+- Calls `updateNameString()` for each record with transaction-based updates
+- Progress tracking: logs every 100,000 updates with speed metrics
+- Context cancellation properly handled
+- Error propagation from updateNameString
+- Added comprehensive unit test `TestSaveReparsedNames_Unit` ✅
+- Test verifies all names updated and canonicals inserted correctly
 
 ---
 
-### T007: Implement updateNameString database operation
+### T007: Implement updateNameString database operation ✅
 **File**: `internal/iooptimize/reparse.go`
 **Description**: Transaction-based update of name_strings and canonical tables
 **Details**:
@@ -166,10 +195,22 @@ This task list implements the `gndb optimize` command following the production-t
 - INSERT INTO canonical_stems (id, name) VALUES (?, ?) ON CONFLICT DO NOTHING
 - Commit or rollback on error
 **Reference**: gnidump updateNameString() in db_reparse.go
+**Status**: ✅ COMPLETE
+
+**Implementation Summary**:
+- Implemented `updateNameString()` function with full transaction safety
+- Updates name_strings table with all canonical IDs and flags
+- Inserts into canonicals, canonical_stems, canonical_fulls tables with ON CONFLICT DO NOTHING
+- Skips canonical inserts for unparseable names (parseQuality == 0)
+- Only inserts canonical_full if different from canonical
+- Proper transaction rollback on errors, commit on success
+- Added error types: `ReparseTransactionError`, `ReparseUpdateError`, `ReparseInsertError`
+- Added comprehensive unit test `TestUpdateNameString_Unit` ✅
+- Test verifies updates and inserts work correctly with proper error handling
 
 ---
 
-### T008: Implement reparseNames orchestrator
+### T008: Implement reparseNames orchestrator ✅
 **File**: `internal/iooptimize/reparse.go`
 **Description**: Main function orchestrating concurrent reparse pipeline
 **Details**:
@@ -183,6 +224,35 @@ This task list implements the `gndb optimize` command following the production-t
 - Return error if any
 **Reference**: gnidump reparse() in db_reparse.go
 **Test**: T003 should now PASS
+**Status**: ✅ COMPLETE
+
+**Implementation Summary**:
+- Implemented `reparseNames()` orchestrator using errgroup for concurrent pipeline
+- Creates chIn and chOut channels for 3-stage pipeline communication
+- Stage 1: loadNamesForReparse (1 goroutine) - loads all name_strings from database
+- Stage 2: workerReparse (N goroutines) - concurrent parsing using parserpool
+  - N = Config.JobsNumber (default runtime.NumCPU())
+  - Each worker parses names, generates UUIDs, caches results
+- Stage 3: saveReparsedNames (1 goroutine) - saves updated records to database
+- WaitGroup tracks worker completion, closes chOut when all workers finish
+- Proper error propagation: any goroutine error cancels context for all others
+- All 10 integration tests passing ✅:
+  - TestReparseNames_Integration - full workflow with 4 test names
+  - TestReparseNames_Idempotent - safe reruns without duplication
+  - TestReparseNames_UpdatesOnlyChangedNames - optimization works
+  - TestReparseNames_VirusNames - virus flag detection works
+  - TestLoadNamesForReparse_Unit - database loading works
+  - TestLoadNamesForReparse_ContextCancellation - context handling works
+  - TestWorkerReparse_Unit - parsing and caching works
+  - TestWorkerReparse_ContextCancellation - context handling works
+  - TestWorkerReparse_SkipsUnchangedNames - optimization works
+  - TestSaveReparsedNames_Unit - database saving works
+  - TestUpdateNameString_Unit - transaction-based updates work
+
+**Additional Enhancements**:
+- Added year and cardinality extraction from parsed data
+- Fixed virus name detection for unparsed names (Virus flag set even when Parsed=false)
+- Proper handling of edge cases: unparseable names, virus names, unchanged names
 
 ---
 

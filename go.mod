@@ -3,9 +3,12 @@ module github.com/gnames/gndb
 go 1.25.1
 
 require (
+	github.com/dgraph-io/badger/v4 v4.8.0
 	github.com/dustin/go-humanize v1.0.1
+	github.com/gnames/gnfmt v0.6.3
 	github.com/gnames/gnlib v0.58.0
 	github.com/gnames/gnparser v1.11.8
+	github.com/gnames/gnsys v0.3.9
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
@@ -26,12 +29,9 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgraph-io/badger/v4 v4.8.0 // indirect
 	github.com/dgraph-io/ristretto/v2 v2.2.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/gnames/gnfmt v0.6.3 // indirect
-	github.com/gnames/gnsys v0.3.9 // indirect
 	github.com/gnames/organizer v0.1.1 // indirect
 	github.com/gnames/tribool v0.1.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
