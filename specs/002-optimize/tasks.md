@@ -47,24 +47,31 @@ This task list implements the `gndb optimize` command following the production-t
 
 ### T002 [P]: Create cache infrastructure for parse results
 **File**: `internal/iooptimize/cache.go`
-**Description**: Implement ephemeral key-value store for caching parsed name results
+**Description**: Implement ephemeral key-value store for caching parsed name results using Badger v4 + GOB
 **Details**:
+- **Architecture Decision**: Use Badger v4 embedded KV store + GOB serialization (proven with 150M+ names in gnidump)
 - Create CacheManager struct with methods:
-  - `New(cfg)` - creates cache at ~/.cache/gndb/optimize/
-  - `StoreParsed(nameStringID, parsedData)` - store parse result keyed by UUID v5
-  - `GetParsed(nameStringID)` - retrieve cached parse result
-  - `Cleanup()` - remove cache directory
-- Use gnuuid.New() for UUID v5 generation (matching gnidump)
-- Cache structure: map[string]ParsedName or file-based k/v store
+  - `NewCacheManager(cacheDir string)` - creates Badger v4 DB at ~/.cache/gndb/optimize/
+  - `StoreParsed(nameStringID string, parsed *gnparser.Parsed)` - GOB encode and store via Badger transaction
+  - `GetParsed(nameStringID string)` - retrieve and GOB decode from Badger
+  - `Cleanup()` - close Badger DB and remove cache directory
+- Use gnfmt.GNgob{} encoder for GOB serialization (from gnlib)
+- Use badger.NewTransaction(true) for writes (writable=true)
+- Use badger.View() for reads (read-only transactions)
+- Store parsed data as GOB-encoded bytes keyed by name_string_id (string)
 - Defer cleanup to remove cache after optimize completes
-**Reference**: gnidump uses kvio.New() in cmd/rebuild.go
-**Test**: Unit test cache operations (store, retrieve, cleanup)
+**Dependencies**: 
+  - github.com/dgraph-io/badger/v4 (upgrade from v2)
+  - github.com/gnames/gnfmt (for GNgob encoder)
+  - github.com/gnames/gnparser (for Parsed type)
+**Reference**: gnidump kvio package (ent/kv/kvio/) and db_reparse.go usage
+**Test**: Unit test cache operations (create, store, retrieve, cleanup)
 
 ---
 
 ## Phase 3.2: Step 1 - Reparse Names (TDD)
 
-### T003 [P]: Write integration test for name reparsing
+### T003 [P]: Write integration test for name reparsing ✅
 **File**: `internal/iooptimize/reparse_test.go`
 **Description**: Write test that validates name reparsing updates name_strings correctly
 **Test Scenario**:
@@ -78,6 +85,19 @@ This task list implements the `gndb optimize` command following the production-t
    - Cached parse results stored in cache
 4. Verify test FAILS (no implementation yet)
 **Reference**: gnidump db_reparse.go test pattern
+**Status**: ✅ COMPLETE
+
+**Implementation Summary**:
+- Created `internal/iooptimize/reparse_test.go` with 4 comprehensive integration tests
+- Tests verify all aspects of name reparsing workflow:
+  - `TestReparseNames_Integration`: Main test for canonical updates, cache storage, table population
+  - `TestReparseNames_Idempotent`: Verifies safe reruns without data duplication
+  - `TestReparseNames_UpdatesOnlyChangedNames`: Tests optimization for unchanged names
+  - `TestReparseNames_VirusNames`: Tests special virus name handling
+- Added `errNotImplemented()` helper in `internal/iooptimize/errors.go` for TDD red phase
+- Updated `OptimizerImpl` struct to include cache field
+- All tests FAIL as expected with "not yet implemented" error ✅ (TDD red phase confirmed)
+- Ready for implementation in T004-T008
 
 ---
 
