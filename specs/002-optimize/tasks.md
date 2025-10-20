@@ -258,9 +258,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ## Phase 3.3: Step 2 - Fix Vernacular Languages (TDD)
 
-### T009 [P]: Write integration test for vernacular language normalization
+### T009 [P]: Write integration test for vernacular language normalization ✅
 **File**: `internal/iooptimize/vernacular_test.go`
 **Description**: Test that vernacular language codes are normalized correctly
+**Status**: ✅ COMPLETE
 **Test Scenario**:
 1. Given: Database with vernacular_string_indices having various language codes (e.g., "en", "eng", "English")
 2. When: Call fixVernacularLanguages(ctx, cfg)
@@ -274,9 +275,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T010: Implement moveLanguageToOrig function
+### T010: Implement moveLanguageToOrig function ✅
 **File**: `internal/iooptimize/vernacular.go`
 **Description**: Copy language field to language_orig for records that don't have it
+**Status**: ✅ COMPLETE
 **Details**:
 - Single SQL UPDATE: `UPDATE vernacular_string_indices SET language_orig = language WHERE language_orig IS NULL`
 - Execute via pgx
@@ -284,9 +286,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T011: Implement loadVernaculars function
+### T011: Implement loadVernaculars function ✅
 **File**: `internal/iooptimize/vernacular.go`
 **Description**: Load all vernacular records for language normalization
+**Status**: ✅ COMPLETE
 **Details**:
 - Query: SELECT ctid, language, lang_code FROM vernacular_string_indices
 - Send vern structs to channel
@@ -296,9 +299,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T012: Implement normalizeVernacularLanguage function
+### T012: Implement normalizeVernacularLanguage function ✅
 **File**: `internal/iooptimize/vernacular.go`
 **Description**: Normalize language codes using gnlang library
+**Status**: ✅ COMPLETE
 **Details**:
 - For each vernacular record from channel:
   - If 2-letter code: convert to 3-letter using gnlang.LangCode2To3Letters()
@@ -311,9 +315,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T013: Implement updateVernRecord function
+### T013: Implement updateVernRecord function ✅
 **File**: `internal/iooptimize/vernacular.go`
 **Description**: Update single vernacular record using ctid
+**Status**: ✅ COMPLETE
 **Details**:
 - SQL UPDATE using ctid (physical row ID): `UPDATE vernacular_string_indices SET language=?, lang_code=? WHERE ctid=?`
 - Execute via pgx
@@ -321,18 +326,20 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T014: Implement langCodeToLowercase function
+### T014: Implement langCodeToLowercase function ✅
 **File**: `internal/iooptimize/vernacular.go`
 **Description**: Ensure all lang_code values are lowercase
+**Status**: ✅ COMPLETE
 **Details**:
 - Single SQL UPDATE: `UPDATE vernacular_string_indices SET lang_code = LOWER(lang_code)`
 **Reference**: gnidump langCodeLowCase() in db_vern.go
 
 ---
 
-### T015: Implement fixVernacularLanguages orchestrator
+### T015: Implement fixVernacularLanguages orchestrator ✅
 **File**: `internal/iooptimize/vernacular.go`
 **Description**: Main function orchestrating vernacular language fix
+**Status**: ✅ COMPLETE
 **Details**:
 - Call moveLanguageToOrig()
 - Create channels for concurrent processing
