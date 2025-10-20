@@ -489,9 +489,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T021: Implement removeOrphans orchestrator
+### T021: Implement removeOrphans orchestrator ✅
 **File**: `internal/iooptimize/orphans.go`
 **Description**: Main function orchestrating orphan removal in correct order
+**Status**: ✅ COMPLETE
 **Details**:
 - Execute in sequence:
   1. removeOrphanNameStrings()
@@ -502,13 +503,27 @@ This task list implements the `gndb optimize` command following the production-t
 **Reference**: gnidump removeOrphans() in db_views.go
 **Test**: T016 should now PASS
 
+**Implementation Summary**:
+- Orchestrator already fully implemented through T017-T020
+- Executes all 4 orphan removal steps in correct sequence
+- Proper error handling and propagation at each step
+- Each step logs count of deleted records (detailed logging)
+- Test T016 (TestRemoveOrphans_Integration) **PASSES** ✅
+- All 4 orphan removal tests pass:
+  - TestRemoveOrphans_Integration: Full workflow ✅
+  - TestRemoveOrphans_Idempotent: Safe reruns ✅
+  - TestRemoveOrphans_EmptyDatabase: Edge case handling ✅
+  - TestRemoveOrphans_CascadeOrder: Correct order verification ✅
+- **Phase 3.4 (Step 3 - Remove Orphan Records) COMPLETE**
+
 ---
 
 ## Phase 3.5: Step 4 - Create Words Tables (TDD)
 
-### T022 [P]: Write integration test for word extraction
+### T022 [P]: Write integration test for word extraction ✅
 **File**: `internal/iooptimize/words_test.go`
 **Description**: Test that words are extracted and linked to names correctly
+**Status**: ✅ COMPLETE
 **Test Scenario**:
 1. Given: Database with name_strings and cached parse results
 2. When: Call createWords(ctx, cfg)
@@ -519,6 +534,22 @@ This task list implements the `gndb optimize` command following the production-t
    - Deduplication applied (no duplicate words)
 4. Verify test FAILS
 **Reference**: gnidump createWords() in words.go
+
+**Implementation Summary**:
+- Created `internal/iooptimize/words_test.go` with 3 comprehensive integration tests
+- Tests verify all aspects of word extraction workflow:
+  - `TestCreateWords_Integration`: Main test for word extraction, junction table, deduplication, type filtering
+  - `TestCreateWords_Idempotent`: Verifies safe reruns without data duplication
+  - `TestCreateWords_EmptyCache`: Tests graceful handling of missing cache entries
+- Created stub `createWords()` function in `internal/iooptimize/words.go`
+- Test FAILS as expected with "not yet implemented" error ✅ (TDD red phase confirmed)
+- Test validates:
+  - Words table population with normalized and modified forms
+  - Junction table (word_name_strings) links words to names and canonicals
+  - Only epithet and author words extracted (type filtering via gnparser)
+  - Deduplication works (same word in multiple names only stored once)
+  - Words extracted from cached parse results (simulates Step 1 output)
+- Ready for implementation in T023-T030
 
 ---
 
