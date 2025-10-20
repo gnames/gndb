@@ -33,30 +33,6 @@ This is likely an internal error. Please report if you see this message.`,
 	}
 }
 
-// NotImplementedError is returned when a function is called that hasn't been implemented yet.
-// This is used in TDD workflow to make tests fail during the red phase.
-type NotImplementedError struct {
-	error
-	gnlib.MessageBase
-}
-
-// errNotImplemented creates a not implemented error for TDD red phase.
-func errNotImplemented(functionName string) error {
-	userBase := gnlib.NewMessage(
-		`<title>Function Not Yet Implemented</title>
-<warning>The function <em>%s</em> has not been implemented yet.</warning>
-
-This is expected during test-driven development (TDD).
-The test should fail until the implementation is complete.`,
-		[]any{functionName},
-	)
-
-	return NotImplementedError{
-		error:       fmt.Errorf("%s is not yet implemented", functionName),
-		MessageBase: userBase,
-	}
-}
-
 // ReparseQueryError is returned when querying name_strings for reparsing fails.
 type ReparseQueryError struct {
 	error
@@ -241,6 +217,40 @@ func NewReparseInsertError(table string, cause error) error {
 
 	return ReparseInsertError{
 		error:       fmt.Errorf("failed to insert into %s: %w", table, cause),
+		MessageBase: userBase,
+	}
+}
+
+// OrphanRemovalError is returned when removing orphan records fails.
+type OrphanRemovalError struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewOrphanRemovalError creates a new orphan removal error.
+func NewOrphanRemovalError(table string, cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Cannot Remove Orphan Records</title>
+<warning>Failed to delete orphan records from <em>%s</em> table.</warning>
+
+<em>Possible causes:</em>
+  1. Database constraint violation
+  2. Insufficient permissions
+  3. Table does not exist (schema issue)
+  4. Foreign key constraints blocking deletion
+
+<em>How to fix:</em>
+  1. Verify table exists: <em>psql -d gndb_test -c "\d %s"</em>
+  2. Check database permissions
+  3. Review PostgreSQL logs for errors
+  4. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{table, table, cause},
+	)
+
+	return OrphanRemovalError{
+		error:       fmt.Errorf("failed to remove orphans from %s: %w", table, cause),
 		MessageBase: userBase,
 	}
 }

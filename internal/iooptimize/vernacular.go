@@ -18,10 +18,9 @@ import (
 // vern represents a vernacular record for language normalization.
 // Uses ctid (PostgreSQL physical row ID) for updates.
 type vern struct {
-	ctID         string
-	languageOrig sql.NullString
-	language     sql.NullString
-	langCode     sql.NullString
+	ctID     string
+	language sql.NullString
+	langCode sql.NullString
 }
 
 // fixVernacularLanguages orchestrates the vernacular language normalization process.

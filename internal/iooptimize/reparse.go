@@ -317,7 +317,9 @@ func updateNameString(ctx context.Context, optimizer *OptimizerImpl, r reparsed)
 	if err != nil {
 		return NewReparseTransactionError(err)
 	}
-	defer tx.Rollback(ctx) // Rollback in case of any error
+	defer func() {
+		_ = tx.Rollback(ctx) // Rollback in case of any error; ignore error as commit handles success
+	}()
 
 	// Update name_strings table with new canonical IDs, flags, year, and cardinality
 	_, err = tx.Exec(ctx, `

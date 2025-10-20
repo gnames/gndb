@@ -355,9 +355,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ## Phase 3.4: Step 3 - Remove Orphan Records (TDD)
 
-### T016 [P]: Write integration test for orphan removal
+### T016 [P]: Write integration test for orphan removal ✅
 **File**: `internal/iooptimize/orphans_test.go`
 **Description**: Test that orphaned records are removed correctly
+**Status**: ✅ COMPLETE
 **Test Scenario**:
 1. Given: Database with:
    - name_strings not in name_string_indices (orphans)
@@ -374,11 +375,23 @@ This task list implements the `gndb optimize` command following the production-t
 4. Verify test FAILS
 **Reference**: gnidump removeOrphans() in db_views.go
 
+**Implementation Summary**:
+- Created `internal/iooptimize/orphans_test.go` with 4 comprehensive integration tests
+- Tests verify all aspects of orphan removal workflow:
+  - `TestRemoveOrphans_Integration`: Main test with orphan names, canonicals, stems, fulls
+  - `TestRemoveOrphans_Idempotent`: Verifies safe reruns without data loss
+  - `TestRemoveOrphans_EmptyDatabase`: Tests graceful handling of empty database
+  - `TestRemoveOrphans_CascadeOrder`: Tests correct removal order (names → canonicals)
+- Added stub `removeOrphans()` function in `internal/iooptimize/orphans.go`
+- Test FAILS as expected with "not yet implemented" error ✅ (TDD red phase confirmed)
+- Ready for implementation in T017-T021
+
 ---
 
-### T017: Implement removeOrphanNameStrings function
+### T017: Implement removeOrphanNameStrings function ✅
 **File**: `internal/iooptimize/orphans.go`
 **Description**: Delete name_strings not referenced by name_string_indices
+**Status**: ✅ COMPLETE
 **Details**:
 - SQL: DELETE FROM name_strings WHERE id NOT IN (SELECT DISTINCT name_string_id FROM name_string_indices)
 - Alternative using LEFT JOIN for performance:
@@ -392,33 +405,87 @@ This task list implements the `gndb optimize` command following the production-t
 - Log count of deleted records
 **Reference**: gnidump removeOrphans() in db_views.go
 
+**Implementation Summary**:
+- Implemented `removeOrphanNameStrings()` function in `internal/iooptimize/orphans.go`
+- Uses LEFT OUTER JOIN pattern from gnidump for optimal performance
+- Logs removal action and deleted count using slog
+- Returns `OrphanRemovalError` with user-friendly error messages on failure
+- Added `NewOrphanRemovalError()` error type in `internal/iooptimize/errors.go`
+- Updated `removeOrphans()` orchestrator to call Step 1 (removeOrphanNameStrings)
+- Tests verify correct behavior:
+  - TestRemoveOrphans_Integration: 2 orphan names deleted ✅
+  - TestRemoveOrphans_CascadeOrder: 1 orphan name deleted ✅
+  - Referenced names remain intact ✅
+- Ready for T018 (removeOrphanCanonicals)
+
 ---
 
-### T018: Implement removeOrphanCanonicals function
+### T018: Implement removeOrphanCanonicals function ✅
 **File**: `internal/iooptimize/orphans.go`
 **Description**: Delete canonicals not referenced by name_strings
+**Status**: ✅ COMPLETE
 **Details**:
 - SQL: DELETE FROM canonicals WHERE id NOT IN (SELECT canonical_id FROM name_strings WHERE canonical_id IS NOT NULL)
 - Log count of deleted records
 **Reference**: gnidump removeOrphans() in db_views.go
 
+**Implementation Summary**:
+- Implemented `removeOrphanCanonicals()` function in `internal/iooptimize/orphans.go`
+- Uses LEFT OUTER JOIN pattern from gnidump for optimal performance
+- Logs removal action and deleted count using slog
+- Returns `OrphanRemovalError` with user-friendly error messages on failure
+- Updated `removeOrphans()` orchestrator to call Step 2 (removeOrphanCanonicals)
+- Tests verify correct behavior:
+  - TestRemoveOrphans_Integration: 2 orphan canonicals deleted ✅
+  - TestRemoveOrphans_CascadeOrder: 1 orphan canonical deleted after orphan name removed ✅
+  - TestRemoveOrphans_Idempotent: Safe reruns (0 deletions on second run) ✅
+- Ready for T019 (removeOrphanCanonicalFulls)
+
 ---
 
-### T019: Implement removeOrphanCanonicalFulls function
+### T019: Implement removeOrphanCanonicalFulls function ✅
 **File**: `internal/iooptimize/orphans.go`
 **Description**: Delete canonical_fulls not referenced by name_strings
+**Status**: ✅ COMPLETE
 **Details**:
 - SQL: DELETE FROM canonical_fulls WHERE id NOT IN (SELECT canonical_full_id FROM name_strings WHERE canonical_full_id IS NOT NULL)
 - Log count of deleted records
 
+**Implementation Summary**:
+- Implemented `removeOrphanCanonicalFulls()` function in `internal/iooptimize/orphans.go`
+- Uses LEFT OUTER JOIN pattern from gnidump for optimal performance
+- Logs removal action and deleted count using slog
+- Returns `OrphanRemovalError` with user-friendly error messages on failure
+- Updated `removeOrphans()` orchestrator to call Step 3 (removeOrphanCanonicalFulls)
+- Tests verify correct behavior:
+  - TestRemoveOrphans_Integration: 1 orphan canonical_full deleted ✅
+  - TestRemoveOrphans_CascadeOrder: Correct cascade behavior (0 deletions) ✅
+  - TestRemoveOrphans_Idempotent: Safe reruns (0 deletions on second run) ✅
+- Ready for T020 (removeOrphanCanonicalStems)
+
 ---
 
-### T020: Implement removeOrphanCanonicalStems function
+### T020: Implement removeOrphanCanonicalStems function ✅
 **File**: `internal/iooptimize/orphans.go`
 **Description**: Delete canonical_stems not referenced by name_strings
+**Status**: ✅ COMPLETE
 **Details**:
 - SQL: DELETE FROM canonical_stems WHERE id NOT IN (SELECT canonical_stem_id FROM name_strings WHERE canonical_stem_id IS NOT NULL)
 - Log count of deleted records
+
+**Implementation Summary**:
+- Implemented `removeOrphanCanonicalStems()` function in `internal/iooptimize/orphans.go`
+- Uses LEFT OUTER JOIN pattern from gnidump for optimal performance
+- Logs removal action and deleted count using slog
+- Returns `OrphanRemovalError` with user-friendly error messages on failure
+- Updated `removeOrphans()` orchestrator to call Step 4 (removeOrphanCanonicalStems)
+- **COMPLETE orphan removal workflow** - all 4 steps implemented (T017-T020)
+- Tests verify correct behavior:
+  - TestRemoveOrphans_Integration: 1 orphan canonical_stem deleted ✅ **NOW PASSES**
+  - TestRemoveOrphans_CascadeOrder: Correct cascade behavior ✅
+  - TestRemoveOrphans_Idempotent: Safe reruns (0 deletions on second run) ✅
+  - TestRemoveOrphans_EmptyDatabase: Graceful empty database handling ✅
+- Ready for T021 (orchestrator documentation - already implemented)
 
 ---
 

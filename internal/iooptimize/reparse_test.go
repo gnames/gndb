@@ -82,7 +82,7 @@ func TestReparseNames_Integration(t *testing.T) {
 
 	err = cm.Open()
 	require.NoError(t, err, "Should open cache")
-	defer cm.Cleanup()
+	defer func() { _ = cm.Cleanup() }()
 
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
@@ -207,7 +207,7 @@ func TestReparseNames_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 	err = cm.Open()
 	require.NoError(t, err)
-	defer cm.Cleanup()
+	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,
@@ -287,7 +287,7 @@ func TestReparseNames_UpdatesOnlyChangedNames(t *testing.T) {
 	require.NoError(t, err)
 	err = cm.Open()
 	require.NoError(t, err)
-	defer cm.Cleanup()
+	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,
@@ -345,7 +345,7 @@ func TestReparseNames_VirusNames(t *testing.T) {
 	require.NoError(t, err)
 	err = cm.Open()
 	require.NoError(t, err)
-	defer cm.Cleanup()
+	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,
@@ -477,6 +477,7 @@ func TestLoadNamesForReparse_ContextCancellation(t *testing.T) {
 
 	// Create cancellable context
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	// Create channel
 	chIn := make(chan reparsed, 10)
@@ -533,7 +534,7 @@ func TestWorkerReparse_Unit(t *testing.T) {
 	require.NoError(t, err)
 	err = cm.Open()
 	require.NoError(t, err)
-	defer cm.Cleanup()
+	defer func() { _ = cm.Cleanup() }()
 
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
@@ -620,7 +621,7 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 	require.NoError(t, err)
 	err = cm.Open()
 	require.NoError(t, err)
-	defer cm.Cleanup()
+	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,
@@ -632,6 +633,7 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 
 	// Create cancellable context
 	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	chIn := make(chan reparsed, 100)
 	chOut := make(chan reparsed, 100)
@@ -867,7 +869,7 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 	require.NoError(t, err)
 	err = cm.Open()
 	require.NoError(t, err)
-	defer cm.Cleanup()
+	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,
