@@ -25,7 +25,7 @@ type reparsed struct {
 	name                                          string
 	canonicalID, canonicalFullID, canonicalStemID sql.NullString
 	canonical, canonicalFull, canonicalStem       string
-	bacteria, surrogate, virus                    bool
+	bacteria, surrogate, virus                    sql.NullBool
 	parseQuality                                  int
 	cardinality                                   sql.NullInt32
 	year                                          sql.NullInt16
@@ -150,9 +150,9 @@ func workerReparse(
 				canonical:       "",
 				canonicalFull:   "",
 				canonicalStem:   "",
-				bacteria:        false,
-				virus:           parsed.Virus, // Virus flag can be set even if not parsed
-				surrogate:       false,
+				bacteria:        sql.NullBool{Bool: false, Valid: true},
+				virus:           sql.NullBool{Bool: parsed.Virus, Valid: true}, // Virus flag can be set even if not parsed
+				surrogate:       sql.NullBool{Bool: false, Valid: true},
 				parseQuality:    parsed.ParseQuality,
 				cardinality:     sql.NullInt32{},
 				year:            sql.NullInt16{},
@@ -210,9 +210,9 @@ func workerReparse(
 			canonical:       parsed.Canonical.Simple,
 			canonicalFull:   parsed.Canonical.Full,
 			canonicalStem:   parsed.Canonical.Stemmed,
-			bacteria:        parsed.Bacteria != nil && parsed.Bacteria.Bool(),
-			virus:           parsed.Virus,
-			surrogate:       parsed.Surrogate != nil,
+			bacteria:        sql.NullBool{Bool: parsed.Bacteria != nil && parsed.Bacteria.Bool(), Valid: true},
+			virus:           sql.NullBool{Bool: parsed.Virus, Valid: true},
+			surrogate:       sql.NullBool{Bool: parsed.Surrogate != nil, Valid: true},
 			parseQuality:    parsed.ParseQuality,
 			cardinality:     cardinality,
 			year:            year,
@@ -229,15 +229,33 @@ func parsedIsSame(r reparsed, parsed parsed.Parsed, canonicalID string) bool {
 	if r.canonicalID.String != canonicalID {
 		return false
 	}
-	if r.surrogate != (parsed.Surrogate != nil) {
+
+	// Compare surrogate (parsed.Surrogate != nil means it's a surrogate)
+	newSurrogate := parsed.Surrogate != nil
+	if r.surrogate.Valid && r.surrogate.Bool != newSurrogate {
 		return false
 	}
-	if r.bacteria != (parsed.Bacteria != nil && parsed.Bacteria.Bool()) {
+	if !r.surrogate.Valid && newSurrogate {
 		return false
 	}
-	if r.virus != parsed.Virus {
+
+	// Compare bacteria
+	newBacteria := parsed.Bacteria != nil && parsed.Bacteria.Bool()
+	if r.bacteria.Valid && r.bacteria.Bool != newBacteria {
 		return false
 	}
+	if !r.bacteria.Valid && newBacteria {
+		return false
+	}
+
+	// Compare virus
+	if r.virus.Valid && r.virus.Bool != parsed.Virus {
+		return false
+	}
+	if !r.virus.Valid && parsed.Virus {
+		return false
+	}
+
 	return true
 }
 

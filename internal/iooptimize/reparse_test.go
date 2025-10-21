@@ -716,9 +716,9 @@ func TestUpdateNameString_Unit(t *testing.T) {
 		canonical:       "Homo sapiens",
 		canonicalFull:   "",
 		canonicalStem:   "Hom sapien",
-		bacteria:        false,
-		virus:           false,
-		surrogate:       false,
+		bacteria:        sql.NullBool{Bool: false, Valid: true},
+		virus:           sql.NullBool{Bool: false, Valid: true},
+		surrogate:       sql.NullBool{Bool: false, Valid: true},
 		parseQuality:    1,
 	}
 
@@ -879,9 +879,9 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 		nameStringID: gnuuid.New("Homo sapiens").String(),
 		name:         "Homo sapiens",
 		canonicalID:  sql.NullString{String: correctCanonicalID, Valid: true},
-		bacteria:     false,
-		virus:        false,
-		surrogate:    false,
+		bacteria:     sql.NullBool{Bool: false, Valid: true},
+		virus:        sql.NullBool{Bool: false, Valid: true},
+		surrogate:    sql.NullBool{Bool: false, Valid: true},
 		parseQuality: 1,
 	}
 	close(chIn)
