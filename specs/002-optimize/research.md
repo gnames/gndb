@@ -47,12 +47,14 @@ Analysis of gnidump source code reveals the following 5-step process (order pres
 ### Step 4: Create Words (`words.go`)
 - **Purpose**: Extract individual words for fuzzy matching
 - **Operation**:
-  - Extract words from name_strings using **cached parsed results from kvSci** (Step 1)
-  - **No re-parsing** - reuses parsed data keyed by UUID v5
+  - Load name_strings from database (names with canonical_id)
+  - Parse names using parserpool with WithDetails(true) to get Words field
+  - Extract words from parsed.Words for each name
   - Store in words table with normalized and modified forms
   - Create word_name_strings junction table linking words to names and canonicals
   - Process in batches (use Config.Import.BatchSize)
 - **Why needed**: Enables word-level fuzzy matching in gnverifier
+- **gndb decision**: Direct parsing (like gnidump) - gnparser is fast, avoids KV store overhead
 
 ### Step 5: Create Verification Materialized View (`db_views.go`)
 - **Purpose**: Denormalize data for fast verification queries
@@ -70,4 +72,4 @@ Analysis of gnidump source code reveals the following 5-step process (order pres
 
 **User-Friendly Output**: Per Constitution Principle X, gndb optimize must add colored terminal output for progress updates to STDOUT. gnidump does not have this - it's a gndb enhancement following the dual-channel communication principle (user messages to STDOUT, technical logs to STDERR).
 
-**Temporary Cache Strategy**: gndb optimize will use `~/.cache/gndb/optimize/` for temporary key-value store (kvSci) during the optimization process. This store caches parsed scientific name data from Step 1 (reparse) for reuse in Step 4 (word extraction), avoiding re-parsing 100M+ names. Unlike the persistent SFGA cache (`~/.cache/gndb/sfga/`), the optimize cache is **ephemeral** - created at start, cleaned up at end. Note: Vernacular names are not parsed, only language-normalized, so no kvVern needed.
+**Simplified Cache Strategy**: Unlike gnidump which uses kvSci cache, gndb optimize follows a simpler approach - Step 1 (reparse) uses a minimal cache for canonical lookups, and Step 4 (words) re-parses names directly using parserpool. This avoids KV store overhead since gnparser is already highly optimized. The cache at `~/.cache/gndb/optimize/` is used only for Step 1 canonical form storage, not for word extraction. Note: Vernacular names are not parsed, only language-normalized, so no kvVern needed.

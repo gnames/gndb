@@ -42,14 +42,18 @@ func NewPool(jobsNum int) Pool {
 	}
 
 	// Create botanical parser pool (nomcode.Botanical)
+	// WithDetails(true) is required to populate the Words field needed for T025
 	botanicalCfg := gnparser.NewConfig(
 		gnparser.OptCode(nomcode.Botanical),
+		gnparser.OptWithDetails(true),
 	)
 	botanicalCh := gnparser.NewPool(botanicalCfg, poolSize)
 
 	// Create zoological parser pool (nomcode.Zoological is default)
+	// WithDetails(true) is required to populate the Words field needed for T025
 	zoologicalCfg := gnparser.NewConfig(
 		gnparser.OptCode(nomcode.Zoological),
+		gnparser.OptWithDetails(true),
 	)
 	zoologicalCh := gnparser.NewPool(zoologicalCfg, poolSize)
 

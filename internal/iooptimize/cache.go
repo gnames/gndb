@@ -9,14 +9,6 @@ import (
 	"github.com/gnames/gnsys"
 )
 
-// parsedData holds the minimal parsed information we need to cache.
-// This matches the structure used in gnidump for efficient storage.
-type parsedData struct {
-	ID              string
-	CanonicalSimple string
-	CanonicalFull   string
-}
-
 // CacheManager manages an ephemeral Badger v4 key-value store for caching
 // parsed name results during optimization. The cache is stored at
 // ~/.cache/gndb/optimize/ and should be cleaned up after optimization completes.
@@ -89,27 +81,17 @@ func (c *CacheManager) Close() error {
 
 // StoreParsed stores a parsed name result in the cache, encoded with GOB.
 // The key is the name_string_id (UUID as string).
-func (c *CacheManager) StoreParsed(nameStringID string, parsed *parsed.Parsed) error {
+// The complete parsed.Parsed struct is stored including the Words field
+// which is needed for word extraction in Step 4 (T025).
+func (c *CacheManager) StoreParsed(nameStringID string, p *parsed.Parsed) error {
 	if c.db == nil {
 		return NewCacheNotOpenError()
 	}
 
-	// Extract minimal data for caching
-	var canonicalSimple, canonicalFull string
-	if parsed.Parsed {
-		canonicalSimple = parsed.Canonical.Simple
-		canonicalFull = parsed.Canonical.Full
-	}
-
-	data := parsedData{
-		ID:              parsed.VerbatimID,
-		CanonicalSimple: canonicalSimple,
-		CanonicalFull:   canonicalFull,
-	}
-
-	// Encode with GOB
+	// Encode the complete parsed.Parsed struct with GOB
+	// This includes the Words field needed for extractWordsFromCache (T025)
 	enc := gnfmt.GNgob{}
-	valBytes, err := enc.Encode(data)
+	valBytes, err := enc.Encode(p)
 	if err != nil {
 		slog.Error("Cannot encode parsed data", "error", err, "id", nameStringID)
 		return err
@@ -130,7 +112,8 @@ func (c *CacheManager) StoreParsed(nameStringID string, parsed *parsed.Parsed) e
 
 // GetParsed retrieves a parsed name result from the cache and decodes it from GOB.
 // Returns nil if the key is not found.
-func (c *CacheManager) GetParsed(nameStringID string) (*parsedData, error) {
+// The complete parsed.Parsed struct is returned including the Words field.
+func (c *CacheManager) GetParsed(nameStringID string) (*parsed.Parsed, error) {
 	if c.db == nil {
 		return nil, NewCacheNotOpenError()
 	}
@@ -162,14 +145,14 @@ func (c *CacheManager) GetParsed(nameStringID string) (*parsedData, error) {
 
 	// Decode with GOB
 	enc := gnfmt.GNgob{}
-	var data parsedData
-	err = enc.Decode(valBytes, &data)
+	var p parsed.Parsed
+	err = enc.Decode(valBytes, &p)
 	if err != nil {
 		slog.Error("Cannot decode parsed data", "error", err, "id", nameStringID)
 		return nil, err
 	}
 
-	return &data, nil
+	return &p, nil
 }
 
 // Cleanup closes the database and removes the cache directory.

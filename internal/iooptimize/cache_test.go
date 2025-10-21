@@ -14,14 +14,14 @@ import (
 
 func TestCacheManager_NewCacheManager(t *testing.T) {
 	tests := []struct {
-		name    string
+		name     string
 		cacheDir string
-		wantErr bool
+		wantErr  bool
 	}{
 		{
-			name:    "creates cache directory successfully",
+			name:     "creates cache directory successfully",
 			cacheDir: filepath.Join(t.TempDir(), "test-cache"),
-			wantErr: false,
+			wantErr:  false,
 		},
 	}
 
@@ -106,8 +106,9 @@ func TestCacheManager_GetParsed(t *testing.T) {
 	retrieved, err := cm.GetParsed(nameStringID)
 	assert.NoError(t, err)
 	assert.NotNil(t, retrieved)
-	assert.Equal(t, "Homo sapiens", retrieved.CanonicalSimple)
-	assert.Equal(t, "Homo sapiens", retrieved.CanonicalFull)
+	assert.NotNil(t, retrieved.Canonical, "Retrieved result should have canonical")
+	assert.Equal(t, "Homo sapiens", retrieved.Canonical.Simple)
+	assert.Equal(t, "Homo sapiens", retrieved.Canonical.Full)
 
 	// Test retrieving non-existent key
 	notFound, err := cm.GetParsed("non-existent-key")
@@ -129,8 +130,8 @@ func TestCacheManager_StoreAndRetrieveMultiple(t *testing.T) {
 
 	// Store multiple parsed names
 	testCases := []struct {
-		id   string
-		name string
+		id                string
+		name              string
 		expectedCanonical string
 	}{
 		{"id-1", "Homo sapiens", "Homo sapiens"},
@@ -151,7 +152,8 @@ func TestCacheManager_StoreAndRetrieveMultiple(t *testing.T) {
 		retrieved, err := cm.GetParsed(tc.id)
 		assert.NoError(t, err)
 		assert.NotNil(t, retrieved)
-		assert.Equal(t, tc.expectedCanonical, retrieved.CanonicalSimple, "ID: %s", tc.id)
+		assert.NotNil(t, retrieved.Canonical, "Retrieved result should have canonical")
+		assert.Equal(t, tc.expectedCanonical, retrieved.Canonical.Simple, "ID: %s", tc.id)
 	}
 }
 
@@ -219,10 +221,51 @@ func TestCacheManager_UnparsedName(t *testing.T) {
 	err = cm.StoreParsed(nameStringID, &parsed)
 	assert.NoError(t, err)
 
-	// Retrieve and verify empty canonicals
+	// Retrieve and verify empty canonicals (for unparsed names, Canonical field may be nil)
 	retrieved, err := cm.GetParsed(nameStringID)
 	assert.NoError(t, err)
 	assert.NotNil(t, retrieved)
-	assert.Empty(t, retrieved.CanonicalSimple)
-	assert.Empty(t, retrieved.CanonicalFull)
+	if retrieved.Canonical != nil {
+		assert.Empty(t, retrieved.Canonical.Simple)
+		assert.Empty(t, retrieved.Canonical.Full)
+	}
+}
+
+// TestCacheManager_WordsField verifies that the Words field is stored in cache.
+// This is critical for T025 (extractWordsFromCache) which needs the Words data.
+func TestCacheManager_WordsField(t *testing.T) {
+	cacheDir := filepath.Join(t.TempDir(), "test-cache")
+	cm, err := iooptimize.NewCacheManager(cacheDir)
+	require.NoError(t, err)
+
+	err = cm.Open()
+	require.NoError(t, err)
+	defer cm.Close()
+
+	// Parse a binomial name that will have words
+	pool := parserpool.NewPool(1)
+	defer pool.Close()
+	parsed, err := pool.Parse("Homo sapiens Linnaeus 1758", nomcode.Zoological)
+	require.NoError(t, err)
+	require.True(t, parsed.Parsed, "Name should be parsed successfully")
+	require.NotEmpty(t, parsed.Words, "Parsed name should have words")
+
+	// Store the parsed result
+	nameStringID := "test-words-id"
+	err = cm.StoreParsed(nameStringID, &parsed)
+	require.NoError(t, err)
+
+	// Retrieve and verify Words field is present
+	retrieved, err := cm.GetParsed(nameStringID)
+	require.NoError(t, err)
+	require.NotNil(t, retrieved)
+
+	// CRITICAL: Verify Words field was stored and retrieved
+	assert.NotEmpty(t, retrieved.Words, "Words field should be stored in cache")
+	assert.Equal(t, len(parsed.Words), len(retrieved.Words), "Should have same number of words")
+
+	// Verify at least one word is present (this is needed for T025)
+	if len(retrieved.Words) > 0 {
+		assert.NotEmpty(t, retrieved.Words[0].Normalized, "Word should have normalized form")
+	}
 }

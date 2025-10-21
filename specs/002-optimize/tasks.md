@@ -553,45 +553,64 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T023: Implement truncateWordsTables function
+### T023: Implement truncateWordsTables function ✅
 **File**: `internal/iooptimize/words.go`
 **Description**: Clear words and word_name_strings tables before population
+**Status**: ✅ COMPLETE
 **Details**:
 - SQL: TRUNCATE TABLE words CASCADE
 - SQL: TRUNCATE TABLE word_name_strings CASCADE
 - Ensures clean slate for word creation
 **Reference**: gnidump createWords() uses truncateTable()
 
+**Implementation Summary**:
+- Implemented `truncateWordsTables()` function in `internal/iooptimize/words.go`
+- Truncates both `words` and `word_name_strings` tables with CASCADE
+- Proper error handling and logging for each table
+- Follows gnidump pattern from truncateTable() in db.go
+
 ---
 
-### T024: Implement getNameStringsForWords function
+### T024: Implement getNameStringsForWords function ✅ (UPDATED)
 **File**: `internal/iooptimize/words.go`
 **Description**: Query all name_strings for word extraction
+**Status**: ✅ COMPLETE (needs update to return names)
 **Details**:
-- Query: SELECT id, canonical_id FROM name_strings WHERE canonical_id IS NOT NULL
-- Return slice of name string IDs and canonical IDs
-**Reference**: gnidump getWordNames() in db.go
+- Query: SELECT id, name, canonical_id FROM name_strings WHERE canonical_id IS NOT NULL
+- Return slice with: name_string_id, name (for parsing), canonical_id
+**Reference**: gnidump getWordNames() in db.go (returns just names for parsing)
+
+**Implementation Summary**:
+- Implemented `getNameStringsForWords()` function in `internal/iooptimize/words.go`
+- Created `nameForWords` struct to hold id, name, and canonical_id
+- Queries only name_strings with non-NULL canonical_id (required for word extraction)
+- Returns slice of nameForWords structs for batch parsing
+- Proper error handling and logging
+- Added comprehensive unit test `TestGetNameStringsForWords_Unit` ✅
+- Test verifies: correct filtering, proper data retrieval, NULL exclusion
+- **TODO**: Update to include `name` field for parsing
 
 ---
 
-### T025: Implement extractWordsFromCache function
+### T025: Implement parseNamesForWords function
 **File**: `internal/iooptimize/words.go`
-**Description**: Extract words from cached parse results (no re-parsing)
+**Description**: Parse names and extract words (following gnidump approach)
 **Details**:
-- For each name_string_id:
-  - Retrieve parsed data from CacheManager.GetParsed(nameStringID)
-  - Extract word details from parsed data:
-    - SpEpithetType words
-    - InfraspEpithetType words
-    - AuthorWordType words
-  - Skip surrogates and hybrids
-  - For each word:
-    - Generate wordID = UUID(normalized|typeID) using gnuuid.New()
-    - Create Word struct with: ID, Normalized, Modified (NormalizeByType), TypeID
-    - Create WordNameString struct linking word to name and canonical
+- For batch of name strings:
+  - Parse using parserpool with WithDetails(true) to get Words field
+  - For each parsed result:
+    - Extract word details from parsed.Words:
+      - SpEpithetType words
+      - InfraspEpithetType words
+      - AuthorWordType words
+    - Skip surrogates and hybrids
+    - For each word:
+      - Generate wordID = UUID(normalized|typeID) using gnuuid.New()
+      - Create Word struct with: ID, Normalized, Modified (NormalizeByType), TypeID
+      - Create WordNameString struct linking word to name and canonical
 - Return deduplicated words and word_name_strings
 **Reference**: gnidump processParsedWords() in words.go
-**Critical**: Reuse cached parse results from Step 1, do NOT re-parse
+**Note**: Direct parsing approach - no cache needed (gnparser is fast, KV overhead avoided)
 
 ---
 

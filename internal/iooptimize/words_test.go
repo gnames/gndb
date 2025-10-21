@@ -23,7 +23,7 @@ import (
 //  2. word_name_strings junction table links words to names and canonicals
 //  3. Only epithet and author words are included (type filtering)
 //  4. Deduplication is applied (no duplicate words)
-//  5. Words are extracted from cached parse results (no re-parsing)
+//  5. Words are extracted by parsing names directly (no cache - follows gnidump)
 //
 // Reference: gnidump createWords() in words.go
 func TestCreateWords_Integration(t *testing.T) {
@@ -48,7 +48,7 @@ func TestCreateWords_Integration(t *testing.T) {
 
 	pool := op.Pool()
 
-	// Setup cache with parsed results
+	// Setup cache for Step 1 (reparse) - Step 4 doesn't use cache
 	cacheDir := t.TempDir() + "/cache"
 	cm, err := NewCacheManager(cacheDir)
 	require.NoError(t, err, "Should create cache manager")
@@ -56,8 +56,8 @@ func TestCreateWords_Integration(t *testing.T) {
 	require.NoError(t, err, "Should open cache")
 	defer func() { _ = cm.Cleanup() }()
 
-	// Prepare test data: Insert name_strings with parsed results in cache
-	// We'll use real scientific names that gnparser can parse
+	// Prepare test data: Insert name_strings
+	// createWords will parse these directly (no cache needed)
 	testNames := []struct {
 		id       string
 		name     string
@@ -80,7 +80,7 @@ func TestCreateWords_Integration(t *testing.T) {
 		},
 	}
 
-	// Insert name_strings and populate cache with parsed results
+	// Insert name_strings - createWords will parse directly
 	for _, tn := range testNames {
 		// Insert name_string
 		canonicalID := gnuuid.New(tn.name).String() // Simplified for test
@@ -95,18 +95,7 @@ func TestCreateWords_Integration(t *testing.T) {
 			INSERT INTO canonicals (id, name) VALUES ($1, $2)
 		`, canonicalID, tn.name)
 		require.NoError(t, err, "Should insert canonical")
-
-		// Parse the name and store in cache (simulating Step 1 reparse)
-		// This is critical - createWords must use cached results, not re-parse
-		parsed := parseNameForTest(t, tn.name)
-		err = cm.StoreParsed(tn.id, parsed)
-		require.NoError(t, err, "Should store parsed result in cache")
 	}
-
-	// Verify cache contains parsed results (Step 1 prerequisite)
-	cachedParsed, err := cm.GetParsed(testNames[0].id)
-	require.NoError(t, err, "Should retrieve from cache")
-	require.NotNil(t, cachedParsed, "Cache should contain parsed result")
 
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
@@ -316,7 +305,6 @@ func TestCreateWords_EmptyCache(t *testing.T) {
 
 	// Call createWords with empty cache
 	// This should handle missing cache entries gracefully (skip or error appropriately)
-	err = createWords(ctx, optimizer, cfg)
 	// The exact behavior depends on implementation - either succeed with 0 words or return error
 	// For now, we just verify it doesn't panic
 	assert.NotPanics(t, func() {
@@ -337,4 +325,99 @@ func parseNameForTest(t *testing.T, name string) *parsed.Parsed {
 	parsed := gnp.ParseName(name)
 
 	return &parsed
+}
+
+// TestGetNameStringsForWords_Unit tests the getNameStringsForWords function.
+// This test verifies:
+//  1. Only name_strings with canonical_id are returned
+//  2. id, name, and canonical_id are retrieved correctly
+//  3. NULL canonical_id values are excluded
+//  4. Name field is populated for parsing
+func TestGetNameStringsForWords_Unit(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test in short mode")
+	}
+
+	ctx := context.Background()
+	cfg := iotesting.GetTestConfig()
+
+	// Setup database
+	op := iodb.NewPgxOperator()
+	err := op.Connect(ctx, &cfg.Database)
+	require.NoError(t, err)
+	defer op.Close()
+
+	// Clean up and create schema
+	_ = op.DropAllTables(ctx)
+	sm := ioschema.NewManager(op)
+	err = sm.Create(ctx, cfg)
+	require.NoError(t, err)
+
+	pool := op.Pool()
+	conn, err := pool.Acquire(ctx)
+	require.NoError(t, err)
+	defer conn.Release()
+
+	// Insert test data
+	// Name 1: With canonical_id (should be included)
+	id1 := gnuuid.New("Homo sapiens").String()
+	canonicalID1 := gnuuid.New("Homo sapiens canonical").String()
+	_, err = pool.Exec(ctx, `
+		INSERT INTO name_strings (id, name, canonical_id, virus, bacteria, surrogate, parse_quality)
+		VALUES ($1, 'Homo sapiens', $2, false, false, false, 1)
+	`, id1, canonicalID1)
+	require.NoError(t, err)
+
+	// Name 2: With canonical_id (should be included)
+	id2 := gnuuid.New("Mus musculus").String()
+	canonicalID2 := gnuuid.New("Mus musculus canonical").String()
+	_, err = pool.Exec(ctx, `
+		INSERT INTO name_strings (id, name, canonical_id, virus, bacteria, surrogate, parse_quality)
+		VALUES ($1, 'Mus musculus', $2, false, false, false, 1)
+	`, id2, canonicalID2)
+	require.NoError(t, err)
+
+	// Name 3: Without canonical_id (should be excluded)
+	id3 := gnuuid.New("Invalid name").String()
+	_, err = pool.Exec(ctx, `
+		INSERT INTO name_strings (id, name, canonical_id, virus, bacteria, surrogate, parse_quality)
+		VALUES ($1, 'Invalid name', NULL, false, false, false, 0)
+	`, id3)
+	require.NoError(t, err)
+
+	// TEST: Call getNameStringsForWords
+	names, err := getNameStringsForWords(ctx, conn.Conn())
+	require.NoError(t, err, "getNameStringsForWords should succeed")
+
+	// VERIFY 1: Should return exactly 2 names (excluding the one with NULL canonical_id)
+	assert.Equal(t, 2, len(names), "Should return only names with canonical_id")
+
+	// VERIFY 2: Check that returned IDs match expected values
+	foundIDs := make(map[string]bool)
+	foundCanonicalIDs := make(map[string]bool)
+	foundNames := make(map[string]bool)
+	for _, n := range names {
+		foundIDs[n.ID] = true
+		foundCanonicalIDs[n.CanonicalID] = true
+		foundNames[n.Name] = true
+		assert.NotEmpty(t, n.ID, "ID should not be empty")
+		assert.NotEmpty(t, n.Name, "Name should not be empty (needed for parsing)")
+		assert.NotEmpty(t, n.CanonicalID, "CanonicalID should not be empty")
+	}
+
+	// VERIFY 3: Expected IDs are present
+	assert.True(t, foundIDs[id1], "Should include first name")
+	assert.True(t, foundIDs[id2], "Should include second name")
+	assert.False(t, foundIDs[id3], "Should NOT include name without canonical_id")
+
+	// VERIFY 4: Canonical IDs are correct
+	assert.True(t, foundCanonicalIDs[canonicalID1], "Should have first canonical_id")
+	assert.True(t, foundCanonicalIDs[canonicalID2], "Should have second canonical_id")
+
+	// VERIFY 5: Names are present for parsing (no cache - direct parsing)
+	assert.True(t, foundNames["Homo sapiens"], "Should have first name string")
+	assert.True(t, foundNames["Mus musculus"], "Should have second name string")
+
+	// Clean up
+	_ = op.DropAllTables(ctx)
 }

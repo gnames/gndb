@@ -164,7 +164,8 @@ func TestReparseNames_Integration(t *testing.T) {
 	parsedFromCache, err := cm.GetParsed(homoID)
 	require.NoError(t, err, "Should retrieve from cache")
 	assert.NotNil(t, parsedFromCache, "Cache should contain parsed result")
-	assert.Equal(t, "Homo sapiens", parsedFromCache.CanonicalSimple, "Cached canonical should match")
+	assert.NotNil(t, parsedFromCache.Canonical, "Parsed result should have canonical")
+	assert.Equal(t, "Homo sapiens", parsedFromCache.Canonical.Simple, "Cached canonical should match")
 
 	// Clean up
 	_ = op.DropAllTables(ctx)
@@ -597,7 +598,8 @@ func TestWorkerReparse_Unit(t *testing.T) {
 	cached, err := cm.GetParsed(testNames[0].nameStringID)
 	require.NoError(t, err)
 	assert.NotNil(t, cached, "Should cache parsed result")
-	assert.Equal(t, "Homo sapiens", cached.CanonicalSimple)
+	assert.NotNil(t, cached.Canonical, "Cached result should have canonical")
+	assert.Equal(t, "Homo sapiens", cached.Canonical.Simple)
 }
 
 // TestWorkerReparse_ContextCancellation tests that workerReparse handles context cancellation.
