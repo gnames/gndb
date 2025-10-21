@@ -48,14 +48,6 @@ func TestCreateWords_Integration(t *testing.T) {
 
 	pool := op.Pool()
 
-	// Setup cache for Step 1 (reparse) - Step 4 doesn't use cache
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err, "Should create cache manager")
-	err = cm.Open()
-	require.NoError(t, err, "Should open cache")
-	defer func() { _ = cm.Cleanup() }()
-
 	// Prepare test data: Insert name_strings
 	// createWords will parse these directly (no cache needed)
 	testNames := []struct {
@@ -128,7 +120,8 @@ func TestCreateWords_Integration(t *testing.T) {
 		WHERE normalized = $1
 		LIMIT 1
 	`
-	err = pool.QueryRow(ctx, query, testNames[0].wantWord).Scan(&wordID, &normalized, &modified, &typeID)
+	err = pool.QueryRow(ctx, query, testNames[0].wantWord).
+		Scan(&wordID, &normalized, &modified, &typeID)
 	require.NoError(t, err, "Should find extracted word")
 	assert.Equal(t, testNames[0].wantWord, normalized, "Word should be normalized correctly")
 	assert.NotEmpty(t, modified, "Word should have modified form")
@@ -192,14 +185,6 @@ func TestCreateWords_Idempotent(t *testing.T) {
 
 	pool := op.Pool()
 
-	// Setup cache
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
-
 	// Insert test data
 	testID := gnuuid.New("Homo sapiens").String()
 	canonicalID := gnuuid.New("Homo sapiens").String()
@@ -213,11 +198,6 @@ func TestCreateWords_Idempotent(t *testing.T) {
 	_, err = pool.Exec(ctx, `
 		INSERT INTO canonicals (id, name) VALUES ($1, $2)
 	`, canonicalID, "Homo sapiens")
-	require.NoError(t, err)
-
-	// Cache parsed result
-	parsed := parseNameForTest(t, "Homo sapiens")
-	err = cm.StoreParsed(testID, parsed)
 	require.NoError(t, err)
 
 	optimizer := &OptimizerImpl{
@@ -244,7 +224,12 @@ func TestCreateWords_Idempotent(t *testing.T) {
 
 	// Counts should remain the same (no duplicates)
 	assert.Equal(t, wordCount1, wordCount2, "Words count should not change on second run")
-	assert.Equal(t, junctionCount1, junctionCount2, "Junction count should not change on second run")
+	assert.Equal(
+		t,
+		junctionCount1,
+		junctionCount2,
+		"Junction count should not change on second run",
+	)
 
 	// Clean up
 	_ = op.DropAllTables(ctx)
@@ -272,14 +257,6 @@ func TestCreateWords_EmptyCache(t *testing.T) {
 	require.NoError(t, err)
 
 	pool := op.Pool()
-
-	// Setup cache (but don't populate it)
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
 
 	// Insert name_string WITHOUT caching parsed result
 	testID := gnuuid.New("Homo sapiens").String()

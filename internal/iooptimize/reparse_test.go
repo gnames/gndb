@@ -71,18 +71,11 @@ func TestReparseNames_Integration(t *testing.T) {
 
 	// Verify initial state: canonical_id should be NULL
 	var nullCount int
-	err = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM name_strings WHERE canonical_id IS NULL").Scan(&nullCount)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT COUNT(*) FROM name_strings WHERE canonical_id IS NULL").
+		Scan(&nullCount)
 	require.NoError(t, err)
 	assert.Equal(t, len(testNames), nullCount, "All canonical_id fields should be NULL initially")
-
-	// Setup cache for parsed results
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err, "Should create cache manager")
-
-	err = cm.Open()
-	require.NoError(t, err, "Should open cache")
-	defer func() { _ = cm.Cleanup() }()
 
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
@@ -94,9 +87,16 @@ func TestReparseNames_Integration(t *testing.T) {
 	require.NoError(t, err, "reparseNames should succeed")
 
 	// VERIFY 1: canonical_id should now be populated
-	err = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM name_strings WHERE canonical_id IS NOT NULL").Scan(&nullCount)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT COUNT(*) FROM name_strings WHERE canonical_id IS NOT NULL").
+		Scan(&nullCount)
 	require.NoError(t, err)
-	assert.Equal(t, len(testNames), nullCount, "All canonical_id fields should be populated after reparsing")
+	assert.Equal(
+		t,
+		len(testNames),
+		nullCount,
+		"All canonical_id fields should be populated after reparsing",
+	)
 
 	// VERIFY 2: Check specific canonical forms
 	var canonical string
@@ -112,7 +112,9 @@ func TestReparseNames_Integration(t *testing.T) {
 		WHERE ns.id = $1
 	`
 	var canonicalID sql.NullString
-	err = op.Pool().QueryRow(ctx, query, homoID).Scan(&canonicalID, &cardinality, &parseQuality, &canonical)
+	err = op.Pool().
+		QueryRow(ctx, query, homoID).
+		Scan(&canonicalID, &cardinality, &parseQuality, &canonical)
 	require.NoError(t, err, "Should query Homo sapiens")
 	assert.True(t, canonicalID.Valid, "canonical_id should be set")
 	assert.Equal(t, "Homo sapiens", canonical, "Canonical form should be 'Homo sapiens'")
@@ -128,14 +130,18 @@ func TestReparseNames_Integration(t *testing.T) {
 
 	// VERIFY 4: Check trinomial "Canis lupus familiaris"
 	canisID := gnuuid.New("Canis lupus familiaris").String()
-	err = op.Pool().QueryRow(ctx, query, canisID).Scan(&canonicalID, &cardinality, &parseQuality, &canonical)
+	err = op.Pool().
+		QueryRow(ctx, query, canisID).
+		Scan(&canonicalID, &cardinality, &parseQuality, &canonical)
 	require.NoError(t, err)
 	assert.Equal(t, "Canis lupus familiaris", canonical, "Canonical form should be full trinomial")
 	assert.Equal(t, int32(3), cardinality.Int32, "Cardinality should be 3 (trinomial)")
 
 	// VERIFY 5: Check canonical_stem_id is populated for binomials/trinomials
 	var stemID sql.NullString
-	err = op.Pool().QueryRow(ctx, "SELECT canonical_stem_id FROM name_strings WHERE id = $1", homoID).Scan(&stemID)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT canonical_stem_id FROM name_strings WHERE id = $1", homoID).
+		Scan(&stemID)
 	require.NoError(t, err)
 	assert.True(t, stemID.Valid, "Stemmed canonical should be generated for binomials")
 
@@ -158,10 +164,6 @@ func TestReparseNames_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, stemCount, 0, "Canonical_stems should be populated for binomials/trinomials")
 
-	// NOTE: Cache verification removed - cache is no longer used in the workflow
-	// We decided to use direct parsing in Step 4 instead of caching
-
-	// Clean up
 	_ = op.DropAllTables(ctx)
 }
 
@@ -197,12 +199,6 @@ func TestReparseNames_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 
 	// Setup cache
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,
@@ -229,7 +225,12 @@ func TestReparseNames_Idempotent(t *testing.T) {
 	_ = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM canonical_stems").Scan(&stemCount2)
 
 	// Counts should remain the same (no duplicates)
-	assert.Equal(t, canonicalCount1, canonicalCount2, "Canonicals count should not change on second run")
+	assert.Equal(
+		t,
+		canonicalCount1,
+		canonicalCount2,
+		"Canonicals count should not change on second run",
+	)
 	assert.Equal(t, fullCount1, fullCount2, "Canonical_fulls count should not change")
 	assert.Equal(t, stemCount1, stemCount2, "Canonical_stems count should not change")
 
@@ -264,7 +265,8 @@ func TestReparseNames_UpdatesOnlyChangedNames(t *testing.T) {
 	correctCanonicalID := gnuuid.New("Homo sapiens").String()
 
 	// First insert the canonical
-	_, err = op.Pool().Exec(ctx, "INSERT INTO canonicals (id, name) VALUES ($1, $2)", correctCanonicalID, "Homo sapiens")
+	_, err = op.Pool().
+		Exec(ctx, "INSERT INTO canonicals (id, name) VALUES ($1, $2)", correctCanonicalID, "Homo sapiens")
 	require.NoError(t, err)
 
 	// Then insert name_string with correct canonical_id already set
@@ -276,12 +278,6 @@ func TestReparseNames_UpdatesOnlyChangedNames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Setup cache
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,
@@ -293,9 +289,16 @@ func TestReparseNames_UpdatesOnlyChangedNames(t *testing.T) {
 
 	// Verify canonical_id remains the same (no unnecessary update)
 	var canonicalIDAfter sql.NullString
-	err = op.Pool().QueryRow(ctx, "SELECT canonical_id FROM name_strings WHERE id = $1", testID).Scan(&canonicalIDAfter)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT canonical_id FROM name_strings WHERE id = $1", testID).
+		Scan(&canonicalIDAfter)
 	require.NoError(t, err)
-	assert.Equal(t, correctCanonicalID, canonicalIDAfter.String, "Canonical ID should remain unchanged")
+	assert.Equal(
+		t,
+		correctCanonicalID,
+		canonicalIDAfter.String,
+		"Canonical ID should remain unchanged",
+	)
 
 	// Clean up
 	_ = op.DropAllTables(ctx)
@@ -332,14 +335,6 @@ func TestReparseNames_VirusNames(t *testing.T) {
 	_, err = op.Pool().Exec(ctx, query, virusID, virusName)
 	require.NoError(t, err)
 
-	// Setup cache
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
-
 	optimizer := &OptimizerImpl{
 		operator: op,
 	}
@@ -350,7 +345,9 @@ func TestReparseNames_VirusNames(t *testing.T) {
 
 	// Verify virus flag is set
 	var virus bool
-	err = op.Pool().QueryRow(ctx, "SELECT virus FROM name_strings WHERE id = $1", virusID).Scan(&virus)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT virus FROM name_strings WHERE id = $1", virusID).
+		Scan(&virus)
 	require.NoError(t, err)
 	assert.True(t, virus, "Virus flag should be set for virus names")
 
@@ -520,14 +517,6 @@ func TestWorkerReparse_Unit(t *testing.T) {
 	require.NoError(t, err)
 	defer op.Close()
 
-	// Setup cache
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
-
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
 		operator: op,
@@ -554,12 +543,18 @@ func TestWorkerReparse_Unit(t *testing.T) {
 			nameStringID: gnuuid.New("Homo sapiens").String(),
 			name:         "Homo sapiens",
 			canonicalID:  sql.NullString{}, // Empty - needs parsing
+			bacteria:     sql.NullBool{Bool: false, Valid: true},
+			virus:        sql.NullBool{Bool: false, Valid: true},
+			surrogate:    sql.NullBool{Bool: false, Valid: true},
 			parseQuality: 0,
 		},
 		{
 			nameStringID: gnuuid.New("Mus musculus Linnaeus 1758").String(),
 			name:         "Mus musculus Linnaeus 1758",
 			canonicalID:  sql.NullString{},
+			bacteria:     sql.NullBool{Bool: false, Valid: true},
+			virus:        sql.NullBool{Bool: false, Valid: true},
+			surrogate:    sql.NullBool{Bool: false, Valid: true},
 			parseQuality: 0,
 		},
 	}
@@ -602,14 +597,6 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 	require.NoError(t, err)
 	defer op.Close()
 
-	// Setup cache
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
-
 	optimizer := &OptimizerImpl{
 		operator: op,
 	}
@@ -644,6 +631,9 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 					nameStringID: gnuuid.New(name).String(),
 					name:         name,
 					canonicalID:  sql.NullString{},
+					bacteria:     sql.NullBool{Bool: false, Valid: true},
+					virus:        sql.NullBool{Bool: false, Valid: true},
+					surrogate:    sql.NullBool{Bool: false, Valid: true},
 					parseQuality: 0,
 				}
 			}
@@ -729,7 +719,8 @@ func TestUpdateNameString_Unit(t *testing.T) {
 	// Verify name_strings was updated
 	var updatedCanonicalID sql.NullString
 	var updatedParseQuality int
-	err = op.Pool().QueryRow(ctx, "SELECT canonical_id, parse_quality FROM name_strings WHERE id = $1", testID).
+	err = op.Pool().
+		QueryRow(ctx, "SELECT canonical_id, parse_quality FROM name_strings WHERE id = $1", testID).
 		Scan(&updatedCanonicalID, &updatedParseQuality)
 	require.NoError(t, err)
 	assert.Equal(t, canonicalID, updatedCanonicalID.String, "canonical_id should be updated")
@@ -737,13 +728,17 @@ func TestUpdateNameString_Unit(t *testing.T) {
 
 	// Verify canonicals table was populated
 	var canonicalName string
-	err = op.Pool().QueryRow(ctx, "SELECT name FROM canonicals WHERE id = $1", canonicalID).Scan(&canonicalName)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT name FROM canonicals WHERE id = $1", canonicalID).
+		Scan(&canonicalName)
 	require.NoError(t, err)
 	assert.Equal(t, "Homo sapiens", canonicalName, "canonical name should be inserted")
 
 	// Verify canonical_stems table was populated
 	var stemName string
-	err = op.Pool().QueryRow(ctx, "SELECT name FROM canonical_stems WHERE id = $1", canonicalStemID).Scan(&stemName)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT name FROM canonical_stems WHERE id = $1", canonicalStemID).
+		Scan(&stemName)
 	require.NoError(t, err)
 	assert.Equal(t, "Hom sapien", stemName, "canonical stem should be inserted")
 
@@ -784,7 +779,9 @@ func TestSaveReparsedNames_Unit(t *testing.T) {
 
 	for _, td := range testData {
 		query := `
-			INSERT INTO name_strings (id, name, cardinality, canonical_id, canonical_full_id, canonical_stem_id, virus, bacteria, surrogate, parse_quality)
+			INSERT INTO name_strings (
+		    id, name, cardinality, canonical_id, canonical_full_id,
+		    canonical_stem_id, virus, bacteria, surrogate, parse_quality)
 			VALUES ($1, $2, NULL, NULL, NULL, NULL, false, false, false, 0)
 		`
 		_, err = op.Pool().Exec(ctx, query, td.id, td.name)
@@ -811,6 +808,9 @@ func TestSaveReparsedNames_Unit(t *testing.T) {
 			name:         td.name,
 			canonicalID:  sql.NullString{String: canonicalID, Valid: true},
 			canonical:    td.name,
+			bacteria:     sql.NullBool{Bool: false, Valid: true},
+			virus:        sql.NullBool{Bool: false, Valid: true},
+			surrogate:    sql.NullBool{Bool: false, Valid: true},
 			parseQuality: 1,
 		}
 	}
@@ -822,7 +822,9 @@ func TestSaveReparsedNames_Unit(t *testing.T) {
 
 	// Verify all names were updated
 	var count int
-	err = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM name_strings WHERE canonical_id IS NOT NULL").Scan(&count)
+	err = op.Pool().
+		QueryRow(ctx, "SELECT COUNT(*) FROM name_strings WHERE canonical_id IS NOT NULL").
+		Scan(&count)
 	require.NoError(t, err)
 	assert.Equal(t, len(testData), count, "All names should have canonical_id updated")
 
@@ -849,13 +851,6 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
-
-	cacheDir := t.TempDir() + "/cache"
-	cm, err := NewCacheManager(cacheDir)
-	require.NoError(t, err)
-	err = cm.Open()
-	require.NoError(t, err)
-	defer func() { _ = cm.Cleanup() }()
 
 	optimizer := &OptimizerImpl{
 		operator: op,

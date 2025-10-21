@@ -15,7 +15,6 @@ import (
 // OptimizerImpl implements the Optimizer interface.
 type OptimizerImpl struct {
 	operator db.Operator
-	cache    *CacheManager
 }
 
 // NewOptimizer creates a new Optimizer.

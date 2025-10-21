@@ -6,33 +6,6 @@ import (
 	"github.com/gnames/gnlib"
 )
 
-// CacheNotOpenError is returned when cache operations are attempted on a closed database.
-type CacheNotOpenError struct {
-	error
-	gnlib.MessageBase
-}
-
-// NewCacheNotOpenError creates a new cache not open error.
-func NewCacheNotOpenError() error {
-	userBase := gnlib.NewMessage(
-		`<title>Cache Database Not Open</title>
-<warning>Cannot perform cache operation - database is not open.</warning>
-
-<em>How to fix:</em>
-  1. Ensure CacheManager.Open() is called before StoreParsed() or GetParsed()
-  2. Check that CacheManager.Close() was not called prematurely
-  3. Verify cache initialization in the optimize workflow
-
-This is likely an internal error. Please report if you see this message.`,
-		nil,
-	)
-
-	return CacheNotOpenError{
-		error:       fmt.Errorf("cache database is not open"),
-		MessageBase: userBase,
-	}
-}
-
 // ReparseQueryError is returned when querying name_strings for reparsing fails.
 type ReparseQueryError struct {
 	error

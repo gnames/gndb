@@ -200,6 +200,12 @@ func workerReparse(
 			cardinality = sql.NullInt32{Int32: int32(parsed.Cardinality), Valid: true}
 		}
 
+		// Convert bacteria to boolean (if parser gives 0, make it false)
+		bacteriaBool := false
+		if parsed.Bacteria != nil {
+			bacteriaBool = parsed.Bacteria.Bool()
+		}
+
 		// Send updated record to save channel
 		updated := reparsed{
 			nameStringID:    r.nameStringID,
@@ -210,7 +216,7 @@ func workerReparse(
 			canonical:       parsed.Canonical.Simple,
 			canonicalFull:   parsed.Canonical.Full,
 			canonicalStem:   parsed.Canonical.Stemmed,
-			bacteria:        sql.NullBool{Bool: parsed.Bacteria != nil && parsed.Bacteria.Bool(), Valid: true},
+			bacteria:        sql.NullBool{Bool: bacteriaBool, Valid: true},
 			virus:           sql.NullBool{Bool: parsed.Virus, Valid: true},
 			surrogate:       sql.NullBool{Bool: parsed.Surrogate != nil, Valid: true},
 			parseQuality:    parsed.ParseQuality,
