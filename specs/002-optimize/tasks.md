@@ -873,9 +873,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ## Phase 3.7: Step 6 - VACUUM ANALYZE (TDD)
 
-### T036 [P]: Write integration test for VACUUM ANALYZE
+### T036 [P]: Write integration test for VACUUM ANALYZE ✅
 **File**: `internal/iooptimize/vacuum_test.go`
 **Description**: Test that VACUUM ANALYZE runs successfully
+**Status**: ✅ COMPLETE
 **Test Scenario**:
 1. Given: Optimized database
 2. When: Call vacuumAnalyze(ctx, cfg)
@@ -887,9 +888,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T037: Implement vacuumAnalyze function
+### T037: Implement vacuumAnalyze function ✅
 **File**: `internal/iooptimize/vacuum.go`
 **Description**: Run VACUUM ANALYZE on database
+**Status**: ✅ COMPLETE
 **Details**:
 - Execute SQL: VACUUM ANALYZE
 - Use pgx connection (cannot run in transaction)
