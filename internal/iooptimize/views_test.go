@@ -117,15 +117,18 @@ func TestCreateVerificationView_Integration(t *testing.T) {
 	assert.True(t, viewExists, "Verification view should exist")
 
 	// VERIFY 2: View has expected columns
+	// Note: information_schema.columns doesn't work for materialized views,
+	// so we use pg_attribute instead
 	var columnCount int
 	err = pool.QueryRow(ctx, `
-		SELECT COUNT(*) FROM information_schema.columns
-		WHERE table_name = 'verification'
+		SELECT COUNT(*) FROM pg_attribute
+		WHERE attrelid = 'verification'::regclass AND attnum > 0 AND NOT attisdropped
 	`).Scan(&columnCount)
 	require.NoError(t, err)
 	assert.Equal(t, 21, columnCount, "Verification view should have 21 columns")
 
 	// VERIFY 3: Check specific columns exist
+	// Note: For materialized views, we need to use pg_attribute
 	expectedColumns := []string{
 		"data_source_id", "record_id", "name_string_id", "name",
 		"name_id", "code_id", "year", "cardinality", "canonical_id",
@@ -137,8 +140,11 @@ func TestCreateVerificationView_Integration(t *testing.T) {
 		var exists bool
 		err = pool.QueryRow(ctx, `
 			SELECT EXISTS (
-				SELECT 1 FROM information_schema.columns
-				WHERE table_name = 'verification' AND column_name = $1
+				SELECT 1 FROM pg_attribute
+				WHERE attrelid = 'verification'::regclass
+				AND attname = $1
+				AND attnum > 0
+				AND NOT attisdropped
 			)
 		`, col).Scan(&exists)
 		require.NoError(t, err)

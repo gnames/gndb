@@ -796,9 +796,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T032: Implement dropVerificationView function
+### T032: Implement dropVerificationView function ✅
 **File**: `internal/iooptimize/views.go`
 **Description**: Drop existing verification materialized view if it exists
+**Status**: ✅ COMPLETE
 **Details**:
 - SQL: DROP MATERIALIZED VIEW IF EXISTS verification CASCADE
 - Logs action
@@ -806,9 +807,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T033: Implement buildVerificationViewSQL function
+### T033: Implement buildVerificationViewSQL function ✅
 **File**: `internal/iooptimize/views.go`
 **Description**: Generate SQL for verification materialized view
+**Status**: ✅ COMPLETE
 **Details**:
 - Return SQL string (reference: data-model.md):
   ```sql
@@ -840,9 +842,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T034: Implement createVerificationIndexes function
+### T034: Implement createVerificationIndexes function ✅
 **File**: `internal/iooptimize/views.go`
 **Description**: Create 3 indexes on verification materialized view
+**Status**: ✅ COMPLETE
 **Details**:
 - Execute 3 SQL statements:
   1. CREATE INDEX verification_canonical_id_idx ON verification (canonical_id)
@@ -853,9 +856,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T035: Implement createVerificationView orchestrator
+### T035: Implement createVerificationView orchestrator ✅
 **File**: `internal/iooptimize/views.go`
 **Description**: Main function orchestrating view creation
+**Status**: ✅ COMPLETE
 **Details**:
 - Call dropVerificationView()
 - Get SQL from buildVerificationViewSQL()
