@@ -592,9 +592,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T025: Implement parseNamesForWords function
+### T025: Implement parseNamesForWords function ✅
 **File**: `internal/iooptimize/words.go`
 **Description**: Parse names and extract words (following gnidump approach)
+**Status**: ✅ COMPLETE
 **Details**:
 - For batch of name strings:
   - Parse using parserpool with WithDetails(true) to get Words field
@@ -611,6 +612,19 @@ This task list implements the `gndb optimize` command following the production-t
 - Return deduplicated words and word_name_strings
 **Reference**: gnidump processParsedWords() in words.go
 **Note**: Direct parsing approach - no cache needed (gnparser is fast, KV overhead avoided)
+
+**Implementation Summary**:
+- Implemented `parseNamesForWords()` main function with batch processing
+- Implemented `processBatchConcurrent()` for concurrent parsing using errgroup
+- Implemented `processChunk()` worker function for parallel execution
+- **Concurrency**: Uses Config.JobsNumber workers (configurable, defaults to runtime.NumCPU())
+- **Batching**: Processes in batches of Config.Database.BatchSize (default 50,000)
+- **Memory efficient**: Workers divide batches into chunks for parallel processing
+- **Error handling**: Uses errgroup for proper error propagation and context cancellation
+- Follows gnidump logic: filters SpEpithet, InfraspEpithet, and AuthorWord types
+- Generates UUID5 word IDs from modified|typeID (matching gnidump)
+- All code compiles successfully ✅
+- Linter passes ✅
 
 ---
 
