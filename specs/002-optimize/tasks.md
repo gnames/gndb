@@ -628,61 +628,105 @@ This task list implements the `gndb optimize` command following the production-t
 
 ---
 
-### T026: Implement deduplicateWords function
+### T026: Implement deduplicateWords function ✅
 **File**: `internal/iooptimize/words.go`
 **Description**: Remove duplicate words using map-based deduplication
+**Status**: ✅ COMPLETE
 **Details**:
-- Use map[string]model.Word keyed by word.ID
+- Use map[string]schema.Word keyed by word.ID|word.Normalized (composite key)
 - Return unique words as slice
-**Reference**: gnidump prepWords() in words.go
+**Reference**: gnidump prepWords() in words.go and wordsMap building
+
+**Implementation Summary**:
+- Implemented `deduplicateWords()` function
+- Uses composite key: `ID|Normalized` (matches gnidump pattern exactly)
+- Map-based deduplication for O(n) performance
+- Logs original and unique counts for visibility
+- Returns deduplicated slice ready for bulk insert
+- Code compiles successfully ✅
+- Linter passes ✅
 
 ---
 
-### T027: Implement deduplicateWordNameStrings function
+### T027: Implement deduplicateWordNameStrings function ✅
 **File**: `internal/iooptimize/words.go`
 **Description**: Remove duplicate word-name links
+**Status**: ✅ COMPLETE
 **Details**:
-- Use map[string]model.WordNameString keyed by "wordID|nameStringID"
+- Use map[string]schema.WordNameString keyed by "WordID|NameStringID"
 - Return unique links as slice
 **Reference**: gnidump uniqWordNameString() in words.go
 
+**Implementation Summary**:
+- Implemented `deduplicateWordNameStrings()` function
+- Uses composite key: `WordID|NameStringID` (matches gnidump pattern exactly)
+- Map-based deduplication for O(n) performance
+- Logs original and unique counts for visibility
+- Returns deduplicated slice ready for bulk insert
+- Code compiles successfully ✅
+- Linter passes ✅
+
 ---
 
-### T028: Implement saveWords function
+### T028: Implement saveWords function ✅
 **File**: `internal/iooptimize/words.go`
 **Description**: Bulk insert words using pgx.CopyFrom
+**Status**: ✅ COMPLETE
 **Details**:
-- Batch words by Config.Import.BatchSize
+- Batch words by Config.Database.BatchSize
 - For each batch:
   - Use pgx.CopyFrom to bulk insert into words table
   - Columns: id, normalized, modified, type_id
 - Progress tracking: log every batch
 **Reference**: gnidump saveWords() in db.go uses insertRows()
 
+**Implementation Summary**:
+- Implemented `saveWords()` function in `internal/iooptimize/words.go`
+- Uses pgx.CopyFrom for high-performance bulk inserts (matching gnidump pattern)
+- Batches by Config.Database.BatchSize (default 50,000)
+- Inserts columns: id, normalized, modified, type_id (matches schema.Word)
+- Progress logging every 100,000 records + final summary
+- Proper error handling with detailed error messages
+- Returns early if no words to save
+- Code compiles successfully ✅
+- Linter passes ✅
+
 ---
 
-### T029: Implement saveWordNameStrings function
+### T029: Implement saveWordNameStrings function ✅
 **File**: `internal/iooptimize/words.go`
-**Description**: Bulk insert word-name links using pgx.CopyFrom
+**Description**: Bulk insert word-name linkages using pgx.CopyFrom
+**Status**: ✅ COMPLETE
 **Details**:
-- Batch word_name_strings by Config.Import.BatchSize
+- Batch by Config.Database.BatchSize
 - For each batch:
   - Use pgx.CopyFrom to bulk insert into word_name_strings table
   - Columns: word_id, name_string_id, canonical_id
-- Progress tracking
-**Reference**: gnidump saveNameWords() in db.go
+- Progress tracking: log every batch
+**Reference**: gnidump saveNameWords() in db.go uses insertRows()
+
+**Implementation Summary**:
+- Implemented `saveWordNameStrings()` function in `internal/iooptimize/words.go`
+- Uses pgx.CopyFrom for high-performance bulk inserts (matching gnidump pattern)
+- Batches by Config.Database.BatchSize (default 50,000)
+- Inserts columns: word_id, name_string_id, canonical_id (matches schema.WordNameString)
+- Progress logging every 100,000 records + final summary
+- Proper error handling with detailed error messages
+- Returns early if no word-name linkages to save
+- Code compiles successfully ✅
+- Linter passes ✅
 
 ---
 
-### T030: Implement createWords orchestrator
+### T030: Implement createWords orchestrator ✅
 **File**: `internal/iooptimize/words.go`
 **Description**: Main function orchestrating word extraction and insertion
+**Status**: ✅ COMPLETE
 **Details**:
 - Call truncateWordsTables()
 - Call getNameStringsForWords() to get all name IDs
-- Process in batches:
-  - For each batch: extractWordsFromCache()
-  - Aggregate words in map for deduplication
+- Create parserpool with Config.JobsNumber workers
+- Call parseNamesForWords() to parse and extract words
 - Call deduplicateWords()
 - Call saveWords() in batches
 - Call deduplicateWordNameStrings()
@@ -690,6 +734,27 @@ This task list implements the `gndb optimize` command following the production-t
 - Log completion stats
 **Reference**: gnidump createWords() in words.go
 **Test**: T022 should now PASS
+
+**Implementation Summary**:
+- Implemented `createWords()` orchestrator in `internal/iooptimize/words.go:27-96`
+- Complete 6-step workflow:
+  1. Acquire database connection from operator.Pool()
+  2. Truncate words tables (truncateWordsTables)
+  3. Load name_strings for word extraction (getNameStringsForWords)
+  4. Create parserpool with Config.JobsNumber workers
+  5. Parse names and extract words (parseNamesForWords)
+  6. Deduplicate and save words and linkages
+- Proper resource management: defer connection.Release() and parserPool.Close()
+- Comprehensive error handling at each step
+- Progress logging for visibility
+- Removed all `//nolint:unused` comments from helper functions
+- **All integration tests PASS**:
+  - TestCreateWords_Integration: Full workflow ✅
+  - TestCreateWords_Idempotent: Safe reruns ✅
+  - TestCreateWords_EmptyCache: Edge case handling ✅
+- Code compiles successfully ✅
+- Linter passes ✅
+- **Phase 3.5 (Step 4 - Create Words Tables) COMPLETE**
 
 ---
 

@@ -14,14 +14,12 @@ import (
 // OptimizerImpl implements the Optimizer interface.
 type OptimizerImpl struct {
 	operator db.Operator
-	cache    *CacheManager // Cache for parsed name results during optimization
 }
 
 // NewOptimizer creates a new Optimizer.
 func NewOptimizer(op db.Operator) lifecycle.Optimizer {
 	return &OptimizerImpl{
 		operator: op,
-		cache:    nil, // Cache will be initialized during Optimize()
 	}
 }
 

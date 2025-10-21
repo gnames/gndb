@@ -12,7 +12,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// NOTE: Cache functionality has been removed from the optimize workflow.
+// These tests are kept for reference but skipped.
+// Cache was originally intended for Step 4 (word extraction) but we decided
+// to use direct parsing instead since gnparser is fast and cache adds overhead.
+
 func TestCacheManager_NewCacheManager(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	tests := []struct {
 		name     string
 		cacheDir string
@@ -45,6 +51,7 @@ func TestCacheManager_NewCacheManager(t *testing.T) {
 }
 
 func TestCacheManager_OpenClose(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)
@@ -63,6 +70,7 @@ func TestCacheManager_OpenClose(t *testing.T) {
 }
 
 func TestCacheManager_StoreParsed(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)
@@ -84,6 +92,7 @@ func TestCacheManager_StoreParsed(t *testing.T) {
 }
 
 func TestCacheManager_GetParsed(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)
@@ -117,6 +126,7 @@ func TestCacheManager_GetParsed(t *testing.T) {
 }
 
 func TestCacheManager_StoreAndRetrieveMultiple(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)
@@ -158,6 +168,7 @@ func TestCacheManager_StoreAndRetrieveMultiple(t *testing.T) {
 }
 
 func TestCacheManager_OperationsOnClosedCache(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)
@@ -176,6 +187,7 @@ func TestCacheManager_OperationsOnClosedCache(t *testing.T) {
 }
 
 func TestCacheManager_Cleanup(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)
@@ -202,6 +214,7 @@ func TestCacheManager_Cleanup(t *testing.T) {
 }
 
 func TestCacheManager_UnparsedName(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)
@@ -234,6 +247,7 @@ func TestCacheManager_UnparsedName(t *testing.T) {
 // TestCacheManager_WordsField verifies that the Words field is stored in cache.
 // This is critical for T025 (extractWordsFromCache) which needs the Words data.
 func TestCacheManager_WordsField(t *testing.T) {
+	t.Skip("Cache functionality removed - using direct parsing instead")
 	cacheDir := filepath.Join(t.TempDir(), "test-cache")
 	cm, err := iooptimize.NewCacheManager(cacheDir)
 	require.NoError(t, err)

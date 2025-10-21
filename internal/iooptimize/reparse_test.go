@@ -87,7 +87,6 @@ func TestReparseNames_Integration(t *testing.T) {
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// TEST: Call reparseNames (this will fail until T004-T008 are implemented)
@@ -159,13 +158,8 @@ func TestReparseNames_Integration(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, stemCount, 0, "Canonical_stems should be populated for binomials/trinomials")
 
-	// VERIFY 9: Check cache contains parsed results
-	// Try to retrieve one parsed result from cache
-	parsedFromCache, err := cm.GetParsed(homoID)
-	require.NoError(t, err, "Should retrieve from cache")
-	assert.NotNil(t, parsedFromCache, "Cache should contain parsed result")
-	assert.NotNil(t, parsedFromCache.Canonical, "Parsed result should have canonical")
-	assert.Equal(t, "Homo sapiens", parsedFromCache.Canonical.Simple, "Cached canonical should match")
+	// NOTE: Cache verification removed - cache is no longer used in the workflow
+	// We decided to use direct parsing in Step 4 instead of caching
 
 	// Clean up
 	_ = op.DropAllTables(ctx)
@@ -212,7 +206,6 @@ func TestReparseNames_Idempotent(t *testing.T) {
 
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// First reparse
@@ -292,7 +285,6 @@ func TestReparseNames_UpdatesOnlyChangedNames(t *testing.T) {
 
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// Reparse
@@ -350,7 +342,6 @@ func TestReparseNames_VirusNames(t *testing.T) {
 
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// Reparse
@@ -540,7 +531,6 @@ func TestWorkerReparse_Unit(t *testing.T) {
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// Create parser pool
@@ -594,12 +584,7 @@ func TestWorkerReparse_Unit(t *testing.T) {
 	assert.True(t, r1.canonicalID.Valid, "Canonical ID should be set")
 	assert.Equal(t, int(1), r1.parseQuality, "Should have good parse quality")
 
-	// Verify cache was populated
-	cached, err := cm.GetParsed(testNames[0].nameStringID)
-	require.NoError(t, err)
-	assert.NotNil(t, cached, "Should cache parsed result")
-	assert.NotNil(t, cached.Canonical, "Cached result should have canonical")
-	assert.Equal(t, "Homo sapiens", cached.Canonical.Simple)
+	// NOTE: Cache verification removed - cache is no longer used
 }
 
 // TestWorkerReparse_ContextCancellation tests that workerReparse handles context cancellation.
@@ -627,7 +612,6 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	pool := parserpool.NewPool(1)
@@ -875,7 +859,6 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	pool := parserpool.NewPool(1)

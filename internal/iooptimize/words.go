@@ -28,22 +28,86 @@ type nameForWords struct {
 // Workflow:
 //  1. Truncate words and word_name_strings tables
 //  2. Load all name_strings with canonical_id
-//  3. Extract words from cached parse results (no re-parsing)
-//  4. Deduplicate words
+//  3. Parse names and extract words (direct parsing, no cache)
+//  4. Deduplicate words and word-name linkages
 //  5. Bulk insert words
 //  6. Bulk insert word-name-string linkages
 //
 // Reference: gnidump createWords() in words.go
 func createWords(ctx context.Context, o *OptimizerImpl, cfg *config.Config) error {
-	return fmt.Errorf("createWords is not yet implemented")
+	slog.Info("Creating words for words tables")
+
+	// Get database connection
+	pool := o.operator.Pool()
+	if pool == nil {
+		return fmt.Errorf("database pool is nil")
+	}
+
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		slog.Error("Failed to acquire database connection", "error", err)
+		return fmt.Errorf("failed to acquire connection: %w", err)
+	}
+	defer conn.Release()
+
+	// Step 1: Truncate words tables
+	if err := truncateWordsTables(ctx, conn.Conn()); err != nil {
+		return err
+	}
+
+	// Step 2: Load all name_strings for word extraction
+	names, err := getNameStringsForWords(ctx, conn.Conn())
+	if err != nil {
+		return err
+	}
+
+	if len(names) == 0 {
+		slog.Info("No names to process for word extraction")
+		return nil
+	}
+
+	// Step 3: Create parserpool for concurrent parsing
+	workerCount := cfg.JobsNumber
+	if workerCount == 0 {
+		workerCount = 1
+	}
+	parserPool := parserpool.NewPool(workerCount)
+	defer parserPool.Close()
+
+	// Parse names and extract words using parserpool
+	slog.Info("Parsing names and extracting words", "totalNames", len(names))
+	words, wordNames, err := parseNamesForWords(ctx, parserPool, names, cfg)
+	if err != nil {
+		return err
+	}
+
+	// Step 4: Deduplicate words and word-name linkages
+	uniqueWords := deduplicateWords(words)
+	uniqueWordNames := deduplicateWordNameStrings(wordNames)
+
+	// Step 5: Bulk insert words
+	slog.Info("Saving words to database")
+	if err := saveWords(ctx, conn.Conn(), uniqueWords, cfg); err != nil {
+		return err
+	}
+
+	// Step 6: Bulk insert word-name linkages
+	slog.Info("Saving word-name linkages to database")
+	if err := saveWordNameStrings(ctx, conn.Conn(), uniqueWordNames, cfg); err != nil {
+		return err
+	}
+
+	slog.Info("Completed words creation",
+		"totalWords", len(uniqueWords),
+		"totalLinks", len(uniqueWordNames))
+
+	return nil
 }
 
 // truncateWordsTables clears the words and word_name_strings tables.
 // This ensures a clean slate before populating word data.
 //
 // Reference: gnidump truncateTable() in db.go
-//
-//nolint:unused // Will be used in createWords orchestrator (T030)
 func truncateWordsTables(ctx context.Context, conn *pgx.Conn) error {
 	tables := []string{"words", "word_name_strings"}
 
@@ -64,8 +128,6 @@ func truncateWordsTables(ctx context.Context, conn *pgx.Conn) error {
 // Only names with canonical forms are used for word extraction.
 //
 // Reference: gnidump getWordNames() in db.go
-//
-//nolint:unused // Will be used in createWords orchestrator (T030)
 func getNameStringsForWords(ctx context.Context, conn *pgx.Conn) ([]nameForWords, error) {
 	query := `
 		SELECT id, name, canonical_id
@@ -113,8 +175,6 @@ func getNameStringsForWords(ctx context.Context, conn *pgx.Conn) ([]nameForWords
 //   - Create Word and WordNameString records
 //
 // Reference: gnidump processParsedWords() in words.go
-//
-//nolint:unused // Will be used in createWords orchestrator (T030)
 func parseNamesForWords(
 	ctx context.Context,
 	pool parserpool.Pool,
@@ -157,8 +217,6 @@ func parseNamesForWords(
 
 // processBatchConcurrent processes a batch of names concurrently using multiple workers.
 // Each worker parses names and extracts words.
-//
-//nolint:unused // Will be used in createWords orchestrator (T030)
 func processBatchConcurrent(
 	ctx context.Context,
 	pool parserpool.Pool,
@@ -226,8 +284,6 @@ func processBatchConcurrent(
 }
 
 // processChunk processes a chunk of names and extracts words (worker function).
-//
-//nolint:unused // Will be used by processBatchConcurrent (T030)
 func processChunk(pool parserpool.Pool, chunk []nameForWords) ([]schema.Word, []schema.WordNameString) {
 	words := make([]schema.Word, 0, len(chunk)*5)
 	wordNames := make([]schema.WordNameString, 0, len(chunk)*5)
@@ -281,4 +337,158 @@ func processChunk(pool parserpool.Pool, chunk []nameForWords) ([]schema.Word, []
 	}
 
 	return words, wordNames
+}
+
+// deduplicateWords removes duplicate word entries using map-based deduplication.
+// The key is composed of ID|Normalized to ensure uniqueness.
+// This matches the gnidump pattern where words are deduplicated in the wordsMap.
+//
+// Reference: gnidump createWords() wordsMap building
+func deduplicateWords(words []schema.Word) []schema.Word {
+	// Use map with composite key: ID|Normalized (matching gnidump)
+	wordsMap := make(map[string]schema.Word)
+
+	for _, w := range words {
+		key := w.ID + "|" + w.Normalized
+		wordsMap[key] = w
+	}
+
+	// Convert map back to slice
+	uniqueWords := make([]schema.Word, 0, len(wordsMap))
+	for _, w := range wordsMap {
+		uniqueWords = append(uniqueWords, w)
+	}
+
+	slog.Info("Deduplicated words", "original", len(words), "unique", len(uniqueWords))
+	return uniqueWords
+}
+
+// deduplicateWordNameStrings removes duplicate word-name-string linkages.
+// The key is composed of WordID|NameStringID to ensure uniqueness.
+// This matches the gnidump uniqWordNameString pattern.
+//
+// Reference: gnidump uniqWordNameString() in words.go
+func deduplicateWordNameStrings(wordNames []schema.WordNameString) []schema.WordNameString {
+	// Use map with composite key: WordID|NameStringID (matching gnidump)
+	wnsMap := make(map[string]schema.WordNameString)
+
+	for _, wn := range wordNames {
+		key := wn.WordID + "|" + wn.NameStringID
+		wnsMap[key] = wn
+	}
+
+	// Convert map back to slice
+	uniqueWordNames := make([]schema.WordNameString, 0, len(wnsMap))
+	for _, wn := range wnsMap {
+		uniqueWordNames = append(uniqueWordNames, wn)
+	}
+
+	slog.Info("Deduplicated word-name links", "original", len(wordNames), "unique", len(uniqueWordNames))
+	return uniqueWordNames
+}
+
+// saveWords performs bulk insert of words into the database using pgx.CopyFrom.
+// Words are processed in batches according to Config.Database.BatchSize.
+//
+// Reference: gnidump saveWords() in db.go using insertRows()
+func saveWords(ctx context.Context, conn *pgx.Conn, words []schema.Word, cfg *config.Config) error {
+	if len(words) == 0 {
+		slog.Info("No words to save")
+		return nil
+	}
+
+	batchSize := cfg.Database.BatchSize
+	if batchSize == 0 {
+		batchSize = 50000 // Default batch size
+	}
+
+	columns := []string{"id", "normalized", "modified", "type_id"}
+	totalSaved := 0
+
+	for i := 0; i < len(words); i += batchSize {
+		end := i + batchSize
+		if end > len(words) {
+			end = len(words)
+		}
+		batch := words[i:end]
+
+		// Prepare rows for CopyFrom
+		rows := make([][]any, len(batch))
+		for j, w := range batch {
+			rows[j] = []any{w.ID, w.Normalized, w.Modified, w.TypeID}
+		}
+
+		// Bulk insert using CopyFrom
+		copyCount, err := conn.CopyFrom(
+			ctx,
+			pgx.Identifier{"words"},
+			columns,
+			pgx.CopyFromRows(rows),
+		)
+		if err != nil {
+			slog.Error("Failed to save words batch", "error", err, "batch", i/batchSize)
+			return fmt.Errorf("failed to save words batch: %w", err)
+		}
+
+		totalSaved += int(copyCount)
+		if totalSaved%100000 == 0 || end == len(words) {
+			slog.Info("Saved words", "count", totalSaved, "total", len(words))
+		}
+	}
+
+	slog.Info("Completed saving words", "total", totalSaved)
+	return nil
+}
+
+// saveWordNameStrings performs bulk insert of word-name-string linkages using pgx.CopyFrom.
+// Linkages are processed in batches according to Config.Database.BatchSize.
+//
+// Reference: gnidump saveNameWords() in db.go using insertRows()
+func saveWordNameStrings(ctx context.Context, conn *pgx.Conn, wordNames []schema.WordNameString, cfg *config.Config) error {
+	if len(wordNames) == 0 {
+		slog.Info("No word-name linkages to save")
+		return nil
+	}
+
+	batchSize := cfg.Database.BatchSize
+	if batchSize == 0 {
+		batchSize = 50000 // Default batch size
+	}
+
+	columns := []string{"word_id", "name_string_id", "canonical_id"}
+	totalSaved := 0
+
+	for i := 0; i < len(wordNames); i += batchSize {
+		end := i + batchSize
+		if end > len(wordNames) {
+			end = len(wordNames)
+		}
+		batch := wordNames[i:end]
+
+		// Prepare rows for CopyFrom
+		rows := make([][]any, len(batch))
+		for j, wn := range batch {
+			rows[j] = []any{wn.WordID, wn.NameStringID, wn.CanonicalID}
+		}
+
+		// Bulk insert using CopyFrom
+		copyCount, err := conn.CopyFrom(
+			ctx,
+			pgx.Identifier{"word_name_strings"},
+			columns,
+			pgx.CopyFromRows(rows),
+		)
+		if err != nil {
+			slog.Error("Failed to save word-name linkages batch", "error", err, "batch", i/batchSize)
+			return fmt.Errorf("failed to save word-name linkages batch: %w", err)
+		}
+
+		totalSaved += int(copyCount)
+		if totalSaved%100000 == 0 || end == len(wordNames) {
+			slog.Info("Saved word-name linkages", "count", totalSaved, "total", len(wordNames))
+		}
+	}
+
+	slog.Info("Completed saving word-name linkages", "total", totalSaved)
+	return nil
 }

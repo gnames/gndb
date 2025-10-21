@@ -100,7 +100,6 @@ func TestCreateWords_Integration(t *testing.T) {
 	// Create optimizer with cache
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// TEST: Call createWords (this will fail until T023-T030 are implemented)
@@ -223,7 +222,6 @@ func TestCreateWords_Idempotent(t *testing.T) {
 
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// First run
@@ -300,7 +298,6 @@ func TestCreateWords_EmptyCache(t *testing.T) {
 
 	optimizer := &OptimizerImpl{
 		operator: op,
-		cache:    cm,
 	}
 
 	// Call createWords with empty cache

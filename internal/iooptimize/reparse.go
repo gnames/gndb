@@ -182,14 +182,6 @@ func workerReparse(
 			canonicalStemID = gnuuid.New(parsed.Canonical.Stemmed).String()
 		}
 
-		// Store parsed result in cache
-		err = optimizer.cache.StoreParsed(r.nameStringID, &parsed)
-		if err != nil {
-			// Log cache error but continue processing
-			// The parse result will still be saved to database
-			fmt.Fprintf(os.Stderr, "Warning: failed to cache parse result for %s: %v\n", r.nameStringID, err)
-		}
-
 		// Extract year from parsed data (from Authorship.Year string field)
 		var year sql.NullInt16
 		if parsed.Authorship != nil && parsed.Authorship.Year != "" {
