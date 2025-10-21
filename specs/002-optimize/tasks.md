@@ -760,9 +760,10 @@ This task list implements the `gndb optimize` command following the production-t
 
 ## Phase 3.6: Step 5 - Create Verification View (TDD)
 
-### T031 [P]: Write integration test for verification view creation
+### T031 [P]: Write integration test for verification view creation ✅
 **File**: `internal/iooptimize/views_test.go`
 **Description**: Test that verification materialized view is created with correct structure
+**Status**: ✅ COMPLETE
 **Test Scenario**:
 1. Given: Populated database with name_strings and name_string_indices
 2. When: Call createVerificationView(ctx, cfg)
@@ -774,6 +775,24 @@ This task list implements the `gndb optimize` command following the production-t
    - Query verification view returns expected records
 4. Verify test FAILS
 **Reference**: gnidump createVerification() in db_views.go
+
+**Implementation Summary**:
+- Created `internal/iooptimize/views_test.go` with 3 comprehensive integration tests:
+  - `TestCreateVerificationView_Integration`: Main test validating:
+    - View creation and structure (21 columns)
+    - All expected columns present
+    - 3 indexes created (canonical_id, name_string_id, year)
+    - Data filtering logic (surrogates excluded, virus exception, bacteria filter)
+    - Total of 4 valid records from 5 inserted (1 surrogate excluded)
+    - Specific field values (name, year, canonical_id)
+  - `TestCreateVerificationView_Idempotent`: Safe reruns verification
+  - `TestCreateVerificationView_EmptyDatabase`: Edge case handling
+- Created stub `internal/iooptimize/views.go` with `createVerificationView()` function
+- Test properly **FAILS** with "not yet implemented" error ✅ (TDD red phase)
+- Uses `iotesting.GetTestConfig()` and `iodb.NewPgxOperator()` patterns
+- Schema creation with `ioschema.NewManager()`
+- Code compiles successfully ✅
+- Linter passes ✅
 
 ---
 
