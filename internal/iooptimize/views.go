@@ -16,7 +16,7 @@ import (
 //  3. Create indexes on: canonical_id, name_string_id, year
 //
 // Reference: gnidump createVerification() in db_views.go
-func createVerificationView(ctx context.Context, o *OptimizerImpl, cfg *config.Config) error {
+func createVerificationView(ctx context.Context, o *OptimizerImpl, _ *config.Config) error {
 	// Drop existing view
 	err := dropVerificationView(ctx, o)
 	if err != nil {

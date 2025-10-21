@@ -33,7 +33,7 @@ type vern struct {
 //  4. Convert all lang_code to lowercase
 //
 // Reference: gnidump fixVernLang() in db_vern.go
-func fixVernacularLanguages(ctx context.Context, opt *OptimizerImpl, cfg *config.Config) error {
+func fixVernacularLanguages(ctx context.Context, opt *OptimizerImpl, _ *config.Config) error {
 	slog.Info("Moving new language data to language_orig")
 	err := moveLanguageToOrig(ctx, opt)
 	if err != nil {

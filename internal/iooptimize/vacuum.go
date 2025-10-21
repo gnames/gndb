@@ -18,7 +18,7 @@ import (
 // Note: This operation cannot run inside a transaction block.
 //
 // Reference: PostgreSQL documentation on VACUUM and FR-004 requirement
-func vacuumAnalyze(ctx context.Context, opt *OptimizerImpl, cfg *config.Config) error {
+func vacuumAnalyze(ctx context.Context, opt *OptimizerImpl, _ *config.Config) error {
 	slog.Info("Running VACUUM ANALYZE on database...")
 	timeStart := time.Now()
 

@@ -12,7 +12,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/parserpool"
-	"github.com/gnames/gnlib/ent/nomcode"
+	"github.com/gnames/gnparser"
 	"github.com/gnames/gnparser/ent/parsed"
 	"github.com/gnames/gnuuid"
 	"golang.org/x/sync/errgroup"
@@ -25,7 +25,8 @@ type reparsed struct {
 	name                                          string
 	canonicalID, canonicalFullID, canonicalStemID sql.NullString
 	canonical, canonicalFull, canonicalStem       string
-	bacteria, surrogate, virus                    sql.NullBool
+	bacteria                                      bool
+	surrogate, virus                              sql.NullBool
 	parseQuality                                  int
 	cardinality                                   sql.NullInt32
 	year                                          sql.NullInt16
@@ -108,11 +109,11 @@ FROM name_strings
 // Reference: gnidump workerReparse() in db_reparse.go
 func workerReparse(
 	ctx context.Context,
-	optimizer *OptimizerImpl,
-	parserPool parserpool.Pool,
 	chIn <-chan reparsed,
 	chOut chan<- reparsed,
 ) error {
+	prsCfg := gnparser.NewConfig()
+	prs := gnparser.New(prsCfg)
 	// Process each name from the input channel
 	for r := range chIn {
 		select {
@@ -124,13 +125,7 @@ func workerReparse(
 		default:
 		}
 
-		// Parse the name using parser pool
-		// Use Botanical code by default (most scientific names)
-		parsed, err := parserPool.Parse(r.name, nomcode.Botanical)
-		if err != nil {
-			// Log parse error but continue processing
-			continue
-		}
+		parsed := prs.ParseName(r.name)
 
 		// Skip if both old and new parse quality are 0 AND it's not a virus
 		// Virus names need to be processed even if unparsed to set the virus flag
@@ -150,12 +145,13 @@ func workerReparse(
 				canonical:       "",
 				canonicalFull:   "",
 				canonicalStem:   "",
-				bacteria:        sql.NullBool{Bool: false, Valid: true},
-				virus:           sql.NullBool{Bool: parsed.Virus, Valid: true}, // Virus flag can be set even if not parsed
-				surrogate:       sql.NullBool{Bool: false, Valid: true},
-				parseQuality:    parsed.ParseQuality,
-				cardinality:     sql.NullInt32{},
-				year:            sql.NullInt16{},
+				bacteria:        false,
+				// Virus flag can be set even if not parsed
+				virus:        sql.NullBool{Bool: parsed.Virus, Valid: true},
+				surrogate:    sql.NullBool{},
+				parseQuality: parsed.ParseQuality,
+				cardinality:  sql.NullInt32{},
+				year:         sql.NullInt16{},
 			}
 			chOut <- updated
 			continue
@@ -216,7 +212,7 @@ func workerReparse(
 			canonical:       parsed.Canonical.Simple,
 			canonicalFull:   parsed.Canonical.Full,
 			canonicalStem:   parsed.Canonical.Stemmed,
-			bacteria:        sql.NullBool{Bool: bacteriaBool, Valid: true},
+			bacteria:        bacteriaBool,
 			virus:           sql.NullBool{Bool: parsed.Virus, Valid: true},
 			surrogate:       sql.NullBool{Bool: parsed.Surrogate != nil, Valid: true},
 			parseQuality:    parsed.ParseQuality,
@@ -235,30 +231,17 @@ func parsedIsSame(r reparsed, parsed parsed.Parsed, canonicalID string) bool {
 	if r.canonicalID.String != canonicalID {
 		return false
 	}
-
-	// Compare surrogate (parsed.Surrogate != nil means it's a surrogate)
-	newSurrogate := parsed.Surrogate != nil
-	if r.surrogate.Valid && r.surrogate.Bool != newSurrogate {
-		return false
-	}
-	if !r.surrogate.Valid && newSurrogate {
+	// if parsed as Surrogate, but it is not Surrogate in database
+	isNewSurrogate := parsed.Surrogate != nil
+	if (isNewSurrogate != r.surrogate.Bool) || (isNewSurrogate && !r.surrogate.Valid) {
 		return false
 	}
 
-	// Compare bacteria
-	newBacteria := parsed.Bacteria != nil && parsed.Bacteria.Bool()
-	if r.bacteria.Valid && r.bacteria.Bool != newBacteria {
-		return false
-	}
-	if !r.bacteria.Valid && newBacteria {
+	if r.bacteria != (parsed.Bacteria != nil && parsed.Bacteria.Bool()) {
 		return false
 	}
 
-	// Compare virus
-	if r.virus.Valid && r.virus.Bool != parsed.Virus {
-		return false
-	}
-	if !r.virus.Valid && parsed.Virus {
+	if (parsed.Virus != r.virus.Bool) || (parsed.Virus && !r.virus.Valid) {
 		return false
 	}
 
@@ -334,7 +317,9 @@ func updateNameString(ctx context.Context, optimizer *OptimizerImpl, r reparsed)
 		return NewReparseTransactionError(err)
 	}
 	defer func() {
-		_ = tx.Rollback(ctx) // Rollback in case of any error; ignore error as commit handles success
+		_ = tx.Rollback(
+			ctx,
+		) // Rollback in case of any error; ignore error as commit handles success
 	}()
 
 	// Update name_strings table with new canonical IDs, flags, year, and cardinality
@@ -437,7 +422,7 @@ func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Con
 		wg.Add(1)
 		g.Go(func() error {
 			defer wg.Done()
-			return workerReparse(ctx, optimizer, parserPool, chIn, chOut)
+			return workerReparse(ctx, chIn, chOut)
 		})
 	}
 

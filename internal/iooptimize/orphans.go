@@ -17,7 +17,7 @@ import (
 //  4. canonical_stems not referenced by name_strings
 //
 // Reference: gnidump removeOrphans() in db_views.go
-func removeOrphans(ctx context.Context, o *OptimizerImpl, cfg *config.Config) error {
+func removeOrphans(ctx context.Context, o *OptimizerImpl, _ *config.Config) error {
 	var err error
 
 	// Step 1: Remove orphan name_strings

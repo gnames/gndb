@@ -44,6 +44,7 @@ func (o *OptimizerImpl) Optimize(ctx context.Context, cfg *config.Config) error 
 
 	slog.Info("Starting database optimization workflow")
 
+	fmt.Println("STEP1")
 	// Step 1: Reparse all name_strings with latest gnparser algorithms
 	slog.Info("Step 1/6: Reparsing name strings")
 	if err := reparseNames(ctx, o, cfg); err != nil {
@@ -51,6 +52,7 @@ func (o *OptimizerImpl) Optimize(ctx context.Context, cfg *config.Config) error 
 	}
 	slog.Info("Step 1/6: Complete - Name strings reparsed")
 
+	fmt.Println("STEP2")
 	// Step 2: Normalize vernacular language codes
 	slog.Info("Step 2/6: Normalizing vernacular languages")
 	if err := fixVernacularLanguages(ctx, o, cfg); err != nil {
@@ -58,6 +60,7 @@ func (o *OptimizerImpl) Optimize(ctx context.Context, cfg *config.Config) error 
 	}
 	slog.Info("Step 2/6: Complete - Vernacular languages normalized")
 
+	fmt.Println("STEP3")
 	// Step 3: Remove orphaned records
 	slog.Info("Step 3/6: Removing orphaned records")
 	if err := removeOrphans(ctx, o, cfg); err != nil {

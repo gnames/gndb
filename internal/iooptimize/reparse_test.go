@@ -450,7 +450,7 @@ func TestLoadNamesForReparse_ContextCancellation(t *testing.T) {
 	require.NoError(t, err)
 
 	// Insert many names to ensure cancellation happens mid-stream
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		name := fmt.Sprintf("Species name %d", i)
 		id := gnuuid.New(name).String()
 		query := `
@@ -517,22 +517,13 @@ func TestWorkerReparse_Unit(t *testing.T) {
 	require.NoError(t, err)
 	defer op.Close()
 
-	// Create optimizer with cache
-	optimizer := &OptimizerImpl{
-		operator: op,
-	}
-
-	// Create parser pool
-	pool := parserpool.NewPool(2)
-	defer pool.Close()
-
 	// Create channels
 	chIn := make(chan reparsed, 10)
 	chOut := make(chan reparsed, 10)
 
 	// Launch worker in goroutine
 	go func() {
-		err := workerReparse(ctx, optimizer, pool, chIn, chOut)
+		err := workerReparse(ctx, chIn, chOut)
 		assert.NoError(t, err, "workerReparse should succeed")
 		close(chOut)
 	}()
@@ -543,19 +534,11 @@ func TestWorkerReparse_Unit(t *testing.T) {
 			nameStringID: gnuuid.New("Homo sapiens").String(),
 			name:         "Homo sapiens",
 			canonicalID:  sql.NullString{}, // Empty - needs parsing
-			bacteria:     sql.NullBool{Bool: false, Valid: true},
-			virus:        sql.NullBool{Bool: false, Valid: true},
-			surrogate:    sql.NullBool{Bool: false, Valid: true},
-			parseQuality: 0,
 		},
 		{
 			nameStringID: gnuuid.New("Mus musculus Linnaeus 1758").String(),
 			name:         "Mus musculus Linnaeus 1758",
 			canonicalID:  sql.NullString{},
-			bacteria:     sql.NullBool{Bool: false, Valid: true},
-			virus:        sql.NullBool{Bool: false, Valid: true},
-			surrogate:    sql.NullBool{Bool: false, Valid: true},
-			parseQuality: 0,
 		},
 	}
 
@@ -597,10 +580,6 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 	require.NoError(t, err)
 	defer op.Close()
 
-	optimizer := &OptimizerImpl{
-		operator: op,
-	}
-
 	pool := parserpool.NewPool(1)
 	defer pool.Close()
 
@@ -614,14 +593,14 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 	// Launch worker
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- workerReparse(cancelCtx, optimizer, pool, chIn, chOut)
+		errCh <- workerReparse(cancelCtx, chIn, chOut)
 		close(chOut)
 	}()
 
 	// Send names and cancel after a few
 	go func() {
 		defer close(chIn)
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			select {
 			case <-cancelCtx.Done():
 				return
@@ -631,10 +610,6 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 					nameStringID: gnuuid.New(name).String(),
 					name:         name,
 					canonicalID:  sql.NullString{},
-					bacteria:     sql.NullBool{Bool: false, Valid: true},
-					virus:        sql.NullBool{Bool: false, Valid: true},
-					surrogate:    sql.NullBool{Bool: false, Valid: true},
-					parseQuality: 0,
 				}
 			}
 		}
@@ -706,9 +681,6 @@ func TestUpdateNameString_Unit(t *testing.T) {
 		canonical:       "Homo sapiens",
 		canonicalFull:   "",
 		canonicalStem:   "Hom sapien",
-		bacteria:        sql.NullBool{Bool: false, Valid: true},
-		virus:           sql.NullBool{Bool: false, Valid: true},
-		surrogate:       sql.NullBool{Bool: false, Valid: true},
 		parseQuality:    1,
 	}
 
@@ -808,9 +780,6 @@ func TestSaveReparsedNames_Unit(t *testing.T) {
 			name:         td.name,
 			canonicalID:  sql.NullString{String: canonicalID, Valid: true},
 			canonical:    td.name,
-			bacteria:     sql.NullBool{Bool: false, Valid: true},
-			virus:        sql.NullBool{Bool: false, Valid: true},
-			surrogate:    sql.NullBool{Bool: false, Valid: true},
 			parseQuality: 1,
 		}
 	}
@@ -852,10 +821,6 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 	require.NoError(t, err)
 	defer op.Close()
 
-	optimizer := &OptimizerImpl{
-		operator: op,
-	}
-
 	pool := parserpool.NewPool(1)
 	defer pool.Close()
 
@@ -863,7 +828,7 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 	chOut := make(chan reparsed, 10)
 
 	go func() {
-		err := workerReparse(ctx, optimizer, pool, chIn, chOut)
+		err := workerReparse(ctx, chIn, chOut)
 		assert.NoError(t, err)
 		close(chOut)
 	}()
@@ -874,9 +839,6 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 		nameStringID: gnuuid.New("Homo sapiens").String(),
 		name:         "Homo sapiens",
 		canonicalID:  sql.NullString{String: correctCanonicalID, Valid: true},
-		bacteria:     sql.NullBool{Bool: false, Valid: true},
-		virus:        sql.NullBool{Bool: false, Valid: true},
-		surrogate:    sql.NullBool{Bool: false, Valid: true},
 		parseQuality: 1,
 	}
 	close(chIn)
