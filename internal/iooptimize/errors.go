@@ -254,3 +254,225 @@ func NewOrphanRemovalError(table string, cause error) error {
 		MessageBase: userBase,
 	}
 }
+
+// OptimizeStepError is returned when an optimization step fails.
+// Each step has a specific error type for better diagnostics.
+
+// Step1Error is returned when Step 1 (reparse names) fails.
+type Step1Error struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewStep1Error creates an error for Step 1 failure.
+func NewStep1Error(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Step 1 Failed: Reparse Names</title>
+<warning>Failed to reparse name_strings with latest gnparser algorithms.</warning>
+
+<em>This step updates all scientific names with the latest parsing logic.</em>
+
+<em>Possible causes:</em>
+  1. Database connection lost during processing
+  2. Insufficient disk space for updates
+  3. gnparser parsing errors
+  4. Transaction conflicts or deadlocks
+
+<em>How to fix:</em>
+  1. Check database connection: <em>pg_isready</em>
+  2. Check disk space: <em>df -h</em>
+  3. Review PostgreSQL logs for errors
+  4. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return Step1Error{
+		error:       fmt.Errorf("step 1 failed (reparse names): %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// Step2Error is returned when Step 2 (fix vernacular languages) fails.
+type Step2Error struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewStep2Error creates an error for Step 2 failure.
+func NewStep2Error(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Step 2 Failed: Normalize Vernacular Languages</title>
+<warning>Failed to normalize vernacular language codes.</warning>
+
+<em>This step converts language codes to standard 3-letter ISO codes.</em>
+
+<em>Possible causes:</em>
+  1. Database connection lost during processing
+  2. Insufficient disk space for updates
+  3. Invalid language codes in data
+  4. Transaction conflicts or deadlocks
+
+<em>How to fix:</em>
+  1. Check database connection: <em>pg_isready</em>
+  2. Check disk space: <em>df -h</em>
+  3. Review PostgreSQL logs for errors
+  4. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return Step2Error{
+		error:       fmt.Errorf("step 2 failed (fix vernacular languages): %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// Step3Error is returned when Step 3 (remove orphans) fails.
+type Step3Error struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewStep3Error creates an error for Step 3 failure.
+func NewStep3Error(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Step 3 Failed: Remove Orphaned Records</title>
+<warning>Failed to remove orphaned records from database.</warning>
+
+<em>This step cleans up unreferenced name_strings and canonical forms.</em>
+
+<em>Possible causes:</em>
+  1. Database connection lost during processing
+  2. Foreign key constraint violations
+  3. Insufficient permissions
+  4. Deadlocks during deletion
+
+<em>How to fix:</em>
+  1. Check database connection: <em>pg_isready</em>
+  2. Review PostgreSQL logs for constraint violations
+  3. Check database permissions
+  4. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return Step3Error{
+		error:       fmt.Errorf("step 3 failed (remove orphans): %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// Step4Error is returned when Step 4 (create words) fails.
+type Step4Error struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewStep4Error creates an error for Step 4 failure.
+func NewStep4Error(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Step 4 Failed: Create Words Tables</title>
+<warning>Failed to extract and link words for fuzzy matching.</warning>
+
+<em>This step creates the words and word_name_strings tables for search.</em>
+
+<em>Possible causes:</em>
+  1. Database connection lost during processing
+  2. Insufficient disk space for word tables
+  3. Memory exhaustion during word extraction
+  4. Bulk insert failures
+
+<em>How to fix:</em>
+  1. Check database connection: <em>pg_isready</em>
+  2. Check disk space: <em>df -h</em>
+  3. Check available memory: <em>free -h</em>
+  4. Review PostgreSQL logs for errors
+  5. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return Step4Error{
+		error:       fmt.Errorf("step 4 failed (create words): %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// Step5Error is returned when Step 5 (create verification view) fails.
+type Step5Error struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewStep5Error creates an error for Step 5 failure.
+func NewStep5Error(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Step 5 Failed: Create Verification View</title>
+<warning>Failed to create verification materialized view.</warning>
+
+<em>This step creates the verification view and indexes for gnverifier.</em>
+
+<em>Possible causes:</em>
+  1. Database connection lost during processing
+  2. Insufficient disk space for materialized view
+  3. Missing required tables (name_strings, name_string_indices)
+  4. Index creation failures
+
+<em>How to fix:</em>
+  1. Check database connection: <em>pg_isready</em>
+  2. Check disk space: <em>df -h</em>
+  3. Verify required tables exist
+  4. Review PostgreSQL logs for errors
+  5. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return Step5Error{
+		error:       fmt.Errorf("step 5 failed (create verification view): %w", cause),
+		MessageBase: userBase,
+	}
+}
+
+// Step6Error is returned when Step 6 (vacuum analyze) fails.
+type Step6Error struct {
+	error
+	gnlib.MessageBase
+}
+
+// NewStep6Error creates an error for Step 6 failure.
+func NewStep6Error(cause error) error {
+	userBase := gnlib.NewMessage(
+		`<title>Step 6 Failed: VACUUM ANALYZE</title>
+<warning>Failed to run VACUUM ANALYZE on database.</warning>
+
+<em>This step reclaims storage and updates query planner statistics.</em>
+
+<em>Possible causes:</em>
+  1. Database connection lost during VACUUM
+  2. Insufficient disk space for temporary files
+  3. Long-running transactions blocking VACUUM
+  4. PostgreSQL configuration issues
+
+<em>How to fix:</em>
+  1. Check database connection: <em>pg_isready</em>
+  2. Check disk space: <em>df -h</em>
+  3. Check for long-running transactions: <em>SELECT * FROM pg_stat_activity</em>
+  4. Review PostgreSQL logs for errors
+  5. Retry the optimize operation
+
+<em>Technical details:</em> %v`,
+		[]any{cause},
+	)
+
+	return Step6Error{
+		error:       fmt.Errorf("step 6 failed (vacuum analyze): %w", cause),
+		MessageBase: userBase,
+	}
+}

@@ -4,8 +4,10 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/lmittmann/tint"
 )
 
 // New creates a new slog.Logger based on the provided configuration.
@@ -24,11 +26,19 @@ func New(cfg *config.LoggingConfig) *slog.Logger {
 	switch strings.ToLower(cfg.Format) {
 	case "json":
 		handler = slog.NewJSONHandler(os.Stderr, opts)
-	case "text", "": // Default to text if empty or invalid
+	case "text":
 		handler = slog.NewTextHandler(os.Stderr, opts)
+	case "tint", "": // Default to tint if empty or invalid
+		handler = tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      level,
+			TimeFormat: time.Kitchen, // "3:04PM" - compact time format
+		})
 	default:
-		// Invalid format, default to text
-		handler = slog.NewTextHandler(os.Stderr, opts)
+		// Invalid format, default to tint
+		handler = tint.NewHandler(os.Stderr, &tint.Options{
+			Level:      level,
+			TimeFormat: time.Kitchen,
+		})
 	}
 
 	return slog.New(handler)

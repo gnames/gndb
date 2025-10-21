@@ -206,8 +206,8 @@ func TestNew_InvalidFormatDefaultsToText(t *testing.T) {
 	assert.Nil(t, err)
 	output := buf.String()
 
-	// Should be text format, not JSON
-	assert.Contains(t, output, "level=INFO")
+	// Should be tint format (colored), not JSON
+	assert.Contains(t, output, "INF")
 	assert.Contains(t, output, "test message")
 
 	// Should NOT be valid JSON
@@ -239,8 +239,8 @@ func TestNew_EmptyFormatDefaultsToText(t *testing.T) {
 	assert.Nil(t, err)
 	output := buf.String()
 
-	// Should be text format
-	assert.Contains(t, output, "level=INFO")
+	// Should be tint format (colored)
+	assert.Contains(t, output, "INF")
 	assert.Contains(t, output, "test message")
 }
 
