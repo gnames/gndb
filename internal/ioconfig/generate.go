@@ -13,7 +13,13 @@ import (
 
 // GetConfigDir returns the configuration directory for GNdb.
 // Uses ~/.config/gndb/ on all platforms (Linux, macOS, Windows) for consistency.
+// Can be overridden with GNDB_CONFIG_DIR environment variable (primarily for testing).
 func GetConfigDir() (string, error) {
+	// Check for test override first (prevents tests from using production config)
+	if testConfigDir := os.Getenv("GNDB_CONFIG_DIR"); testConfigDir != "" {
+		return testConfigDir, nil
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)
@@ -25,7 +31,13 @@ func GetConfigDir() (string, error) {
 
 // GetCacheDir returns the cache directory for GNdb.
 // Uses ~/.cache/gndb/ on all platforms (Linux, macOS, Windows) for consistency.
+// Can be overridden with GNDB_CACHE_DIR environment variable (primarily for testing).
 func GetCacheDir() (string, error) {
+	// Check for test override first (prevents tests from using production cache)
+	if testCacheDir := os.Getenv("GNDB_CACHE_DIR"); testCacheDir != "" {
+		return testCacheDir, nil
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)

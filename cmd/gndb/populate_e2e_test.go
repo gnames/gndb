@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/gnames/gndb/internal/ioconfig"
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/internal/ioschema"
@@ -57,34 +55,10 @@ func TestPopulateCommand_E2E(t *testing.T) {
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err, "Schema creation should succeed")
 
-	// Setup test sources.yaml
-	// The populate command loads sources.yaml from GetConfigDir()/sources.yaml
-	// We need to temporarily replace it with our test version
-	configDir, err := ioconfig.GetConfigDir()
-	require.NoError(t, err, "Should get config directory")
+	// Setup temporary config directory (prevents touching production config)
+	tempConfigDir := iotesting.SetupTempConfigDir(t)
 
-	sourcesYAMLPath := filepath.Join(configDir, "sources.yaml")
-	backupPath := sourcesYAMLPath + ".e2e_backup"
-
-	// Backup existing sources.yaml if it exists
-	originalExists := false
-	if _, err := os.Stat(sourcesYAMLPath); err == nil {
-		originalExists = true
-		err = os.Rename(sourcesYAMLPath, backupPath)
-		require.NoError(t, err, "Should backup original sources.yaml")
-	}
-
-	// Restore original sources.yaml after test
-	defer func() {
-		if originalExists {
-			_ = os.Remove(sourcesYAMLPath) // Remove test version
-			_ = os.Rename(backupPath, sourcesYAMLPath)
-		} else {
-			_ = os.Remove(sourcesYAMLPath) // Clean up test version
-		}
-	}()
-
-	// Create test sources.yaml
+	// Create test sources.yaml in temp directory
 	// Use absolute path to testdata
 	testdataPath, err := filepath.Abs("../../testdata")
 	require.NoError(t, err, "Should get testdata path")
@@ -97,8 +71,7 @@ func TestPopulateCommand_E2E(t *testing.T) {
     home_url: "https://doi.org/10.5479/si.00810282.294"
     is_auto_curated: true
 `
-	err = os.WriteFile(sourcesYAMLPath, []byte(testSourcesYAML), 0644)
-	require.NoError(t, err, "Should write test sources.yaml")
+	iotesting.WriteTempSourcesYAML(t, tempConfigDir, testSourcesYAML)
 
 	// Configure to process only source ID 1000
 	cfg.Populate.SourceIDs = []int{1000}
@@ -263,34 +236,13 @@ func TestPopulateCommand_E2E_NoSources(t *testing.T) {
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err)
 
-	// Setup empty sources.yaml
-	configDir, err := ioconfig.GetConfigDir()
-	require.NoError(t, err)
+	// Setup temporary config directory (prevents touching production config)
+	tempConfigDir := iotesting.SetupTempConfigDir(t)
 
-	sourcesYAMLPath := filepath.Join(configDir, "sources.yaml")
-	backupPath := sourcesYAMLPath + ".e2e_backup2"
-
-	// Backup existing
-	originalExists := false
-	if _, err := os.Stat(sourcesYAMLPath); err == nil {
-		originalExists = true
-		err = os.Rename(sourcesYAMLPath, backupPath)
-		require.NoError(t, err)
-	}
-	defer func() {
-		if originalExists {
-			_ = os.Remove(sourcesYAMLPath)
-			_ = os.Rename(backupPath, sourcesYAMLPath)
-		} else {
-			_ = os.Remove(sourcesYAMLPath)
-		}
-	}()
-
-	// Create empty sources.yaml
+	// Create empty sources.yaml in temp directory
 	emptySourcesYAML := `data_sources: []
 `
-	err = os.WriteFile(sourcesYAMLPath, []byte(emptySourcesYAML), 0644)
-	require.NoError(t, err)
+	iotesting.WriteTempSourcesYAML(t, tempConfigDir, emptySourcesYAML)
 
 	// Create populator
 	populator := iopopulate.NewPopulator(op)
@@ -335,27 +287,8 @@ func TestPopulateCommand_E2E_FilteredSource(t *testing.T) {
 	err = sm.Create(ctx, cfg)
 	require.NoError(t, err)
 
-	// Setup sources.yaml with multiple sources
-	configDir, err := ioconfig.GetConfigDir()
-	require.NoError(t, err)
-
-	sourcesYAMLPath := filepath.Join(configDir, "sources.yaml")
-	backupPath := sourcesYAMLPath + ".e2e_backup3"
-
-	originalExists := false
-	if _, err := os.Stat(sourcesYAMLPath); err == nil {
-		originalExists = true
-		err = os.Rename(sourcesYAMLPath, backupPath)
-		require.NoError(t, err)
-	}
-	defer func() {
-		if originalExists {
-			_ = os.Remove(sourcesYAMLPath)
-			_ = os.Rename(backupPath, sourcesYAMLPath)
-		} else {
-			_ = os.Remove(sourcesYAMLPath)
-		}
-	}()
+	// Setup temporary config directory (prevents touching production config)
+	tempConfigDir := iotesting.SetupTempConfigDir(t)
 
 	testdataPath, err := filepath.Abs("../../testdata")
 	require.NoError(t, err)
@@ -368,8 +301,7 @@ func TestPopulateCommand_E2E_FilteredSource(t *testing.T) {
     parent: ` + testdataPath + `
     title_short: "Nonexistent Source"
 `
-	err = os.WriteFile(sourcesYAMLPath, []byte(multiSourceYAML), 0644)
-	require.NoError(t, err)
+	iotesting.WriteTempSourcesYAML(t, tempConfigDir, multiSourceYAML)
 
 	// Filter to only source 1000 (which exists)
 	cfg.Populate.SourceIDs = []int{1000}

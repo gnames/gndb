@@ -118,16 +118,31 @@ func TestPrepareCacheDir(t *testing.T) {
 
 func TestPrepareCacheDir_IntegrationWithGetCacheDir(t *testing.T) {
 	// This test verifies that prepareCacheDir correctly uses config.GetCacheDir()
+	// Uses temp directory to avoid touching production cache
+
+	// Setup temp cache directory
+	tempCacheDir, err := os.MkdirTemp("", "gndb-cache-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempCacheDir)
+
+	// Override GNDB_CACHE_DIR for this test
+	originalCacheDir := os.Getenv("GNDB_CACHE_DIR")
+	err = os.Setenv("GNDB_CACHE_DIR", tempCacheDir)
+	require.NoError(t, err)
+	defer func() {
+		if originalCacheDir != "" {
+			os.Setenv("GNDB_CACHE_DIR", originalCacheDir)
+		} else {
+			os.Unsetenv("GNDB_CACHE_DIR")
+		}
+	}()
 
 	cacheDir, err := prepareCacheDir()
 	require.NoError(t, err)
 
-	// Verify the path structure
-	homeDir, err := os.UserHomeDir()
-	require.NoError(t, err)
-
-	expectedBase := filepath.Join(homeDir, ".cache", "gndb", "sfga")
-	assert.Equal(t, expectedBase, cacheDir, "cache directory should be ~/.cache/gndb/sfga")
+	// Verify the path structure (should be under temp dir now)
+	expectedBase := filepath.Join(tempCacheDir, "sfga")
+	assert.Equal(t, expectedBase, cacheDir, "cache directory should be under temp directory")
 
 	// Clean up
 	require.NoError(t, clearCache(cacheDir))

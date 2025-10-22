@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
@@ -59,7 +58,8 @@ FROM name_strings
 	defer rows.Close()
 
 	var count int
-	timeStart := time.Now().UnixNano()
+	pb := NewProgressBar("Loading names")
+	defer pb.Clear()
 
 	for rows.Next() {
 		count++
@@ -81,13 +81,9 @@ FROM name_strings
 			chIn <- res
 		}
 
-		// Progress tracking: log every 100,000 names
+		// Progress tracking: update every 100,000 names
 		if count%100_000 == 0 {
-			timeSpent := float64(time.Now().UnixNano()-timeStart) / 1_000_000_000
-			speed := int64(float64(count) / timeSpent)
-			fmt.Fprintf(os.Stderr, "\r%s", strings.Repeat(" ", 40))
-			fmt.Fprintf(os.Stderr, "\rLoaded %s names, %s names/sec",
-				humanize.Comma(int64(count)), humanize.Comma(speed))
+			pb.UpdateCount(count)
 		}
 	}
 
@@ -96,8 +92,6 @@ FROM name_strings
 		return NewReparseIterationError(err)
 	}
 
-	// Clear progress line
-	fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 40))
 	return nil
 }
 
@@ -279,7 +273,8 @@ func saveBatchedNames(
 
 	batch := make([]reparsed, 0, batchSize)
 	var totalCount int
-	timeStart := time.Now().UnixNano()
+	pb := NewProgressBar("Batching changed names")
+	defer pb.Clear()
 
 	// flushBatch inserts the current batch into the temp table
 	flushBatch := func() error {
@@ -295,12 +290,8 @@ func saveBatchedNames(
 		totalCount += len(batch)
 		batch = batch[:0] // Reset batch slice
 
-		// Progress tracking: log after each batch
-		timeSpent := float64(time.Now().UnixNano()-timeStart) / 1_000_000_000
-		speed := int64(float64(totalCount) / timeSpent)
-		fmt.Fprintf(os.Stderr, "\r%s", strings.Repeat(" ", 40))
-		fmt.Fprintf(os.Stderr, "\rBatched %s names, %s names/sec",
-			humanize.Comma(int64(totalCount)), humanize.Comma(speed))
+		// Progress tracking: update after each batch
+		pb.UpdateCount(totalCount)
 
 		return nil
 	}
@@ -313,11 +304,7 @@ func saveBatchedNames(
 		case r, ok := <-chOut:
 			if !ok {
 				// Channel closed, flush remaining batch
-				if err := flushBatch(); err != nil {
-					return err
-				}
-				fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 40))
-				return nil
+				return flushBatch()
 			}
 
 			// Add to batch
@@ -428,19 +415,19 @@ func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Con
 	}
 
 	// Stage 4: Execute batch operations on temp table
-	fmt.Fprintf(os.Stderr, "Executing batch UPDATE on name_strings...\n")
+	Info("Executing batch UPDATE on name_strings")
 	rowsUpdated, err := batchUpdateNameStrings(ctx, pool)
 	if err != nil {
 		return fmt.Errorf("failed to batch update name_strings: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "Updated %s name_strings\n", humanize.Comma(rowsUpdated))
+	Info(fmt.Sprintf("Updated %s name_strings", humanize.Comma(rowsUpdated)))
 
-	fmt.Fprintf(os.Stderr, "Inserting unique canonicals...\n")
+	Info("Inserting unique canonicals")
 	err = batchInsertCanonicals(ctx, pool)
 	if err != nil {
 		return fmt.Errorf("failed to batch insert canonicals: %w", err)
 	}
-	fmt.Fprintf(os.Stderr, "Canonical forms inserted successfully\n")
+	Info("Canonical forms inserted successfully")
 
 	return nil
 }
