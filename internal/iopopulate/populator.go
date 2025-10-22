@@ -162,7 +162,12 @@ func (p *PopulatorImpl) processSource(
 	source populate.DataSourceConfig,
 	cacheDir string,
 ) error {
-	// Phase 0: Fetch SFGA (T037)
+	// Phase 0: Clear cache and fetch SFGA (T037)
+	// Clear cache before each source to avoid "too many database files" error
+	if err := clearCache(cacheDir); err != nil {
+		return fmt.Errorf("failed to clear cache: %w", err)
+	}
+
 	slog.Info("Fetching SFGA", "source_id", source.ID)
 	sqlitePath, sfgaMetadata, warning, err := fetchSFGA(ctx, source, cacheDir)
 	if err != nil {

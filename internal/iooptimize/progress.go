@@ -2,27 +2,12 @@ package iooptimize
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
 )
-
-// Progress provides dual-output logging: STDOUT (user) + slog/STDERR (developer).
-
-// Info logs to both STDOUT and slog.
-func Info(msg string, args ...any) {
-	fmt.Println(msg)
-	slog.Info(msg, args...)
-}
-
-// Complete logs step completion.
-func Complete(msg string, args ...any) {
-	fmt.Println(msg)
-	slog.Info(msg, args...)
-}
 
 // ProgressBar for STDERR progress updates.
 type ProgressBar struct {

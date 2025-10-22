@@ -3,13 +3,16 @@ package iooptimize
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"os"
+	"log/slog"
 	"strings"
 	"sync"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gnlib"
 	"github.com/gnames/gnparser"
 	"github.com/gnames/gnparser/ent/parsed"
 	"github.com/gnames/gnuuid"
@@ -45,6 +48,14 @@ func loadNamesForReparse(
 		return fmt.Errorf("database pool is nil")
 	}
 
+	// Count total name_strings for progress bar
+	var totalCount int
+	countQuery := `SELECT COUNT(*) FROM name_strings`
+	err := pool.QueryRow(ctx, countQuery).Scan(&totalCount)
+	if err != nil {
+		return NewReparseQueryError(err)
+	}
+
 	q := `
 SELECT
 	id, name, canonical_id, canonical_full_id, canonical_stem_id, bacteria,
@@ -58,8 +69,13 @@ FROM name_strings
 	defer rows.Close()
 
 	var count int
-	pb := NewProgressBar("Loading names")
-	defer pb.Clear()
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Processing names: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
+	// Update progress bar in batches to reduce overhead
+	const updateInterval = 10000 // Update every 10k names
 
 	for rows.Next() {
 		count++
@@ -81,10 +97,16 @@ FROM name_strings
 			chIn <- res
 		}
 
-		// Progress tracking: update every 100,000 names
-		if count%100_000 == 0 {
-			pb.UpdateCount(count)
+		// Update progress bar every updateInterval items
+		if count%updateInterval == 0 {
+			bar.Add(updateInterval)
 		}
+	}
+
+	// Add any remaining items to reach the total
+	remainder := count % updateInterval
+	if remainder > 0 {
+		bar.Add(remainder)
 	}
 
 	// Check for errors from iteration
@@ -259,7 +281,6 @@ func newNullStr(s string) sql.NullString {
 
 // saveBatchedNames receives ONLY changed names from workers and batches them
 // for bulk insertion into the temporary table using bulkInsertToTempTable().
-// This replaces the old saveReparsedNames() row-by-row approach.
 func saveBatchedNames(
 	ctx context.Context,
 	optimizer *OptimizerImpl,
@@ -273,8 +294,6 @@ func saveBatchedNames(
 
 	batch := make([]reparsed, 0, batchSize)
 	var totalCount int
-	pb := NewProgressBar("Batching changed names")
-	defer pb.Clear()
 
 	// flushBatch inserts the current batch into the temp table
 	flushBatch := func() error {
@@ -289,9 +308,6 @@ func saveBatchedNames(
 
 		totalCount += len(batch)
 		batch = batch[:0] // Reset batch slice
-
-		// Progress tracking: update after each batch
-		pb.UpdateCount(totalCount)
 
 		return nil
 	}
@@ -320,11 +336,6 @@ func saveBatchedNames(
 	}
 }
 
-// NOTE: updateNameString() has been removed and replaced by batch operations:
-// - batchUpdateNameStrings() - Single UPDATE for all changed names
-// - batchInsertCanonicals() - Batch INSERT for unique canonicals
-// These functions are implemented in reparse_batch.go (T029-T032)
-
 // reparseNames orchestrates the name reparsing workflow using filter-then-batch strategy.
 // It coordinates four pipeline stages using concurrent goroutines:
 // 1. loadNamesForReparse - reads all name_strings from database
@@ -340,7 +351,7 @@ func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Con
 	}
 
 	// Step 1: Create temporary table for batch operations
-	fmt.Fprintf(os.Stderr, "Creating temporary table for batch processing...\n")
+	slog.Debug("Creating temporary table for name processing")
 	err := createReparseTempTable(ctx, pool)
 	if err != nil {
 		return fmt.Errorf("failed to create temp table: %w", err)
@@ -370,19 +381,11 @@ func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Con
 
 	// Stage 2: Launch N concurrent workers to parse names
 	// Workers filter via parsedIsSame() and send ONLY changed names to chOut
-	// Use Config.JobsNumber for worker count (gnidump uses hardcoded 50)
-	workerCount := cfg.JobsNumber
-	if workerCount <= 0 {
-		workerCount = 1 // Minimum 1 worker
-	}
-
-	// Note: No parser pool needed - each worker creates its own parser instance
-	// which is lightweight (~2ms initialization) and reused for the worker's lifetime.
-	// This is simpler and avoids pool synchronization overhead.
+	workerCount := 50
 
 	// Use WaitGroup to track when all workers complete
 	var wg sync.WaitGroup
-	for i := 0; i < workerCount; i++ {
+	for range workerCount {
 		wg.Add(1)
 		g.Go(func() error {
 			defer wg.Done()
@@ -410,24 +413,28 @@ func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Con
 
 	// Wait for all goroutines to complete (loading, parsing, batching)
 	// If any goroutine returns an error, context is cancelled and all others stop
-	if err := g.Wait(); err != nil {
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return err
 	}
 
 	// Stage 4: Execute batch operations on temp table
-	Info("Executing batch UPDATE on name_strings")
+	slog.Debug("Executing batch UPDATE on name_strings")
 	rowsUpdated, err := batchUpdateNameStrings(ctx, pool)
 	if err != nil {
 		return fmt.Errorf("failed to batch update name_strings: %w", err)
 	}
-	Info(fmt.Sprintf("Updated %s name_strings", humanize.Comma(rowsUpdated)))
+	msg := "<em>Parsing was identical to the previous one</em>"
+	if rowsUpdated > 0 {
+		msg = fmt.Sprintf("<em>Updated %s name_strings</em>", humanize.Comma(rowsUpdated))
+	}
+	fmt.Println(gnlib.FormatMessage(msg, nil))
 
-	Info("Inserting unique canonicals")
+	slog.Debug("Inserting unique canonicals")
 	err = batchInsertCanonicals(ctx, pool)
 	if err != nil {
 		return fmt.Errorf("failed to batch insert canonicals: %w", err)
 	}
-	Info("Canonical forms inserted successfully")
+	slog.Debug("Canonical forms inserted successfully")
 
 	return nil
 }

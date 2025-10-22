@@ -254,6 +254,7 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 					},
 					"taxon": {
 						"col__id",
+						"col__name_id",
 						"col__alternative_id",
 						"gn__local_id",
 						"gn__global_id",

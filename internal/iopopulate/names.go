@@ -5,10 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"slices"
 	"strings"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gnuuid"
 )
@@ -29,7 +29,7 @@ import (
 //   - User aborts when gn__scientific_name_string is empty
 //   - Database insert fails
 func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, sourceID int) error {
-	slog.Info("Phase 1: Processing name strings", "source_id", sourceID)
+	slog.Debug("Phase 1: Processing name strings", "source_id", sourceID)
 
 	// Query SFGA name table
 	// gn__scientific_name_string is preferred (includes authorship)
@@ -111,6 +111,12 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 	const batchSize = 30000
 	totalInserted := 0
 
+	// Create progress bar for processing names
+	bar := pb.Full.Start(len(names))
+	bar.Set("prefix", "Processing names: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
 	// Process names in batches
 	for i := 0; i < len(names); i += batchSize {
 		// Check context cancellation
@@ -162,16 +168,11 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 		rowsAffected := result.RowsAffected()
 		totalInserted += int(rowsAffected)
 
-		// Progress logging to stderr (clear line and rewrite)
-		// Using \r to overwrite the same line for a progress indicator
-		if (i + batchSize) < len(names) {
-			fmt.Fprintf(os.Stderr, "\rProcessed %s name strings...",
-				humanize.Comma(int64(i+batchSize)))
-		}
+		// Update progress bar
+		bar.Add(len(batch))
 	}
 
 	// Final log with total count
-	fmt.Fprintln(os.Stderr) // Newline after progress
 	slog.Info("Phase 1 complete: Name strings imported",
 		"inserted", totalInserted,
 		"total_records", len(names),

@@ -208,8 +208,6 @@ func BenchmarkReparseScaling(b *testing.B) {
 			insertTestNames(b, ctx, op, size)
 			optimizer := &OptimizerImpl{operator: op}
 
-			b.N = 1
-
 			b.ReportAllocs()
 			b.StartTimer()
 

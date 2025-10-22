@@ -52,7 +52,7 @@ func removeOrphans(ctx context.Context, o *OptimizerImpl, _ *config.Config) erro
 //
 // Reference: gnidump removeOrphans() in db_views.go
 func removeOrphanNameStrings(ctx context.Context, o *OptimizerImpl) error {
-	slog.Info("Removing orphan name-strings")
+	slog.Debug("Removing orphan name-strings")
 
 	query := `DELETE FROM name_strings
   WHERE id IN (
@@ -65,12 +65,11 @@ func removeOrphanNameStrings(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		slog.Error("Cannot remove orphan name-strings", "error", err)
 		return NewOrphanRemovalError("name_strings", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
-	slog.Info("Removed orphan name-strings", "count", deletedCount)
+	slog.Debug("Removed orphan name-strings", "count", deletedCount)
 
 	return nil
 }
@@ -80,7 +79,7 @@ func removeOrphanNameStrings(ctx context.Context, o *OptimizerImpl) error {
 //
 // Reference: gnidump removeOrphans() in db_views.go
 func removeOrphanCanonicals(ctx context.Context, o *OptimizerImpl) error {
-	slog.Info("Removing orphan canonicals")
+	slog.Debug("Removing orphan canonicals")
 
 	query := `DELETE FROM canonicals
   WHERE id IN (
@@ -93,12 +92,11 @@ func removeOrphanCanonicals(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		slog.Error("Cannot remove orphan canonicals", "error", err)
 		return NewOrphanRemovalError("canonicals", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
-	slog.Info("Removed orphan canonicals", "count", deletedCount)
+	slog.Debug("Removed orphan canonicals", "count", deletedCount)
 
 	return nil
 }
@@ -108,7 +106,7 @@ func removeOrphanCanonicals(ctx context.Context, o *OptimizerImpl) error {
 //
 // Reference: gnidump removeOrphans() in db_views.go
 func removeOrphanCanonicalFulls(ctx context.Context, o *OptimizerImpl) error {
-	slog.Info("Removing orphan canonical_fulls")
+	slog.Debug("Removing orphan canonical_fulls")
 
 	query := `DELETE FROM canonical_fulls
   WHERE id IN (
@@ -121,12 +119,11 @@ func removeOrphanCanonicalFulls(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		slog.Error("Cannot remove orphan canonical_fulls", "error", err)
 		return NewOrphanRemovalError("canonical_fulls", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
-	slog.Info("Removed orphan canonical_fulls", "count", deletedCount)
+	slog.Debug("Removed orphan canonical_fulls", "count", deletedCount)
 
 	return nil
 }
@@ -136,7 +133,7 @@ func removeOrphanCanonicalFulls(ctx context.Context, o *OptimizerImpl) error {
 //
 // Reference: gnidump removeOrphans() in db_views.go
 func removeOrphanCanonicalStems(ctx context.Context, o *OptimizerImpl) error {
-	slog.Info("Removing orphan canonical_stems")
+	slog.Debug("Removing orphan canonical_stems")
 
 	query := `DELETE FROM canonical_stems
     WHERE id IN (
@@ -149,12 +146,11 @@ func removeOrphanCanonicalStems(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		slog.Error("Cannot remove orphan canonical_stems", "error", err)
 		return NewOrphanRemovalError("canonical_stems", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
-	slog.Info("Removed orphan canonical_stems", "count", deletedCount)
+	slog.Debug("Removed orphan canonical_stems", "count", deletedCount)
 
 	return nil
 }

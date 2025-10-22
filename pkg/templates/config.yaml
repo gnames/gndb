@@ -44,5 +44,5 @@
 # Uncomment the "logging:" line and the settings you want to override:
 # logging:
 #   level: info  # Log level: debug, info, warn, error
-#   format: text  # Log format: text, json
+#   format: tint  # Log format: tint (pretty colored), text, json
 #   show_progress: true  # Show progress bars (default: true)

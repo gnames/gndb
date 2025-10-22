@@ -31,13 +31,13 @@ func New(cfg *config.LoggingConfig) *slog.Logger {
 	case "tint", "": // Default to tint if empty or invalid
 		handler = tint.NewHandler(os.Stderr, &tint.Options{
 			Level:      level,
-			TimeFormat: time.Kitchen, // "3:04PM" - compact time format
+			TimeFormat: time.TimeOnly, // "3:04PM" - compact time format
 		})
 	default:
 		// Invalid format, default to tint
 		handler = tint.NewHandler(os.Stderr, &tint.Options{
 			Level:      level,
-			TimeFormat: time.Kitchen,
+			TimeFormat: time.TimeOnly,
 		})
 	}
 

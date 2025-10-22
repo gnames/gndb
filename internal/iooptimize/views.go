@@ -24,11 +24,10 @@ func createVerificationView(ctx context.Context, o *OptimizerImpl, _ *config.Con
 	}
 
 	// Create materialized view
-	slog.Info("Building verification view, it will take some time...")
+	slog.Debug("Building verification view, it will take some time...")
 	viewSQL := buildVerificationViewSQL()
 	_, err = o.operator.Pool().Exec(ctx, viewSQL)
 	if err != nil {
-		slog.Error("Cannot run verification create", "error", err)
 		return err
 	}
 
@@ -38,7 +37,7 @@ func createVerificationView(ctx context.Context, o *OptimizerImpl, _ *config.Con
 		return err
 	}
 
-	slog.Info("View verification is created")
+	slog.Debug("View verification is created")
 	return nil
 }
 
@@ -48,7 +47,6 @@ func createVerificationView(ctx context.Context, o *OptimizerImpl, _ *config.Con
 func dropVerificationView(ctx context.Context, o *OptimizerImpl) error {
 	_, err := o.operator.Pool().Exec(ctx, "DROP MATERIALIZED VIEW IF EXISTS verification")
 	if err != nil {
-		slog.Error("Cannot drop verification view", "error", err)
 		return err
 	}
 	return nil
@@ -93,26 +91,23 @@ SELECT nsi.data_source_id, nsi.record_id, nsi.name_string_id,
 //
 // Reference: gnidump createVerification() in db_views.go
 func createVerificationIndexes(ctx context.Context, o *OptimizerImpl) error {
-	slog.Info("Building indices for verification view, it will take some time...")
+	slog.Debug("Building indices for verification view, it will take some time...")
 
 	// Index 1: canonical_id
 	_, err := o.operator.Pool().Exec(ctx, "CREATE INDEX ON verification (canonical_id)")
 	if err != nil {
-		slog.Error("Cannot create verification index", "error", err)
 		return err
 	}
 
 	// Index 2: name_string_id
 	_, err = o.operator.Pool().Exec(ctx, "CREATE INDEX ON verification (name_string_id)")
 	if err != nil {
-		slog.Error("Cannot create verification index2", "error", err)
 		return err
 	}
 
 	// Index 3: year
 	_, err = o.operator.Pool().Exec(ctx, "CREATE INDEX ON verification (year)")
 	if err != nil {
-		slog.Error("Cannot create verification index3", "error", err)
 		return err
 	}
 

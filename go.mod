@@ -3,9 +3,10 @@ module github.com/gnames/gndb
 go 1.25.1
 
 require (
+	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gnames/gnfmt v0.6.3
-	github.com/gnames/gnlib v0.58.0
+	github.com/gnames/gnlib v0.59.0
 	github.com/gnames/gnparser v1.11.8
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0
@@ -24,7 +25,6 @@ require (
 
 require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
-	github.com/cheggaaa/pb/v3 v3.1.7 // indirect
 	github.com/clipperhouse/uax29/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect

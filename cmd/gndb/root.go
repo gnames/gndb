@@ -29,9 +29,6 @@ func getRootCmd() *cobra.Command {
 				_, _ = ioconfig.GenerateDefaultConfig()
 			} else {
 				// Config files already exist - inform the user
-				configPath, _ := ioconfig.GetDefaultConfigPath()
-				sourcesPath, _ := ioconfig.GetDefaultSourcesPath()
-				slog.Info("Using existing config files", "config", configPath, "sources", sourcesPath)
 			}
 		}
 	}
@@ -64,16 +61,19 @@ For more information, see the project's README file.`,
 
 			// Initialize logger with config
 			lg = logger.New(&cfg.Logging)
+			slog.SetDefault(lg)
 
 			// Display config source using logger
+			var source string
 			switch result.Source {
 			case "file":
-				lg.Info("config loaded", "source", "file", "path", result.SourcePath)
+				source = result.SourcePath
 			case "defaults+env":
-				lg.Info("config loaded", "source", "defaults with environment overrides")
+				source = "defaults with environment overrides"
 			case "defaults":
-				lg.Info("config loaded", "source", "built-in defaults")
+				source = "built-in defaults"
 			}
+			lg.Info("Config loaded", "source", source)
 
 			return nil
 		},

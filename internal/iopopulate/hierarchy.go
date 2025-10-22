@@ -208,7 +208,6 @@ func loadNameUsage(ctx context.Context, sfgaDB *sql.DB, chIn chan<- nameUsage) e
 
 	rows, err := sfgaDB.Query(query)
 	if err != nil {
-		slog.Error("Cannot run SFGA hierarchy query", "error", err)
 		return err
 	}
 	defer rows.Close()
@@ -229,7 +228,6 @@ func loadNameUsage(ctx context.Context, sfgaDB *sql.DB, chIn chan<- nameUsage) e
 			&nu.rank,
 		)
 		if err != nil {
-			slog.Error("Cannot read hierarchy row", "error", err)
 			return err
 		}
 

@@ -31,7 +31,7 @@ func TestDefaults(t *testing.T) {
 
 	// Test logging defaults
 	assert.Equal(t, "info", cfg.Logging.Level)
-	assert.Equal(t, "text", cfg.Logging.Format)
+	assert.Equal(t, "tint", cfg.Logging.Format)
 
 	// Test JobsNumber default is set to number of CPUs (> 0)
 	assert.Greater(t, cfg.JobsNumber, 0, "JobsNumber should default to number of CPUs")
@@ -65,7 +65,7 @@ func TestValidate_InvalidValues(t *testing.T) {
 					Format: "invalid",
 				},
 			},
-			errMsg: "logging.format must be 'json' or 'text'",
+			errMsg: "logging.format must be 'tint', 'json' or 'text'",
 		},
 		{
 			name: "invalid logging level",
@@ -245,13 +245,18 @@ func TestMergeWithDefaults(t *testing.T) {
 			if originalFormat != "" {
 				assert.Equal(t, originalFormat, tt.config.Logging.Format)
 			} else {
-				assert.Equal(t, "text", tt.config.Logging.Format)
+				assert.Equal(t, "tint", tt.config.Logging.Format)
 			}
 
 			// Check JobsNumber
 			if tt.checkJobsNumber {
 				if originalJobsNumber != 0 {
-					assert.Equal(t, tt.expectedJobsNumber, tt.config.JobsNumber, "Custom JobsNumber should be preserved")
+					assert.Equal(
+						t,
+						tt.expectedJobsNumber,
+						tt.config.JobsNumber,
+						"Custom JobsNumber should be preserved",
+					)
 				} else {
 					assert.Greater(t, tt.config.JobsNumber, 0, "JobsNumber should be set to runtime.NumCPU() when 0")
 				}

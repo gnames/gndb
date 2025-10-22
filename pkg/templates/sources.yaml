@@ -23,7 +23,7 @@
 #       - "taxon.col__name_id"    : Name identifier in taxon context
 #       - "taxon.col__local_id"   : Local/source-specific identifier
 #       - "name.col__id"          : Name record identifier
-#       - "name.col__name_id"     : Nomenclatural name identifier
+#       - "taxon.col__name_id"     : Nomenclatural name identifier
 #       - "name.col__local_id"    : Local name identifier
 #       - "synonym.col__id"       : Synonym identifier
 #
@@ -51,7 +51,7 @@
 #
 #   Common Patterns:
 #     - Taxonomic databases (CoL, ITIS, WoRMS): "taxon.col__id"
-#     - Nomenclatural databases (IPNI, MycoBank): "name.col__name_id"
+#     - Nomenclatural databases (IPNI, MycoBank): "taxon.col__name_id"
 #     - Complex transformations: "taxon.col__alternative_id" or "name.col__alternative_id"
 
 # ============================================================================
@@ -138,7 +138,7 @@ data_sources:
     is_auto_curated: true
     is_outlink_ready: true
     outlink_url: "https://eol.org/pages/{}"
-    outlink_id_column: "name.col__name_id" # Uses name ID (available for all record types including bare names)
+    outlink_id_column: "taxon.col__name_id" # Uses name ID (available for all record types including bare names)
 
   # VASCAN
   - id: 147
@@ -251,7 +251,7 @@ data_sources:
 # Template for Custom Data Sources
 # ============================================================================
 # Copy and customize this template for your own data sources (ID >= 1000):
-#
+#a
 # - id: 1000
 #   parent: "~/data/"  # Local directory or http://... URL
 #   title: "Full Title"
@@ -265,4 +265,4 @@ data_sources:
 #   has_classification: false
 #   is_outlink_ready: false
 #   outlink_url: "https://example.org/{}"
-#   outlink_id_column: "taxon.col__id"  # Use "taxon.col__id" for taxonomic or "name.col__name_id" for nomenclatural
+#   outlink_id_column: "taxon.col__id"  # Use "taxon.col__id" for taxonomic or "taxon.col__name_id" for nomenclatural

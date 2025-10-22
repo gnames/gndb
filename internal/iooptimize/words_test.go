@@ -7,8 +7,6 @@ import (
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/ioschema"
 	"github.com/gnames/gndb/internal/iotesting"
-	"github.com/gnames/gnparser"
-	"github.com/gnames/gnparser/ent/parsed"
 	"github.com/gnames/gnuuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -289,17 +287,19 @@ func TestCreateWords_EmptyCache(t *testing.T) {
 	_ = op.DropAllTables(ctx)
 }
 
+// TODO: delete if not used
+//
 // parseNameForTest is a helper function to parse a name for testing purposes.
 // This simulates what Step 1 (reparse) would store in the cache.
-func parseNameForTest(t *testing.T, name string) *parsed.Parsed {
-	t.Helper()
-
-	cfg := gnparser.NewConfig()
-	gnp := gnparser.New(cfg)
-	parsed := gnp.ParseName(name)
-
-	return &parsed
-}
+// func parseNameForTest(t *testing.T, name string) *parsed.Parsed {
+// 	t.Helper()
+//
+// 	cfg := gnparser.NewConfig()
+// 	gnp := gnparser.New(cfg)
+// 	parsed := gnp.ParseName(name)
+//
+// 	return &parsed
+// }
 
 // TestGetNameStringsForWords_Unit tests the getNameStringsForWords function.
 // This test verifies:

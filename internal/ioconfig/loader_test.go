@@ -46,7 +46,7 @@ optimization:
   concurrent_indexes: false
 logging:
   level: info
-  format: text
+  format: tint 
 `
 
 	testCases := []struct {

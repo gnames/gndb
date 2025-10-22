@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/parserpool"
 	"github.com/gnames/gndb/pkg/schema"
@@ -35,7 +36,7 @@ type nameForWords struct {
 //
 // Reference: gnidump createWords() in words.go
 func createWords(ctx context.Context, o *OptimizerImpl, cfg *config.Config) error {
-	slog.Info("Creating words for words tables")
+	slog.Debug("Creating words for words tables")
 
 	// Get database connection
 	pool := o.operator.Pool()
@@ -45,7 +46,6 @@ func createWords(ctx context.Context, o *OptimizerImpl, cfg *config.Config) erro
 
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
-		slog.Error("Failed to acquire database connection", "error", err)
 		return fmt.Errorf("failed to acquire connection: %w", err)
 	}
 	defer conn.Release()
@@ -75,7 +75,7 @@ func createWords(ctx context.Context, o *OptimizerImpl, cfg *config.Config) erro
 	defer parserPool.Close()
 
 	// Parse names and extract words using parserpool
-	slog.Info("Parsing names and extracting words", "totalNames", len(names))
+	slog.Debug("Parsing names and extracting words", "totalNames", len(names))
 	words, wordNames, err := parseNamesForWords(ctx, parserPool, names, cfg)
 	if err != nil {
 		return err
@@ -86,18 +86,18 @@ func createWords(ctx context.Context, o *OptimizerImpl, cfg *config.Config) erro
 	uniqueWordNames := deduplicateWordNameStrings(wordNames)
 
 	// Step 5: Bulk insert words
-	slog.Info("Saving words to database")
+	slog.Debug("Saving words to database")
 	if err := saveWords(ctx, conn.Conn(), uniqueWords, cfg); err != nil {
 		return err
 	}
 
 	// Step 6: Bulk insert word-name linkages
-	slog.Info("Saving word-name linkages to database")
+	slog.Debug("Saving word-name linkages to database")
 	if err := saveWordNameStrings(ctx, conn.Conn(), uniqueWordNames, cfg); err != nil {
 		return err
 	}
 
-	slog.Info("Completed words creation",
+	slog.Debug("Completed words creation",
 		"totalWords", len(uniqueWords),
 		"totalLinks", len(uniqueWordNames))
 
@@ -115,10 +115,9 @@ func truncateWordsTables(ctx context.Context, conn *pgx.Conn) error {
 		sql := fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table)
 		_, err := conn.Exec(ctx, sql)
 		if err != nil {
-			slog.Error("Cannot truncate table", "table", table, "error", err)
 			return fmt.Errorf("failed to truncate table %s: %w", table, err)
 		}
-		slog.Info("Truncated table", "table", table)
+		slog.Debug("Truncated table", "table", table)
 	}
 
 	return nil
@@ -129,6 +128,18 @@ func truncateWordsTables(ctx context.Context, conn *pgx.Conn) error {
 //
 // Reference: gnidump getWordNames() in db.go
 func getNameStringsForWords(ctx context.Context, conn *pgx.Conn) ([]nameForWords, error) {
+	// First, count total names for progress tracking
+	var totalCount int
+	countQuery := `
+		SELECT COUNT(*)
+		FROM name_strings
+		WHERE canonical_id IS NOT NULL
+	`
+	err := conn.QueryRow(ctx, countQuery).Scan(&totalCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count name_strings: %w", err)
+	}
+
 	query := `
 		SELECT id, name, canonical_id
 		FROM name_strings
@@ -137,7 +148,6 @@ func getNameStringsForWords(ctx context.Context, conn *pgx.Conn) ([]nameForWords
 
 	rows, err := conn.Query(ctx, query)
 	if err != nil {
-		slog.Error("Cannot query name_strings for word extraction", "error", err)
 		return nil, fmt.Errorf("failed to query name_strings: %w", err)
 	}
 	defer rows.Close()
@@ -146,18 +156,16 @@ func getNameStringsForWords(ctx context.Context, conn *pgx.Conn) ([]nameForWords
 	for rows.Next() {
 		var n nameForWords
 		if err := rows.Scan(&n.ID, &n.Name, &n.CanonicalID); err != nil {
-			slog.Error("Cannot scan name_string row", "error", err)
 			return nil, fmt.Errorf("failed to scan name_string: %w", err)
 		}
 		names = append(names, n)
 	}
 
 	if err := rows.Err(); err != nil {
-		slog.Error("Error iterating name_string rows", "error", err)
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
-	slog.Info("Loaded name_strings for word extraction", "count", len(names))
+	slog.Debug("Loaded name_strings for word extraction", "count", len(names))
 	return names, nil
 }
 
@@ -190,11 +198,14 @@ func parseNamesForWords(
 		batchSize = 10000 // Default batch size
 	}
 
+	// Create progress bar with known total
+	bar := pb.Full.Start(len(names))
+	bar.Set("prefix", "Processing names for words: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
 	for i := 0; i < len(names); i += batchSize {
-		end := i + batchSize
-		if end > len(names) {
-			end = len(names)
-		}
+		end := min(i+batchSize, len(names))
 		batch := names[i:end]
 
 		// Process batch concurrently using errgroup
@@ -206,12 +217,17 @@ func parseNamesForWords(
 		words = append(words, batchWords...)
 		wordNames = append(wordNames, batchWordNames...)
 
-		if (i+batchSize)%100000 == 0 {
-			slog.Info("Parsed names for words", "count", i+batchSize)
-		}
+		// Update progress bar
+		bar.Add(len(batch))
 	}
 
-	slog.Info("Completed parsing names for words", "totalWords", len(words), "totalLinks", len(wordNames))
+	slog.Debug(
+		"Completed parsing names for words",
+		"totalWords",
+		len(words),
+		"totalLinks",
+		len(wordNames),
+	)
 	return words, wordNames, nil
 }
 
@@ -284,7 +300,10 @@ func processBatchConcurrent(
 }
 
 // processChunk processes a chunk of names and extracts words (worker function).
-func processChunk(pool parserpool.Pool, chunk []nameForWords) ([]schema.Word, []schema.WordNameString) {
+func processChunk(
+	pool parserpool.Pool,
+	chunk []nameForWords,
+) ([]schema.Word, []schema.WordNameString) {
 	words := make([]schema.Word, 0, len(chunk)*5)
 	wordNames := make([]schema.WordNameString, 0, len(chunk)*5)
 
@@ -359,7 +378,7 @@ func deduplicateWords(words []schema.Word) []schema.Word {
 		uniqueWords = append(uniqueWords, w)
 	}
 
-	slog.Info("Deduplicated words", "original", len(words), "unique", len(uniqueWords))
+	slog.Debug("Deduplicated words", "original", len(words), "unique", len(uniqueWords))
 	return uniqueWords
 }
 
@@ -383,7 +402,13 @@ func deduplicateWordNameStrings(wordNames []schema.WordNameString) []schema.Word
 		uniqueWordNames = append(uniqueWordNames, wn)
 	}
 
-	slog.Info("Deduplicated word-name links", "original", len(wordNames), "unique", len(uniqueWordNames))
+	slog.Debug(
+		"Deduplicated word-name links",
+		"original",
+		len(wordNames),
+		"unique",
+		len(uniqueWordNames),
+	)
 	return uniqueWordNames
 }
 
@@ -405,11 +430,15 @@ func saveWords(ctx context.Context, conn *pgx.Conn, words []schema.Word, cfg *co
 	columns := []string{"id", "normalized", "modified", "type_id"}
 	totalSaved := 0
 
+	// Create progress bar for saving words
+	bar := pb.Full.Start(len(words))
+	bar.Set("prefix", "Saving words: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
 	for i := 0; i < len(words); i += batchSize {
-		end := i + batchSize
-		if end > len(words) {
-			end = len(words)
-		}
+
+		end := min(i+batchSize, len(words))
 		batch := words[i:end]
 
 		// Prepare rows for CopyFrom
@@ -426,17 +455,16 @@ func saveWords(ctx context.Context, conn *pgx.Conn, words []schema.Word, cfg *co
 			pgx.CopyFromRows(rows),
 		)
 		if err != nil {
-			slog.Error("Failed to save words batch", "error", err, "batch", i/batchSize)
 			return fmt.Errorf("failed to save words batch: %w", err)
 		}
 
 		totalSaved += int(copyCount)
-		if totalSaved%100000 == 0 || end == len(words) {
-			slog.Info("Saved words", "count", totalSaved, "total", len(words))
-		}
+
+		// Update progress bar
+		bar.Add(len(batch))
 	}
 
-	slog.Info("Completed saving words", "total", totalSaved)
+	slog.Debug("Completed saving words", "total", totalSaved)
 	return nil
 }
 
@@ -444,7 +472,12 @@ func saveWords(ctx context.Context, conn *pgx.Conn, words []schema.Word, cfg *co
 // Linkages are processed in batches according to Config.Database.BatchSize.
 //
 // Reference: gnidump saveNameWords() in db.go using insertRows()
-func saveWordNameStrings(ctx context.Context, conn *pgx.Conn, wordNames []schema.WordNameString, cfg *config.Config) error {
+func saveWordNameStrings(
+	ctx context.Context,
+	conn *pgx.Conn,
+	wordNames []schema.WordNameString,
+	cfg *config.Config,
+) error {
 	if len(wordNames) == 0 {
 		slog.Info("No word-name linkages to save")
 		return nil
@@ -458,11 +491,14 @@ func saveWordNameStrings(ctx context.Context, conn *pgx.Conn, wordNames []schema
 	columns := []string{"word_id", "name_string_id", "canonical_id"}
 	totalSaved := 0
 
+	// Create progress bar for saving word-name linkages
+	bar := pb.Full.Start(len(wordNames))
+	bar.Set("prefix", "Saving word-name linkages: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
 	for i := 0; i < len(wordNames); i += batchSize {
-		end := i + batchSize
-		if end > len(wordNames) {
-			end = len(wordNames)
-		}
+		end := min(i+batchSize, len(wordNames))
 		batch := wordNames[i:end]
 
 		// Prepare rows for CopyFrom
@@ -479,16 +515,15 @@ func saveWordNameStrings(ctx context.Context, conn *pgx.Conn, wordNames []schema
 			pgx.CopyFromRows(rows),
 		)
 		if err != nil {
-			slog.Error("Failed to save word-name linkages batch", "error", err, "batch", i/batchSize)
 			return fmt.Errorf("failed to save word-name linkages batch: %w", err)
 		}
 
 		totalSaved += int(copyCount)
-		if totalSaved%100000 == 0 || end == len(wordNames) {
-			slog.Info("Saved word-name linkages", "count", totalSaved, "total", len(wordNames))
-		}
+
+		// Update progress bar
+		bar.Add(len(batch))
 	}
 
-	slog.Info("Completed saving word-name linkages", "total", totalSaved)
+	slog.Debug("Completed saving word-name linkages", "total", totalSaved)
 	return nil
 }

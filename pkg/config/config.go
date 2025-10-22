@@ -226,14 +226,16 @@ func (c *Config) Validate() error {
 	}
 
 	// Validate logging format if set
-	if c.Logging.Format != "" && c.Logging.Format != "json" && c.Logging.Format != "text" {
-		return fmt.Errorf("logging.format must be 'json' or 'text'")
+	if c.Logging.Format != "" && c.Logging.Format != "json" && c.Logging.Format != "text" &&
+		c.Logging.Format != "tint" {
+		return fmt.Errorf("logging.format must be 'tint', 'json' or 'text'")
 	}
 
 	// Validate logging level if set (case-insensitive)
 	if c.Logging.Level != "" {
 		level := strings.ToLower(c.Logging.Level)
-		if level != "debug" && level != "info" && level != "warn" && level != "warning" && level != "error" {
+		if level != "debug" && level != "info" && level != "warn" && level != "warning" &&
+			level != "error" {
 			return fmt.Errorf("logging.level must be 'debug', 'info', 'warn', or 'error'")
 		}
 	}
@@ -330,7 +332,7 @@ func Defaults() *Config {
 		},
 		Logging: LoggingConfig{
 			Level:  "info",
-			Format: "text",
+			Format: "tint",
 		},
 		JobsNumber: runtime.NumCPU(), // Default to number of CPU threads
 	}

@@ -13,9 +13,9 @@ type ReparseQueryError struct {
 }
 
 // NewReparseQueryError creates a new reparse query error.
-func NewReparseQueryError(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Cannot Load Names for Reparsing</title>
+func NewReparseQueryError(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Cannot Load Names for Reparsing</title>
 <warning>Failed to query name_strings table for reparsing.</warning>
 
 <em>How to fix:</em>
@@ -23,14 +23,13 @@ func NewReparseQueryError(cause error) error {
   2. Check that name_strings table exists: <em>psql -d gndb_test -c "\d name_strings"</em>
   3. Ensure the database was populated: <em>gndb populate</em>
   4. Check PostgreSQL logs for query errors
-
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return ReparseQueryError{
-		error:       fmt.Errorf("failed to query name_strings for reparsing: %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to query name_strings for reparsing: %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -41,9 +40,9 @@ type ReparseScanError struct {
 }
 
 // NewReparseScanError creates a new reparse scan error.
-func NewReparseScanError(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Cannot Read Name String Data</title>
+func NewReparseScanError(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Cannot Read Name String Data</title>
 <warning>Failed to read name_strings row data during reparsing.</warning>
 
 <em>Possible causes:</em>
@@ -55,13 +54,13 @@ func NewReparseScanError(cause error) error {
   1. Recreate the database schema: <em>gndb create --drop</em>
   2. Repopulate the database: <em>gndb populate</em>
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return ReparseScanError{
-		error:       fmt.Errorf("failed to scan name_strings row: %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to scan name_strings row: %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -72,9 +71,9 @@ type ReparseIterationError struct {
 }
 
 // NewReparseIterationError creates a new reparse iteration error.
-func NewReparseIterationError(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Error Reading Name Strings</title>
+func NewReparseIterationError(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Error Reading Name Strings</title>
 <warning>Failed while iterating through name_strings table.</warning>
 
 <em>Possible causes:</em>
@@ -87,13 +86,13 @@ func NewReparseIterationError(cause error) error {
   2. Review PostgreSQL logs for errors
   3. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return ReparseIterationError{
-		error:       fmt.Errorf("error iterating name_strings: %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("error iterating name_strings: %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -104,9 +103,9 @@ type ReparseTransactionError struct {
 }
 
 // NewReparseTransactionError creates a new reparse transaction error.
-func NewReparseTransactionError(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Cannot Start Database Transaction</title>
+func NewReparseTransactionError(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Cannot Start Database Transaction</title>
 <warning>Failed to begin transaction for updating name_strings.</warning>
 
 <em>Possible causes:</em>
@@ -120,13 +119,13 @@ func NewReparseTransactionError(cause error) error {
   3. Check database server resource usage (CPU, memory)
   4. Review PostgreSQL logs for errors
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return ReparseTransactionError{
-		error:       fmt.Errorf("failed to begin transaction: %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to begin transaction: %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -137,9 +136,9 @@ type ReparseUpdateError struct {
 }
 
 // NewReparseUpdateError creates a new reparse update error.
-func NewReparseUpdateError(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Cannot Update Name String</title>
+func NewReparseUpdateError(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Cannot Update Name String</title>
 <warning>Failed to update name_strings table with reparsed data.</warning>
 
 <em>Possible causes:</em>
@@ -151,14 +150,13 @@ func NewReparseUpdateError(cause error) error {
   1. Check disk space: <em>df -h</em>
   2. Review PostgreSQL logs for constraint violations
   3. Retry the optimize operation
-
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: []any{err},
+	}
 
 	return ReparseUpdateError{
-		error:       fmt.Errorf("failed to update name_strings: %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to update name_strings: %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -169,9 +167,9 @@ type ReparseInsertError struct {
 }
 
 // NewReparseInsertError creates a new reparse insert error.
-func NewReparseInsertError(table string, cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Cannot Insert Canonical Form</title>
+func NewReparseInsertError(table string, err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Cannot Insert Canonical Form</title>
 <warning>Failed to insert record into <em>%s</em> table.</warning>
 
 <em>Possible causes:</em>
@@ -184,13 +182,13 @@ func NewReparseInsertError(table string, cause error) error {
   2. Verify table exists: <em>psql -d gndb_test -c "\d %s"</em>
   3. Recreate schema if needed: <em>gndb create --drop</em>
 
-<em>Technical details:</em> %v`,
-		[]any{table, table, cause},
-	)
+`,
+		Vars: []any{table, table},
+	}
 
 	return ReparseInsertError{
-		error:       fmt.Errorf("failed to insert into %s: %w", table, cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to insert into %s: %w", table, err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -201,9 +199,9 @@ type OrphanRemovalError struct {
 }
 
 // NewOrphanRemovalError creates a new orphan removal error.
-func NewOrphanRemovalError(table string, cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Cannot Remove Orphan Records</title>
+func NewOrphanRemovalError(table string, err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Cannot Remove Orphan Records</title>
 <warning>Failed to delete orphan records from <em>%s</em> table.</warning>
 
 <em>Possible causes:</em>
@@ -218,13 +216,13 @@ func NewOrphanRemovalError(table string, cause error) error {
   3. Review PostgreSQL logs for errors
   4. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{table, table, cause},
-	)
+`,
+		Vars: []any{table, table},
+	}
 
 	return OrphanRemovalError{
-		error:       fmt.Errorf("failed to remove orphans from %s: %w", table, cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to remove orphans from %s: %w", table, err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -238,9 +236,9 @@ type Step1Error struct {
 }
 
 // NewStep1Error creates an error for Step 1 failure.
-func NewStep1Error(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Step 1 Failed: Reparse Names</title>
+func NewStep1Error(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Step 1 Failed: Reparse Names</title>
 <warning>Failed to reparse name_strings with latest gnparser algorithms.</warning>
 
 <em>This step updates all scientific names with the latest parsing logic.</em>
@@ -257,13 +255,13 @@ func NewStep1Error(cause error) error {
   3. Review PostgreSQL logs for errors
   4. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return Step1Error{
-		error:       fmt.Errorf("step 1 failed (reparse names): %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("step 1 failed (reparse names): %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -274,9 +272,9 @@ type Step2Error struct {
 }
 
 // NewStep2Error creates an error for Step 2 failure.
-func NewStep2Error(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Step 2 Failed: Normalize Vernacular Languages</title>
+func NewStep2Error(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Step 2 Failed: Normalize Vernacular Languages</title>
 <warning>Failed to normalize vernacular language codes.</warning>
 
 <em>This step converts language codes to standard 3-letter ISO codes.</em>
@@ -293,13 +291,13 @@ func NewStep2Error(cause error) error {
   3. Review PostgreSQL logs for errors
   4. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return Step2Error{
-		error:       fmt.Errorf("step 2 failed (fix vernacular languages): %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("step 2 failed (fix vernacular languages): %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -310,9 +308,9 @@ type Step3Error struct {
 }
 
 // NewStep3Error creates an error for Step 3 failure.
-func NewStep3Error(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Step 3 Failed: Remove Orphaned Records</title>
+func NewStep3Error(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Step 3 Failed: Remove Orphaned Records</title>
 <warning>Failed to remove orphaned records from database.</warning>
 
 <em>This step cleans up unreferenced name_strings and canonical forms.</em>
@@ -329,13 +327,13 @@ func NewStep3Error(cause error) error {
   3. Check database permissions
   4. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return Step3Error{
-		error:       fmt.Errorf("step 3 failed (remove orphans): %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("step 3 failed (remove orphans): %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -346,9 +344,9 @@ type Step4Error struct {
 }
 
 // NewStep4Error creates an error for Step 4 failure.
-func NewStep4Error(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Step 4 Failed: Create Words Tables</title>
+func NewStep4Error(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Step 4 Failed: Create Words Tables</title>
 <warning>Failed to extract and link words for fuzzy matching.</warning>
 
 <em>This step creates the words and word_name_strings tables for search.</em>
@@ -366,13 +364,13 @@ func NewStep4Error(cause error) error {
   4. Review PostgreSQL logs for errors
   5. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return Step4Error{
-		error:       fmt.Errorf("step 4 failed (create words): %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("step 4 failed (create words): %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -383,9 +381,9 @@ type Step5Error struct {
 }
 
 // NewStep5Error creates an error for Step 5 failure.
-func NewStep5Error(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Step 5 Failed: Create Verification View</title>
+func NewStep5Error(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Step 5 Failed: Create Verification View</title>
 <warning>Failed to create verification materialized view.</warning>
 
 <em>This step creates the verification view and indexes for gnverifier.</em>
@@ -403,13 +401,13 @@ func NewStep5Error(cause error) error {
   4. Review PostgreSQL logs for errors
   5. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return Step5Error{
-		error:       fmt.Errorf("step 5 failed (create verification view): %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("step 5 failed (create verification view): %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -420,9 +418,9 @@ type Step6Error struct {
 }
 
 // NewStep6Error creates an error for Step 6 failure.
-func NewStep6Error(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Step 6 Failed: VACUUM ANALYZE</title>
+func NewStep6Error(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Step 6 Failed: VACUUM ANALYZE</title>
 <warning>Failed to run VACUUM ANALYZE on database.</warning>
 
 <em>This step reclaims storage and updates query planner statistics.</em>
@@ -440,12 +438,12 @@ func NewStep6Error(cause error) error {
   4. Review PostgreSQL logs for errors
   5. Retry the optimize operation
 
-<em>Technical details:</em> %v`,
-		[]any{cause},
-	)
+`,
+		Vars: nil,
+	}
 
 	return Step6Error{
-		error:       fmt.Errorf("step 6 failed (vacuum analyze): %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("step 6 failed (vacuum analyze): %w", err),
+		MessageBase: msgBase,
 	}
 }

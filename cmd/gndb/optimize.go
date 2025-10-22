@@ -75,25 +75,6 @@ Examples:
 			// Create optimizer
 			optimizer := iooptimize.NewOptimizer(op)
 
-			// Display start message
-			startMsg := gnlib.FormatMessage(
-				`<title>Starting Database Optimization</title>
-
-<em>Optimizing your database for gnverifier...</em>
-
-This may take several hours for large databases.
-Workers: <em>%d</em>
-`,
-				[]any{cfg.JobsNumber},
-			)
-			fmt.Println(startMsg)
-
-			// Run optimization
-			lg.Info("starting database optimization",
-				"workers", cfg.JobsNumber,
-				"batch_size", cfg.Database.BatchSize,
-			)
-
 			// Optimize (errors propagate from iooptimize package)
 			err = optimizer.Optimize(ctx, cfg)
 			if err != nil {
@@ -101,15 +82,11 @@ Workers: <em>%d</em>
 				return err
 			}
 
-			lg.Info("database optimization complete")
-
 			// Display success message
-			successMsg := gnlib.FormatMessage(
-				`<title>Database Optimization Complete!</title>
-
+			successMsg := gnlib.FormatMessage(`
 <em>✓ Your database is now optimized and ready for gnverifier.</em>
-
-You can re-run <em>gndb optimize</em> anytime to apply the latest algorithm updates.
+You can re-run <em>gndb optimize</em> anytime to apply the latest
+algorithm updates.
 `,
 				nil,
 			)

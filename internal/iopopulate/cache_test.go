@@ -147,3 +147,134 @@ func TestPrepareCacheDir_IntegrationWithGetCacheDir(t *testing.T) {
 	// Clean up
 	require.NoError(t, clearCache(cacheDir))
 }
+
+// TestMultiSourceCacheCleaning tests that cache is properly cleared between processing
+// multiple data sources, preventing "too many database files" error from sflib.
+//
+// This test simulates the scenario where multiple sources are processed sequentially,
+// and verifies that:
+// 1. Cache is cleared before each source fetch
+// 2. Only one source's files exist in cache at a time
+// 3. No accumulation of database files from previous sources
+func TestMultiSourceCacheCleaning(t *testing.T) {
+	// Create temp cache directory
+	cacheDir := filepath.Join(t.TempDir(), "sfga-cache")
+	require.NoError(t, os.MkdirAll(cacheDir, 0755))
+
+	// Simulate processing 3 different data sources
+	sources := []struct {
+		id       int
+		filename string
+	}{
+		{id: 1, filename: "source1.sqlite"},
+		{id: 2, filename: "source2.sqlite"},
+		{id: 3, filename: "source3.sqlite"},
+	}
+
+	for _, source := range sources {
+		// Clear cache before processing each source (this is what processSource does)
+		err := clearCache(cacheDir)
+		require.NoError(t, err, "cache clear should succeed for source %d", source.id)
+
+		// Verify cache is empty after clear
+		entries, err := os.ReadDir(cacheDir)
+		require.NoError(t, err)
+		assert.Empty(t, entries, "cache should be empty before fetching source %d", source.id)
+
+		// Simulate fetching/extracting SFGA file for this source
+		// In real scenario, this would be done by fetchSFGA() -> sflib.Fetch()
+		testFile := filepath.Join(cacheDir, source.filename)
+		err = os.WriteFile(testFile, []byte("test data for source"), 0644)
+		require.NoError(t, err)
+
+		// Also create some additional files that sflib might create
+		additionalFiles := []string{
+			filepath.Join(cacheDir, "metadata.json"),
+			filepath.Join(cacheDir, "subdir", "data.txt"),
+		}
+		for _, f := range additionalFiles {
+			require.NoError(t, os.MkdirAll(filepath.Dir(f), 0755))
+			require.NoError(t, os.WriteFile(f, []byte("additional"), 0644))
+		}
+
+		// Verify cache now contains files for current source
+		entries, err = os.ReadDir(cacheDir)
+		require.NoError(t, err)
+		assert.NotEmpty(t, entries, "cache should contain files for source %d", source.id)
+
+		// Verify the expected file exists
+		_, err = os.Stat(testFile)
+		assert.NoError(t, err, "source file should exist for source %d", source.id)
+
+		// If this were not the last source, the next iteration would clear the cache
+		// Let's verify that files from previous sources don't accumulate
+		if source.id < len(sources) {
+			// Count SQLite files in cache
+			sqliteFiles := 0
+			filepath.Walk(cacheDir, func(path string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() && filepath.Ext(path) == ".sqlite" {
+					sqliteFiles++
+				}
+				return nil
+			})
+			assert.Equal(t, 1, sqliteFiles,
+				"should have exactly 1 SQLite file in cache for source %d", source.id)
+		}
+	}
+
+	// After processing all sources, clear cache one final time
+	err := clearCache(cacheDir)
+	require.NoError(t, err)
+
+	// Verify final cleanup
+	entries, err := os.ReadDir(cacheDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "cache should be empty after final cleanup")
+}
+
+// TestCacheCleaning_PreventsSFLibError tests that clearing cache before each
+// source prevents the "too many database files" error that would occur if
+// multiple SQLite files existed in the cache directory.
+func TestCacheCleaning_PreventsSFLibError(t *testing.T) {
+	cacheDir := filepath.Join(t.TempDir(), "sfga-cache")
+	require.NoError(t, os.MkdirAll(cacheDir, 0755))
+
+	// Simulate the problematic scenario: multiple SQLite files in cache
+	// (this would happen without proper cache clearing between sources)
+	problematicFiles := []string{
+		"0001_source1.sqlite",
+		"0002_source2.sqlite",
+		"0003_source3.sqlite",
+	}
+
+	for _, filename := range problematicFiles {
+		path := filepath.Join(cacheDir, filename)
+		err := os.WriteFile(path, []byte("database content"), 0644)
+		require.NoError(t, err)
+	}
+
+	// Verify we have multiple SQLite files (the problematic state)
+	entries, err := os.ReadDir(cacheDir)
+	require.NoError(t, err)
+	assert.Len(t, entries, 3, "should have 3 SQLite files before clearing")
+
+	// Clear cache (this is what processSource does before each fetchSFGA)
+	err = clearCache(cacheDir)
+	require.NoError(t, err)
+
+	// Verify cache is now empty (preventing the "too many database files" error)
+	entries, err = os.ReadDir(cacheDir)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "cache should be empty after clearing")
+
+	// Now it's safe to fetch a new source
+	newSourceFile := filepath.Join(cacheDir, "0004_new_source.sqlite")
+	err = os.WriteFile(newSourceFile, []byte("new source"), 0644)
+	require.NoError(t, err)
+
+	// Verify only the new source exists
+	entries, err = os.ReadDir(cacheDir)
+	require.NoError(t, err)
+	assert.Len(t, entries, 1, "should have exactly 1 file after fetching new source")
+	assert.Equal(t, "0004_new_source.sqlite", entries[0].Name())
+}

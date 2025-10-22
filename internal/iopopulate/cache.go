@@ -29,7 +29,8 @@ func clearCache(cacheDir string) error {
 // Cache location: ~/.cache/gndb/sfga/ (all platforms)
 //
 // Cache lifecycle:
-//   - Clear entire cache directory before processing ANY source
+//   - Initial clear at start of population process
+//   - Additional clear before fetching each source (prevents "too many database files" error)
 //   - Cache always contains the most recently processed source
 //   - Useful for debugging failed imports (inspect cached SFGA files)
 func prepareCacheDir() (string, error) {

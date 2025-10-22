@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/populate"
@@ -152,6 +152,14 @@ func processTaxa(
 ) error {
 	slog.Info("Processing taxa (accepted names)")
 
+	// Count total taxa for progress bar
+	var totalCount int
+	countQuery := `SELECT COUNT(*) FROM taxon`
+	err := sfgaDB.QueryRow(countQuery).Scan(&totalCount)
+	if err != nil {
+		return fmt.Errorf("failed to count taxa: %w", err)
+	}
+
 	// Build outlink column expression if configured
 	outlinkCol := buildOutlinkColumn(source.OutlinkIDColumn, "taxa")
 
@@ -183,8 +191,14 @@ func processTaxa(
 	defer rows.Close()
 
 	// Collect records for bulk insert
-	var records [][]interface{}
+	var records [][]any
 	var count int
+
+	// Create progress bar with known total
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Processing taxa: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
 
 	for rows.Next() {
 		var taxonID, nameID, nameString, codeID, rankID, statusID string
@@ -193,7 +207,7 @@ func processTaxa(
 		var genus, genusID, species, speciesID sql.NullString
 		var outlinkIDRaw sql.NullString
 
-		scanArgs := []interface{}{
+		scanArgs := []any{
 			&taxonID, &nameID, &nameString,
 			&codeID, &rankID, &statusID,
 			&kingdom, &kingdomID, &phylum, &phylumID,
@@ -267,7 +281,7 @@ func processTaxa(
 		}
 
 		// Create record for bulk insert
-		record := []interface{}{
+		record := []any{
 			source.ID,           // data_source_id
 			taxonID,             // record_id
 			nameStringID,        // name_string_id
@@ -287,9 +301,8 @@ func processTaxa(
 		records = append(records, record)
 		count++
 
-		if count%100_000 == 0 {
-			progressReport(count, "taxa")
-		}
+		// Update progress bar
+		bar.Add(1)
 
 		// Bulk insert when batch is full
 		if len(records) >= cfg.Database.BatchSize {
@@ -310,7 +323,6 @@ func processTaxa(
 	}
 
 	if count > 0 {
-		fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
 		slog.Info("Processed taxa", "count", humanize.Comma(int64(count)))
 	}
 
@@ -344,6 +356,14 @@ func processSynonyms(
 		return nil
 	}
 
+	// Count total synonyms for progress bar
+	var totalCount int
+	countQuery := `SELECT COUNT(*) FROM synonym`
+	err = sfgaDB.QueryRow(countQuery).Scan(&totalCount)
+	if err != nil {
+		return fmt.Errorf("failed to count synonyms: %w", err)
+	}
+
 	// Build outlink column expression if configured
 	outlinkCol := buildOutlinkColumn(source.OutlinkIDColumn, "synonyms")
 
@@ -375,8 +395,14 @@ func processSynonyms(
 	}
 	defer rows.Close()
 
-	var records [][]interface{}
+	var records [][]any
 	var count int
+
+	// Create progress bar with known total
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Processing synonyms: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
 
 	for rows.Next() {
 		var synonymID, taxonID, nameID, nameString, codeID, rankID, statusID string
@@ -385,7 +411,7 @@ func processSynonyms(
 		var genus, genusID, species, speciesID sql.NullString
 		var outlinkIDRaw sql.NullString
 
-		scanArgs := []interface{}{
+		scanArgs := []any{
 			&synonymID, &taxonID, &nameID, &nameString,
 			&codeID, &rankID, &statusID,
 			&kingdom, &kingdomID, &phylum, &phylumID,
@@ -457,7 +483,7 @@ func processSynonyms(
 			}
 		}
 
-		record := []interface{}{
+		record := []any{
 			source.ID,
 			synonymID, // record_id (synonym's own ID)
 			nameStringID,
@@ -477,9 +503,8 @@ func processSynonyms(
 		records = append(records, record)
 		count++
 
-		if count%100_000 == 0 {
-			progressReport(count, "synonyms")
-		}
+		// Update progress bar
+		bar.Add(1)
 
 		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
@@ -498,7 +523,6 @@ func processSynonyms(
 	}
 
 	if count > 0 {
-		fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
 		slog.Info("Processed synonyms", "count", humanize.Comma(int64(count)))
 	}
 
@@ -515,6 +539,22 @@ func processBareNames(
 	cfg *config.Config,
 ) error {
 	slog.Info("Processing bare names")
+
+	// Count total bare names for progress bar
+	var totalCount int
+	countQuery := `
+		SELECT COUNT(*)
+		FROM name
+		WHERE name.col__id NOT IN (
+			SELECT col__name_id FROM taxon
+			UNION
+			SELECT col__name_id FROM synonym
+		)
+	`
+	err := sfgaDB.QueryRow(countQuery).Scan(&totalCount)
+	if err != nil {
+		return fmt.Errorf("failed to count bare names: %w", err)
+	}
 
 	// Build outlink column expression if configured
 	outlinkCol := buildOutlinkColumn(source.OutlinkIDColumn, "bare_names")
@@ -545,14 +585,20 @@ func processBareNames(
 	}
 	defer rows.Close()
 
-	var records [][]interface{}
+	var records [][]any
 	var count int
+
+	// Create progress bar with known total
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Processing bare names: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
 
 	for rows.Next() {
 		var nameID, sciName, gnName, codeID, rankID string
 		var outlinkIDRaw sql.NullString
 
-		scanArgs := []interface{}{&nameID, &sciName, &gnName, &codeID, &rankID}
+		scanArgs := []any{&nameID, &sciName, &gnName, &codeID, &rankID}
 
 		// Add outlink ID to scan if column was selected
 		if outlinkCol != "" {
@@ -584,7 +630,7 @@ func processBareNames(
 			}
 		}
 
-		record := []interface{}{
+		record := []any{
 			source.ID,
 			recordID, // record_id with "bare-name-" prefix
 			nameStringID,
@@ -604,9 +650,8 @@ func processBareNames(
 		records = append(records, record)
 		count++
 
-		if count%100_000 == 0 {
-			progressReport(count, "bare names")
-		}
+		// Update progress bar
+		bar.Add(1)
 
 		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
@@ -625,7 +670,6 @@ func processBareNames(
 	}
 
 	if count > 0 {
-		fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
 		slog.Info("Processed bare names", "count", humanize.Comma(int64(count)))
 	}
 
@@ -633,7 +677,7 @@ func processBareNames(
 }
 
 // insertNameIndices performs bulk insert using pgx CopyFrom.
-func insertNameIndices(ctx context.Context, p *PopulatorImpl, records [][]interface{}) error {
+func insertNameIndices(ctx context.Context, p *PopulatorImpl, records [][]any) error {
 	// Column names for CopyFrom
 	columns := []string{
 		"data_source_id", "record_id", "name_string_id",

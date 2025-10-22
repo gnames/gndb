@@ -5,10 +5,12 @@ package iooptimize
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
 	"github.com/gnames/gndb/pkg/lifecycle"
+	"github.com/gnames/gnlib"
 )
 
 // OptimizerImpl implements the Optimizer interface.
@@ -38,53 +40,60 @@ func NewOptimizer(op db.Operator) lifecycle.Optimizer {
 func (o *OptimizerImpl) Optimize(ctx context.Context, cfg *config.Config) error {
 	pool := o.operator.Pool()
 	if pool == nil {
+		// this should not happen, so it stays simple.
 		return fmt.Errorf("database not connected")
 	}
 
-	Info("Starting database optimization")
+	slog.Info("Starting database optimization")
+	fmt.Println(
+		gnlib.FormatMessage(
+			`<em>It might take a while</em>`,
+			nil,
+		),
+	)
 
 	// Step 1: Reparse all name_strings with latest gnparser algorithms
-	Info("Step 1/6: Reparsing name strings")
+	slog.Info("Step 1/6: Reparsing name strings")
 	if err := reparseNames(ctx, o, cfg); err != nil {
 		return NewStep1Error(err)
 	}
-	Complete("Step 1/6: Complete - Name strings reparsed")
+	slog.Debug("Step 1/6: Complete - Name strings reparsed")
 
 	// Step 2: Normalize vernacular language codes
-	Info("Step 2/6: Normalizing vernacular languages")
+	slog.Info("Step 2/6: Normalizing vernacular languages")
 	if err := fixVernacularLanguages(ctx, o, cfg); err != nil {
 		return NewStep2Error(err)
 	}
-	Complete("Step 2/6: Complete - Vernacular languages normalized")
+	slog.Debug("Step 2/6: Complete - Vernacular languages normalized")
 
 	// Step 3: Remove orphaned records
-	Info("Step 3/6: Removing orphaned records")
+	slog.Info("Step 3/6: Removing orphaned records")
 	if err := removeOrphans(ctx, o, cfg); err != nil {
 		return NewStep3Error(err)
 	}
-	Complete("Step 3/6: Complete - Orphaned records removed")
+	slog.Debug("Step 3/6: Complete - Orphaned records removed")
 
 	// Step 4: Extract and link words for fuzzy matching
-	Info("Step 4/6: Creating words tables")
+	slog.Info("Step 4/6: Populating words tables")
 	if err := createWords(ctx, o, cfg); err != nil {
 		return NewStep4Error(err)
 	}
-	Complete("Step 4/6: Complete - Words tables created")
+	slog.Debug("Step 4/6: Complete - Words tables created")
 
 	// Step 5: Create verification materialized view with indexes
-	Info("Step 5/6: Creating verification view")
+	slog.Info("Step 5/6: Creating verification view")
 	if err := createVerificationView(ctx, o, cfg); err != nil {
 		return NewStep5Error(err)
 	}
-	Complete("Step 5/6: Complete - Verification view created")
+	slog.Debug("Step 5/6: Complete - Verification view created")
 
 	// Step 6: Run VACUUM ANALYZE to update statistics
-	Info("Step 6/6: Running VACUUM ANALYZE")
+	slog.Info("Step 6/6: Running VACUUM ANALYZE")
 	if err := vacuumAnalyze(ctx, o, cfg); err != nil {
 		return NewStep6Error(err)
 	}
-	Complete("Step 6/6: Complete - VACUUM ANALYZE finished")
+	slog.Debug("Step 6/6: Complete - VACUUM ANALYZE finished")
 
-	Info("Database optimization completed successfully")
+	slog.Debug("Database optimization completed successfully")
 	return nil
 }

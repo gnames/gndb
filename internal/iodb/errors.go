@@ -13,13 +13,13 @@ type ConnectionError struct {
 }
 
 // NewConnectionError creates a connection error with user-friendly message.
-func NewConnectionError(host string, port int, database, user string, cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Database Connection Failed</title>
+func NewConnectionError(host string, port int, database, user string, err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Database Connection Failed</title>
 
 <warning>Could not connect to PostgreSQL database.</warning>
 
-<em>Possible causes:</em>
+<em>Possible errs:</em>
   • PostgreSQL is not running
   • Database configuration is incorrect
   • Network connectivity issues
@@ -40,16 +40,16 @@ func NewConnectionError(host string, port int, database, user string, cause erro
      Database: %s
      User: %s
 `,
-		[]any{
+		Vars: []any{
 			host, port,
 			host, user,
 			host, port, database, user,
 		},
-	)
+	}
 
 	return ConnectionError{
-		error:       fmt.Errorf("failed to connect to %s:%d/%s: %w", host, port, database, cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to connect to %s:%d/%s: %w", host, port, database, err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -60,18 +60,15 @@ type TableCheckError struct {
 }
 
 // NewTableCheckError creates an error for when table existence check fails.
-func NewTableCheckError(cause error) error {
-	userBase := gnlib.NewMessage(
-		`<title>Database Check Failed</title>
-
-<warning>Could not verify database state.</warning>
+func NewTableCheckError(err error) error {
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Database Check Failed</title>
 `,
-		nil,
-	)
+		Vars: nil}
 
 	return TableCheckError{
-		error:       fmt.Errorf("failed to check database tables: %w", cause),
-		MessageBase: userBase,
+		error:       fmt.Errorf("failed to check database tables: %w", err),
+		MessageBase: msgBase,
 	}
 }
 
@@ -83,8 +80,11 @@ type EmptyDatabaseError struct {
 
 // NewEmptyDatabaseError creates an error for unpopulated database.
 func NewEmptyDatabaseError(host, database string) error {
-	userBase := gnlib.NewMessage(
-		`<title>Database Not Ready for Optimization</title>
+	err := fmt.Errorf(
+		"database has no tables - run 'gndb create' and 'gndb populate' first",
+	)
+	msgBase := gnlib.MessageBase{
+		Msg: `<title>Database Not Ready</title>
 
 <warning>The database appears to be empty or not populated.</warning>
 
@@ -104,12 +104,13 @@ func NewEmptyDatabaseError(host, database string) error {
   Status: No tables found
 
 <em>Tip:</em> Run <em>gndb populate --help</em> to see population options.
+
 `,
-		[]any{host, database},
-	)
+		Vars: []any{host, database},
+	}
 
 	return EmptyDatabaseError{
-		error:       fmt.Errorf("database has no tables - run 'gndb create' and 'gndb populate' first"),
-		MessageBase: userBase,
+		error:       err,
+		MessageBase: msgBase,
 	}
 }

@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/gnames/gndb/pkg/populate"
-	_ "modernc.org/sqlite" // Pure Go SQLite driver (no CGo)
 	"github.com/sfborg/sflib"
+	_ "modernc.org/sqlite" // Pure Go SQLite driver (no CGo)
 )
 
 // resolveSFGAFile finds the SFGA file in the parent directory matching the given ID.
@@ -46,7 +46,12 @@ func resolveSFGAFile(parentDir string, id int) (string, string, error) {
 
 	// Handle no matches
 	if len(matches) == 0 {
-		return "", "", fmt.Errorf("no files found matching ID %d (pattern %s*) in %s", id, idPattern, parentDir)
+		return "", "", fmt.Errorf(
+			"no files found matching ID %d (pattern %s*) in %s",
+			id,
+			idPattern,
+			parentDir,
+		)
 	}
 
 	// Handle single match
@@ -78,7 +83,11 @@ func resolveRemoteSFGAFile(baseURL string, id int) (string, string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("failed to fetch directory listing from %s: status %d", baseURL, resp.StatusCode)
+		return "", "", fmt.Errorf(
+			"failed to fetch directory listing from %s: status %d",
+			baseURL,
+			resp.StatusCode,
+		)
 	}
 
 	// Read HTML content
@@ -113,7 +122,12 @@ func resolveRemoteSFGAFile(baseURL string, id int) (string, string, error) {
 
 	// Handle no matches
 	if len(matches) == 0 {
-		return "", "", fmt.Errorf("no files found matching ID %d (pattern %s*) at %s", id, idPattern, baseURL)
+		return "", "", fmt.Errorf(
+			"no files found matching ID %d (pattern %s*) at %s",
+			id,
+			idPattern,
+			baseURL,
+		)
 	}
 
 	// Handle single match
@@ -175,7 +189,8 @@ func selectLatestFile(filenames []string) string {
 	best := filesWithMetadata[0]
 	for _, f := range filesWithMetadata[1:] {
 		// If current file has a date and (best has no date OR current date is later OR same date but higher priority)
-		if f.date != "" && (best.date == "" || f.date > best.date || (f.date == best.date && f.priority > best.priority)) {
+		if f.date != "" &&
+			(best.date == "" || f.date > best.date || (f.date == best.date && f.priority > best.priority)) {
 			best = f
 		} else if f.date == "" && best.date == "" && f.priority > best.priority {
 			// Both have no date, use priority
@@ -256,7 +271,11 @@ func parseSFGAFilename(filename string) SFGAMetadata {
 // For local files, it resolves by ID pattern and uses sflib Archive.Fetch.
 // For URLs, it lists the remote directory to find the matching file by ID.
 // Returns (sqlitePath, metadata, warningMessage, error). Warning is non-empty when multiple files found.
-func fetchSFGA(ctx context.Context, source populate.DataSourceConfig, cacheDir string) (string, SFGAMetadata, string, error) {
+func fetchSFGA(
+	_ context.Context,
+	source populate.DataSourceConfig,
+	cacheDir string,
+) (string, SFGAMetadata, string, error) {
 	var sfgaPath string
 	var warning string
 	var err error
@@ -296,7 +315,10 @@ func fetchSFGA(ctx context.Context, source populate.DataSourceConfig, cacheDir s
 	// Get the path to the extracted SQLite file
 	sqlitePath := arc.DbPath()
 	if sqlitePath == "" {
-		return "", SFGAMetadata{}, "", fmt.Errorf("failed to get database path after fetching %s", sfgaPath)
+		return "", SFGAMetadata{}, "", fmt.Errorf(
+			"failed to get database path after fetching %s",
+			sfgaPath,
+		)
 	}
 
 	return sqlitePath, metadata, warning, nil
