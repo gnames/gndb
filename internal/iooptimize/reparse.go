@@ -11,7 +11,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
-	"github.com/gnames/gndb/pkg/parserpool"
 	"github.com/gnames/gnparser"
 	"github.com/gnames/gnparser/ent/parsed"
 	"github.com/gnames/gnuuid"
@@ -104,7 +103,7 @@ FROM name_strings
 
 // workerReparse is a concurrent worker that parses names using gnparser.
 // It receives names from chIn, parses them, generates UUIDs for canonical forms,
-// stores results in cache, and sends updated records to chOut.
+// and sends ONLY CHANGED records to chOut (filter-then-batch optimization).
 //
 // Reference: gnidump workerReparse() in db_reparse.go
 func workerReparse(
@@ -136,6 +135,12 @@ func workerReparse(
 		// Handle unparsed names
 		// Note: Virus names are often unparsed, but we still need to set the virus flag
 		if !parsed.Parsed {
+			// Check if virus flag changed - only send if different
+			virusChanged := parsed.Virus != r.virus.Bool || (parsed.Virus && !r.virus.Valid)
+			if !virusChanged {
+				continue
+			}
+
 			updated := reparsed{
 				nameStringID:    r.nameStringID,
 				name:            r.name,
@@ -162,6 +167,7 @@ func workerReparse(
 		canonicalID = gnuuid.New(parsed.Canonical.Simple).String()
 
 		// Check if parsing improved - skip if same as before
+		// CRITICAL: This filter ensures only CHANGED names are sent to batch processing
 		if parsedIsSame(r, parsed, canonicalID) {
 			continue
 		}
@@ -202,7 +208,7 @@ func workerReparse(
 			bacteriaBool = parsed.Bacteria.Bool()
 		}
 
-		// Send updated record to save channel
+		// Send updated record to save channel (ONLY changed names reach here)
 		updated := reparsed{
 			nameStringID:    r.nameStringID,
 			name:            r.name,
@@ -257,164 +263,135 @@ func newNullStr(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: true}
 }
 
-// saveReparsedNames receives reparsed name data from the output channel
-// and saves it back to the database using updateNameString.
-// Progress is tracked and logged to stderr.
-//
-// Reference: gnidump saveReparse() in db_reparse.go
-func saveReparsedNames(
+// saveBatchedNames receives ONLY changed names from workers and batches them
+// for bulk insertion into the temporary table using bulkInsertToTempTable().
+// This replaces the old saveReparsedNames() row-by-row approach.
+func saveBatchedNames(
 	ctx context.Context,
 	optimizer *OptimizerImpl,
 	chOut <-chan reparsed,
+	batchSize int,
 ) error {
-	var count int
+	pool := optimizer.operator.Pool()
+	if pool == nil {
+		return fmt.Errorf("database pool is nil")
+	}
+
+	batch := make([]reparsed, 0, batchSize)
+	var totalCount int
 	timeStart := time.Now().UnixNano()
 
+	// flushBatch inserts the current batch into the temp table
+	flushBatch := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+
+		err := bulkInsertToTempTable(ctx, pool, batch)
+		if err != nil {
+			return err
+		}
+
+		totalCount += len(batch)
+		batch = batch[:0] // Reset batch slice
+
+		// Progress tracking: log after each batch
+		timeSpent := float64(time.Now().UnixNano()-timeStart) / 1_000_000_000
+		speed := int64(float64(totalCount) / timeSpent)
+		fmt.Fprintf(os.Stderr, "\r%s", strings.Repeat(" ", 40))
+		fmt.Fprintf(os.Stderr, "\rBatched %s names, %s names/sec",
+			humanize.Comma(int64(totalCount)), humanize.Comma(speed))
+
+		return nil
+	}
+
+	// Collect names into batches
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case r, ok := <-chOut:
 			if !ok {
-				// Channel closed, we're done
+				// Channel closed, flush remaining batch
+				if err := flushBatch(); err != nil {
+					return err
+				}
 				fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 40))
 				return nil
 			}
 
-			// Update the name_string record in database
-			err := updateNameString(ctx, optimizer, r)
-			if err != nil {
-				return err
-			}
+			// Add to batch
+			batch = append(batch, r)
 
-			count++
-
-			// Progress tracking: log every 100,000 updates
-			if count%100_000 == 0 {
-				timeSpent := float64(time.Now().UnixNano()-timeStart) / 1_000_000_000
-				speed := int64(float64(count) / timeSpent)
-				fmt.Fprintf(os.Stderr, "\r%s", strings.Repeat(" ", 40))
-				fmt.Fprintf(os.Stderr, "\rSaved %s names, %s names/sec",
-					humanize.Comma(int64(count)), humanize.Comma(speed))
+			// Flush when batch is full
+			if len(batch) >= batchSize {
+				if err := flushBatch(); err != nil {
+					return err
+				}
 			}
 		}
 	}
 }
 
-// updateNameString updates a single name_string record and inserts canonical records.
-// All operations are performed within a transaction for atomicity.
+// NOTE: updateNameString() has been removed and replaced by batch operations:
+// - batchUpdateNameStrings() - Single UPDATE for all changed names
+// - batchInsertCanonicals() - Batch INSERT for unique canonicals
+// These functions are implemented in reparse_batch.go (T029-T032)
+
+// reparseNames orchestrates the name reparsing workflow using filter-then-batch strategy.
+// It coordinates four pipeline stages using concurrent goroutines:
+// 1. loadNamesForReparse - reads all name_strings from database
+// 2. workerReparse - N concurrent workers parse names, filter via parsedIsSame()
+// 3. saveBatchedNames - batches ONLY changed names into temp table
+// 4. Batch operations - UPDATE name_strings, INSERT canonicals (once at end)
 //
-// Reference: gnidump updateNameString() in db_reparse.go
-func updateNameString(ctx context.Context, optimizer *OptimizerImpl, r reparsed) error {
+// Reference: gnidump reparse() in db_reparse.go + filter-then-batch optimization
+func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Config) error {
 	pool := optimizer.operator.Pool()
 	if pool == nil {
 		return fmt.Errorf("database pool is nil")
 	}
 
-	// Begin transaction
-	tx, err := pool.Begin(ctx)
+	// Step 1: Create temporary table for batch operations
+	fmt.Fprintf(os.Stderr, "Creating temporary table for batch processing...\n")
+	err := createReparseTempTable(ctx, pool)
 	if err != nil {
-		return NewReparseTransactionError(err)
+		return fmt.Errorf("failed to create temp table: %w", err)
 	}
+
+	// Ensure temp table is dropped on exit (success or failure)
 	defer func() {
-		_ = tx.Rollback(
-			ctx,
-		) // Rollback in case of any error; ignore error as commit handles success
+		dropCtx := context.Background() // Use background context to ensure cleanup
+		_, _ = pool.Exec(dropCtx, "DROP TABLE IF EXISTS temp_reparse_names")
 	}()
 
-	// Update name_strings table with new canonical IDs, flags, year, and cardinality
-	_, err = tx.Exec(ctx, `
-		UPDATE name_strings
-		SET
-			canonical_id = $1, canonical_full_id = $2, canonical_stem_id = $3,
-			bacteria = $4, virus = $5, surrogate = $6, parse_quality = $7,
-			cardinality = $8, year = $9
-		WHERE id = $10`,
-		r.canonicalID, r.canonicalFullID, r.canonicalStemID,
-		r.bacteria, r.virus, r.surrogate, r.parseQuality,
-		r.cardinality, r.year, r.nameStringID,
-	)
-	if err != nil {
-		return NewReparseUpdateError(err)
-	}
-
-	// If parse quality is 0, the name is unparseable - no canonicals to insert
-	if r.parseQuality == 0 {
-		return tx.Commit(ctx)
-	}
-
-	// Insert canonical form (ON CONFLICT DO NOTHING for idempotency)
-	if r.canonical != "" {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO canonicals (id, name)
-			VALUES ($1, $2)
-			ON CONFLICT (id) DO NOTHING`,
-			r.canonicalID, r.canonical)
-		if err != nil {
-			return NewReparseInsertError("canonicals", err)
-		}
-	}
-
-	// Insert canonical stem (ON CONFLICT DO NOTHING for idempotency)
-	if r.canonicalStem != "" {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO canonical_stems (id, name)
-			VALUES ($1, $2)
-			ON CONFLICT (id) DO NOTHING`,
-			r.canonicalStemID, r.canonicalStem)
-		if err != nil {
-			return NewReparseInsertError("canonical_stems", err)
-		}
-	}
-
-	// Insert canonical full (only if different from simple canonical)
-	if r.canonicalFull != "" {
-		_, err = tx.Exec(ctx, `
-			INSERT INTO canonical_fulls (id, name)
-			VALUES ($1, $2)
-			ON CONFLICT (id) DO NOTHING`,
-			r.canonicalFullID, r.canonicalFull)
-		if err != nil {
-			return NewReparseInsertError("canonical_fulls", err)
-		}
-	}
-
-	// Commit the transaction if all operations were successful
-	return tx.Commit(ctx)
-}
-
-// reparseNames orchestrates the name reparsing workflow.
-// It coordinates three pipeline stages using concurrent goroutines:
-// 1. loadNamesForReparse - reads all name_strings from database
-// 2. workerReparse - N concurrent workers parse names using gnparser
-// 3. saveReparsedNames - saves parsed results back to database
-//
-// Reference: gnidump reparse() in db_reparse.go
-func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Config) error {
 	// Create channels for pipeline communication
 	chIn := make(chan reparsed)
 	chOut := make(chan reparsed)
 
 	// Create errgroup for coordinated error handling and context cancellation
-	g, ctx := errgroup.WithContext(ctx)
+	// IMPORTANT: Save original ctx for batch operations after g.Wait()
+	// The errgroup context gets canceled when goroutines complete
+	g, gCtx := errgroup.WithContext(ctx)
 
 	// Stage 1: Load all name_strings from database
 	// Goroutine closes chIn when loading is complete
 	g.Go(func() error {
 		defer close(chIn)
-		return loadNamesForReparse(ctx, optimizer, chIn)
+		return loadNamesForReparse(gCtx, optimizer, chIn)
 	})
 
 	// Stage 2: Launch N concurrent workers to parse names
+	// Workers filter via parsedIsSame() and send ONLY changed names to chOut
 	// Use Config.JobsNumber for worker count (gnidump uses hardcoded 50)
 	workerCount := cfg.JobsNumber
 	if workerCount <= 0 {
 		workerCount = 1 // Minimum 1 worker
 	}
 
-	// Create parser pool for workers to share
-	parserPool := parserpool.NewPool(workerCount)
-	defer parserPool.Close()
+	// Note: No parser pool needed - each worker creates its own parser instance
+	// which is lightweight (~2ms initialization) and reused for the worker's lifetime.
+	// This is simpler and avoids pool synchronization overhead.
 
 	// Use WaitGroup to track when all workers complete
 	var wg sync.WaitGroup
@@ -422,27 +399,48 @@ func reparseNames(ctx context.Context, optimizer *OptimizerImpl, cfg *config.Con
 		wg.Add(1)
 		g.Go(func() error {
 			defer wg.Done()
-			return workerReparse(ctx, chIn, chOut)
+			return workerReparse(gCtx, chIn, chOut)
 		})
 	}
 
-	// Stage 3: Save reparsed results to database
+	// Stage 3: Batch changed names into temporary table
+	// Use Optimization.ReparseBatchSize for batch operations (default 50000)
+	batchSize := cfg.Optimization.ReparseBatchSize
+	if batchSize <= 0 {
+		batchSize = 50000 // Fallback default
+	}
+
 	g.Go(func() error {
-		return saveReparsedNames(ctx, optimizer, chOut)
+		return saveBatchedNames(gCtx, optimizer, chOut, batchSize)
 	})
 
 	// Goroutine to close chOut after all workers finish
-	// This signals saveReparsedNames that no more data is coming
+	// This signals saveBatchedNames that no more data is coming
 	go func() {
 		wg.Wait()
 		close(chOut)
 	}()
 
-	// Wait for all goroutines to complete
+	// Wait for all goroutines to complete (loading, parsing, batching)
 	// If any goroutine returns an error, context is cancelled and all others stop
 	if err := g.Wait(); err != nil {
 		return err
 	}
+
+	// Stage 4: Execute batch operations on temp table
+	fmt.Fprintf(os.Stderr, "Executing batch UPDATE on name_strings...\n")
+	rowsUpdated, err := batchUpdateNameStrings(ctx, pool)
+	if err != nil {
+		return fmt.Errorf("failed to batch update name_strings: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "Updated %s name_strings\n", humanize.Comma(rowsUpdated))
+
+	fmt.Fprintf(os.Stderr, "Inserting unique canonicals...\n")
+	err = batchInsertCanonicals(ctx, pool)
+	if err != nil {
+		return fmt.Errorf("failed to batch insert canonicals: %w", err)
+	}
+	fmt.Fprintf(os.Stderr, "Canonical forms inserted successfully\n")
 
 	return nil
 }

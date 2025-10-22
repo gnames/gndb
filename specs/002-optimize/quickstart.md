@@ -73,7 +73,83 @@ Adjust batch size for memory-constrained systems:
 gndb optimize --batch-size=10000
 ```
 
-Default batch size is 50,000. Lower values use less memory but run slower.
+Default batch size is 50,000. Lower values use less memory but run
+slower.
+
+### Batch Size Tuning
+
+The batch size controls how many name records are processed together
+during the reparsing step. Tuning this parameter balances memory usage
+with performance.
+
+**Performance Results** (from 100K row test):
+- **Batch size 50,000** (default):
+  - Throughput: 18,000-26,000 rows/sec
+  - Memory: ~20 MB per batch
+  - Best for most systems
+
+**Recommended Settings by System:**
+
+| System RAM | Recommended Batch Size | Expected Memory |
+|------------|------------------------|-----------------|
+| < 8 GB     | 10,000                 | ~4 MB           |
+| 8-16 GB    | 25,000                 | ~10 MB          |
+| 16-32 GB   | 50,000 (default)       | ~20 MB          |
+| > 32 GB    | 100,000                | ~40 MB          |
+
+**Quick Formula**: `batch_size = available_memory_gb * 1000`
+
+**Memory Considerations:**
+- Each batch uses approximately 200-400 bytes per name record
+- PostgreSQL also needs memory for connections, temp tables, and caching
+- Reserve at least 2GB for PostgreSQL's base operations
+- The filter-then-batch strategy only processes *changed* names, so
+  actual memory usage depends on how many names need updating
+
+**When to Tune Batch Size:**
+1. **Lower batch size** if you experience:
+   - Out of memory errors
+   - System swapping/thrashing
+   - Database connection timeouts
+
+2. **Higher batch size** for:
+   - Systems with abundant RAM (> 32 GB)
+   - First-time optimization (100% of names need parsing)
+   - Faster completion on powerful servers
+
+**Example Configurations:**
+
+```bash
+# Low memory server (4 GB RAM)
+gndb optimize --batch-size=10000 --jobs=4
+
+# Standard server (16 GB RAM) - uses defaults
+gndb optimize
+
+# High memory server (64 GB RAM)
+gndb optimize --batch-size=100000 --jobs=50
+```
+
+**Configuration File Alternative:**
+
+Instead of using command-line flags, you can set the batch size in your
+config file (`~/.config/gndb/config.yaml`):
+
+```yaml
+optimization:
+  reparse_batch_size: 50000
+```
+
+Or via environment variable:
+
+```bash
+export GNDB_OPTIMIZATION_REPARSE_BATCH_SIZE=50000
+gndb optimize
+```
+
+**Note**: Batch size primarily affects memory usage during Step 1
+(Reparse Names). Other optimization steps use different memory
+patterns.
 
 ### Combined Options
 

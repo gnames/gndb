@@ -38,6 +38,7 @@
 // Optimization configuration:
 //
 //	GNDB_OPTIMIZATION_CONCURRENT_INDEXES - Create indexes concurrently (bool, default: false)
+//	GNDB_OPTIMIZATION_REPARSE_BATCH_SIZE - Batch size for name reparsing (int, default: 50000)
 //
 // Logging configuration:
 //
@@ -143,13 +144,28 @@ type ImportConfig struct {
 
 // OptimizationConfig contains settings for database optimization phase.
 type OptimizationConfig struct {
-	// ConcurrentIndexes determines whether indexes are created concurrently.
-	// - false: Faster index creation but locks tables (recommended for initial setup)
-	// - true: Slower but allows reads during index creation (for production)
+	// ConcurrentIndexes determines whether indexes are created
+	// concurrently.
+	// - false: Faster index creation but locks tables (recommended for
+	//   initial setup)
+	// - true: Slower but allows reads during index creation (for
+	//   production)
 	ConcurrentIndexes bool `mapstructure:"concurrent_indexes" yaml:"concurrent_indexes"`
 
+	// ReparseBatchSize controls batch size for name reparsing during
+	// optimization.
+	// Determines how many changed names are processed together in temp
+	// tables.
+	// Default: 50000 (optimal for most systems).
+	// - Lower (10K-25K): Use on memory-constrained systems (< 8GB RAM)
+	// - Higher (100K+): Use on high-memory systems (> 32GB RAM)
+	// Memory usage: ~200-400 bytes per name in batch.
+	// Note: Only changed names are batched (filter-then-batch strategy)
+	ReparseBatchSize int `mapstructure:"reparse_batch_size" yaml:"reparse_batch_size"`
+
 	// StatisticsTargets sets the statistics target for specific columns.
-	// Higher values (e.g., 1000) improve query planning for high-cardinality columns.
+	// Higher values (e.g., 1000) improve query planning for
+	// high-cardinality columns.
 	// Map key format: "table.column"
 	StatisticsTargets map[string]int `mapstructure:"statistics_targets" yaml:"statistics_targets"`
 }
@@ -264,8 +280,12 @@ func (c *Config) MergeWithDefaults() {
 		c.Database.BatchSize = defaults.Database.BatchSize
 	}
 
-	// Merge optimization config - ConcurrentIndexes defaults to false, which is the zero value
-	// so we don't need to check it
+	// Merge optimization config
+	// ConcurrentIndexes defaults to false (zero value), so no check needed
+	if c.Optimization.ReparseBatchSize == 0 {
+		c.Optimization.ReparseBatchSize =
+			defaults.Optimization.ReparseBatchSize
+	}
 
 	// Merge logging config
 	if c.Logging.Level == "" {
@@ -302,6 +322,7 @@ func Defaults() *Config {
 		},
 		Optimization: OptimizationConfig{
 			ConcurrentIndexes: false, // Faster for initial setup, locks tables
+			ReparseBatchSize:  50000, // Optimal for most systems (Step 1)
 			StatisticsTargets: map[string]int{
 				"name_strings.canonical_simple": 1000,
 				"taxa.rank":                     100,

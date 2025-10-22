@@ -9,7 +9,6 @@ import (
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/ioschema"
 	"github.com/gnames/gndb/internal/iotesting"
-	"github.com/gnames/gndb/pkg/parserpool"
 	"github.com/gnames/gnuuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -580,9 +579,6 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 	require.NoError(t, err)
 	defer op.Close()
 
-	pool := parserpool.NewPool(1)
-	defer pool.Close()
-
 	// Create cancellable context
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -635,176 +631,13 @@ func TestWorkerReparse_ContextCancellation(t *testing.T) {
 	assert.Equal(t, context.Canceled, err, "Error should be context.Canceled")
 }
 
-// TestUpdateNameString_Unit tests the updateNameString function in isolation.
-// This is a unit test for T007 implementation.
-func TestUpdateNameString_Unit(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	ctx := context.Background()
-	cfg := iotesting.GetTestConfig()
-
-	// Setup database
-	op := iodb.NewPgxOperator()
-	err := op.Connect(ctx, &cfg.Database)
-	require.NoError(t, err)
-	defer op.Close()
-
-	// Clean up and create schema
-	_ = op.DropAllTables(ctx)
-	sm := ioschema.NewManager(op)
-	err = sm.Create(ctx, cfg)
-	require.NoError(t, err)
-
-	// Insert a test name_string
-	testID := gnuuid.New("Homo sapiens").String()
-	query := `
-		INSERT INTO name_strings (id, name, cardinality, canonical_id, canonical_full_id, canonical_stem_id, virus, bacteria, surrogate, parse_quality)
-		VALUES ($1, $2, NULL, NULL, NULL, NULL, false, false, false, 0)
-	`
-	_, err = op.Pool().Exec(ctx, query, testID, "Homo sapiens")
-	require.NoError(t, err)
-
-	// Create optimizer
-	optimizer := &OptimizerImpl{operator: op}
-
-	// Prepare reparsed data
-	canonicalID := gnuuid.New("Homo sapiens").String()
-	canonicalStemID := gnuuid.New("Hom sapien").String()
-	r := reparsed{
-		nameStringID:    testID,
-		name:            "Homo sapiens",
-		canonicalID:     sql.NullString{String: canonicalID, Valid: true},
-		canonicalFullID: sql.NullString{}, // No full form
-		canonicalStemID: sql.NullString{String: canonicalStemID, Valid: true},
-		canonical:       "Homo sapiens",
-		canonicalFull:   "",
-		canonicalStem:   "Hom sapien",
-		parseQuality:    1,
-	}
-
-	// Call updateNameString
-	err = updateNameString(ctx, optimizer, r)
-	require.NoError(t, err, "updateNameString should succeed")
-
-	// Verify name_strings was updated
-	var updatedCanonicalID sql.NullString
-	var updatedParseQuality int
-	err = op.Pool().
-		QueryRow(ctx, "SELECT canonical_id, parse_quality FROM name_strings WHERE id = $1", testID).
-		Scan(&updatedCanonicalID, &updatedParseQuality)
-	require.NoError(t, err)
-	assert.Equal(t, canonicalID, updatedCanonicalID.String, "canonical_id should be updated")
-	assert.Equal(t, 1, updatedParseQuality, "parse_quality should be updated")
-
-	// Verify canonicals table was populated
-	var canonicalName string
-	err = op.Pool().
-		QueryRow(ctx, "SELECT name FROM canonicals WHERE id = $1", canonicalID).
-		Scan(&canonicalName)
-	require.NoError(t, err)
-	assert.Equal(t, "Homo sapiens", canonicalName, "canonical name should be inserted")
-
-	// Verify canonical_stems table was populated
-	var stemName string
-	err = op.Pool().
-		QueryRow(ctx, "SELECT name FROM canonical_stems WHERE id = $1", canonicalStemID).
-		Scan(&stemName)
-	require.NoError(t, err)
-	assert.Equal(t, "Hom sapien", stemName, "canonical stem should be inserted")
-
-	// Clean up
-	_ = op.DropAllTables(ctx)
-}
-
-// TestSaveReparsedNames_Unit tests the saveReparsedNames function in isolation.
-// This is a unit test for T006 implementation.
-func TestSaveReparsedNames_Unit(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	ctx := context.Background()
-	cfg := iotesting.GetTestConfig()
-
-	// Setup database
-	op := iodb.NewPgxOperator()
-	err := op.Connect(ctx, &cfg.Database)
-	require.NoError(t, err)
-	defer op.Close()
-
-	// Clean up and create schema
-	_ = op.DropAllTables(ctx)
-	sm := ioschema.NewManager(op)
-	err = sm.Create(ctx, cfg)
-	require.NoError(t, err)
-
-	// Insert test name_strings
-	testData := []struct {
-		id   string
-		name string
-	}{
-		{gnuuid.New("Homo sapiens").String(), "Homo sapiens"},
-		{gnuuid.New("Mus musculus").String(), "Mus musculus"},
-	}
-
-	for _, td := range testData {
-		query := `
-			INSERT INTO name_strings (
-		    id, name, cardinality, canonical_id, canonical_full_id,
-		    canonical_stem_id, virus, bacteria, surrogate, parse_quality)
-			VALUES ($1, $2, NULL, NULL, NULL, NULL, false, false, false, 0)
-		`
-		_, err = op.Pool().Exec(ctx, query, td.id, td.name)
-		require.NoError(t, err)
-	}
-
-	// Create optimizer
-	optimizer := &OptimizerImpl{operator: op}
-
-	// Create channel with reparsed data
-	chOut := make(chan reparsed, 10)
-
-	// Launch saveReparsedNames in goroutine
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- saveReparsedNames(ctx, optimizer, chOut)
-	}()
-
-	// Send reparsed data
-	for _, td := range testData {
-		canonicalID := gnuuid.New(td.name).String()
-		chOut <- reparsed{
-			nameStringID: td.id,
-			name:         td.name,
-			canonicalID:  sql.NullString{String: canonicalID, Valid: true},
-			canonical:    td.name,
-			parseQuality: 1,
-		}
-	}
-	close(chOut)
-
-	// Wait for completion
-	err = <-errCh
-	require.NoError(t, err, "saveReparsedNames should succeed")
-
-	// Verify all names were updated
-	var count int
-	err = op.Pool().
-		QueryRow(ctx, "SELECT COUNT(*) FROM name_strings WHERE canonical_id IS NOT NULL").
-		Scan(&count)
-	require.NoError(t, err)
-	assert.Equal(t, len(testData), count, "All names should have canonical_id updated")
-
-	// Verify canonicals were inserted
-	err = op.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM canonicals").Scan(&count)
-	require.NoError(t, err)
-	assert.Equal(t, len(testData), count, "All canonicals should be inserted")
-
-	// Clean up
-	_ = op.DropAllTables(ctx)
-}
+// NOTE: TestUpdateNameString_Unit and TestSaveReparsedNames_Unit have been removed.
+// These functions have been replaced by batch operations (T029-T032) which are
+// comprehensively tested in reparse_batch_test.go:
+// - createReparseTempTable() (T025 tests)
+// - bulkInsertToTempTable() (T026 tests)
+// - batchUpdateNameStrings() (T027 tests)
+// - batchInsertCanonicals() (T032 tests)
 
 // TestWorkerReparse_SkipsUnchangedNames tests the optimization that skips names
 // whose parsing hasn't changed.
@@ -820,9 +653,6 @@ func TestWorkerReparse_SkipsUnchangedNames(t *testing.T) {
 	err := op.Connect(ctx, &cfg.Database)
 	require.NoError(t, err)
 	defer op.Close()
-
-	pool := parserpool.NewPool(1)
-	defer pool.Close()
 
 	chIn := make(chan reparsed, 10)
 	chOut := make(chan reparsed, 10)
