@@ -211,12 +211,13 @@ func TestMultiSourceCacheCleaning(t *testing.T) {
 		if source.id < len(sources) {
 			// Count SQLite files in cache
 			sqliteFiles := 0
-			filepath.Walk(cacheDir, func(path string, info os.FileInfo, err error) error {
+			walkErr := filepath.Walk(cacheDir, func(path string, info os.FileInfo, err error) error {
 				if err == nil && !info.IsDir() && filepath.Ext(path) == ".sqlite" {
 					sqliteFiles++
 				}
 				return nil
 			})
+			require.NoError(t, walkErr, "filepath.Walk should succeed")
 			assert.Equal(t, 1, sqliteFiles,
 				"should have exactly 1 SQLite file in cache for source %d", source.id)
 		}

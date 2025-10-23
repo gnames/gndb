@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/cheggaaa/pb/v3"
+	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gnfmt/gnlang"
 	"github.com/gnames/gnlib"
@@ -226,7 +227,12 @@ func normalizeVernacularRecord(v *vern) {
 }
 
 // batchInsertVernacularUpdates inserts normalized records into temp table using parameterized inserts.
-func batchInsertVernacularUpdates(ctx context.Context, opt *OptimizerImpl, records []vern, cfg *config.Config) error {
+func batchInsertVernacularUpdates(
+	ctx context.Context,
+	opt *OptimizerImpl,
+	records []vern,
+	cfg *config.Config,
+) error {
 	if len(records) == 0 {
 		slog.Debug("No vernacular records need updating")
 		return nil
@@ -297,10 +303,14 @@ WHERE v.ctid = t.row_ctid
 	}
 
 	rowsUpdated := result.RowsAffected()
+	msg := "<em>All vernacular records are already normalized</em>"
 	if rowsUpdated > 0 {
-		msg := fmt.Sprintf("<em>Updated %d vernacular language records</em>", rowsUpdated)
-		fmt.Println(gnlib.FormatMessage(msg, nil))
+		msg = fmt.Sprintf(
+			"<em>Normalized %s vernacular records</em>",
+			humanize.Comma(rowsUpdated),
+		)
 	}
+	fmt.Println(gnlib.FormatMessage(msg, nil))
 	return nil
 }
 

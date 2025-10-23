@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/gnames/gndb/pkg/populate"
@@ -520,10 +521,10 @@ func TestFilterSources(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "non-existent ID returns empty",
+			name:        "non-existent ID returns error with warning",
 			filter:      "9999",
-			expectedIDs: []int{},
-			expectError: false,
+			expectedIDs: nil,
+			expectError: true,
 		},
 		{
 			name:        "invalid ID format",
@@ -554,6 +555,139 @@ func TestFilterSources(t *testing.T) {
 					actualIDs[i] = src.ID
 				}
 				assert.Equal(t, tt.expectedIDs, actualIDs)
+			}
+		})
+	}
+}
+
+func TestFilterSources_Ranges(t *testing.T) {
+	// Create test sources with gaps: 1, 5, 10, 15, 20, 50, 100, 200, 1000
+	createSource := func(id int) populate.DataSourceConfig {
+		return populate.DataSourceConfig{
+			ID:     id,
+			Parent: "https://example.com/sfga/",
+		}
+	}
+
+	sources := []populate.DataSourceConfig{
+		createSource(1),
+		createSource(5),
+		createSource(10),
+		createSource(15),
+		createSource(20),
+		createSource(50),
+		createSource(100),
+		createSource(200),
+		createSource(1000),
+	}
+
+	tests := []struct {
+		name        string
+		filter      string
+		expectedIDs []int
+		expectError bool
+		description string
+	}{
+		{
+			name:        "simple range",
+			filter:      "10-20",
+			expectedIDs: []int{10, 15, 20},
+			expectError: false,
+			description: "Range 10-20 should match IDs 10, 15, 20 (silently skip 11-14, 16-19)",
+		},
+		{
+			name:        "range from start",
+			filter:      "-10",
+			expectedIDs: []int{1, 5, 10},
+			expectError: false,
+			description: "Range -10 should match IDs 1-10 (silently skip 2-4, 6-9)",
+		},
+		{
+			name:        "range to end",
+			filter:      "100-",
+			expectedIDs: []int{100, 200, 1000},
+			expectError: false,
+			description: "Range 100- should match from 100 to max ID",
+		},
+		{
+			name:        "range with all gaps",
+			filter:      "25-45",
+			expectedIDs: nil,
+			expectError: true,
+			description: "Range with no matching sources should return error with warning",
+		},
+		{
+			name:        "mix of IDs and ranges",
+			filter:      "1,10-20,100",
+			expectedIDs: []int{1, 10, 15, 20, 100},
+			expectError: false,
+			description: "Mix of explicit IDs and ranges",
+		},
+		{
+			name:        "explicit ID not found (should warn)",
+			filter:      "1,999,1000",
+			expectedIDs: []int{1, 1000},
+			expectError: false,
+			description: "Explicit ID 999 not found - should warn but continue",
+		},
+		{
+			name:        "range with one gap at boundary",
+			filter:      "5-15",
+			expectedIDs: []int{5, 10, 15},
+			expectError: false,
+			description: "Range should work even with gaps (6-9, 11-14 missing)",
+		},
+		{
+			name:        "invalid range format",
+			filter:      "10-20-30",
+			expectedIDs: nil,
+			expectError: true,
+			description: "Invalid range format should error",
+		},
+		{
+			name:        "reversed range",
+			filter:      "20-10",
+			expectedIDs: nil,
+			expectError: true,
+			description: "Start > end should error",
+		},
+		{
+			name:        "multiple ranges",
+			filter:      "1-5,15-20,100-200",
+			expectedIDs: []int{1, 5, 15, 20, 100, 200},
+			expectError: false,
+			description: "Multiple ranges should work",
+		},
+		{
+			name:        "overlapping ranges and IDs",
+			filter:      "1-10,5,10-20",
+			expectedIDs: []int{1, 5, 10, 15, 20},
+			expectError: false,
+			description: "Overlapping ranges should deduplicate",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filtered, err := populate.FilterSources(sources, tt.filter)
+
+			if tt.expectError {
+				assert.Error(t, err, tt.description)
+			} else {
+				require.NoError(t, err, tt.description)
+
+				actualIDs := make([]int, len(filtered))
+				for i, src := range filtered {
+					actualIDs[i] = src.ID
+				}
+
+				// Sort for comparison (order may vary)
+				sort.Ints(actualIDs)
+				expectedSorted := make([]int, len(tt.expectedIDs))
+				copy(expectedSorted, tt.expectedIDs)
+				sort.Ints(expectedSorted)
+
+				assert.Equal(t, expectedSorted, actualIDs, tt.description)
 			}
 		})
 	}
