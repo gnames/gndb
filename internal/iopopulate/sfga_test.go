@@ -56,6 +56,105 @@ func TestResolveSFGAFile(t *testing.T) {
 			expectedMatch: "0003_itis.sqlite",
 			expectError:   false,
 		},
+		// New tests for flexible ID pattern matching
+		{
+			name:          "ID=1 matches 1-data.sqlite",
+			id:            1,
+			setupFiles:    []string{"1-data.sqlite.zip"},
+			expectedMatch: "1-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=1 matches 01-data.sqlite",
+			id:            1,
+			setupFiles:    []string{"01-data.sqlite.zip"},
+			expectedMatch: "01-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=1 matches 001-data.sqlite",
+			id:            1,
+			setupFiles:    []string{"001-data.sqlite.zip"},
+			expectedMatch: "001-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=1 matches 0001-data.sqlite",
+			id:            1,
+			setupFiles:    []string{"0001-data.sqlite.zip"},
+			expectedMatch: "0001-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=1 with underscore separator",
+			id:            1,
+			setupFiles:    []string{"1_data.sqlite.zip"},
+			expectedMatch: "1_data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=1 with just extension",
+			id:            1,
+			setupFiles:    []string{"1.sqlite.zip"},
+			expectedMatch: "1.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=1 does not match 10-data.sqlite or 1001-data.sqlite",
+			id:            1,
+			setupFiles:    []string{"10-data.sqlite.zip", "1001-data.sqlite.zip"},
+			expectError:   true,
+			errorContains: "no files found matching ID 1",
+		},
+		{
+			name:          "ID=42 matches 42-data.sqlite",
+			id:            42,
+			setupFiles:    []string{"42-data.sqlite.zip"},
+			expectedMatch: "42-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=42 matches 042-data.sqlite",
+			id:            42,
+			setupFiles:    []string{"042-data.sqlite.zip"},
+			expectedMatch: "042-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=42 matches 0042-data.sqlite",
+			id:            42,
+			setupFiles:    []string{"0042-data.sqlite.zip"},
+			expectedMatch: "0042-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=196 matches 196-data.sqlite",
+			id:            196,
+			setupFiles:    []string{"196-data.sqlite.zip"},
+			expectedMatch: "196-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=196 matches 0196-data.sqlite",
+			id:            196,
+			setupFiles:    []string{"0196-data.sqlite.zip"},
+			expectedMatch: "0196-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "ID=1234 matches 1234-data.sqlite only",
+			id:            1234,
+			setupFiles:    []string{"1234-data.sqlite.zip"},
+			expectedMatch: "1234-data.sqlite.zip",
+			expectError:   false,
+		},
+		{
+			name:          "Multiple formats - prefers standard 4-digit",
+			id:            5,
+			setupFiles:    []string{"5-data_2025-01-01.sqlite.zip", "0005-data_2025-02-01.sqlite.zip"},
+			expectedMatch: "0005-data_2025-02-01.sqlite.zip",
+			expectError:   false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -360,4 +459,132 @@ func TestOpenSFGA(t *testing.T) {
 func TestOpenSFGA_NonexistentFile(t *testing.T) {
 	_, err := openSFGA("/nonexistent/path/to/file.sqlite")
 	assert.Error(t, err)
+}
+
+func TestGenerateIDPatterns(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       int
+		expected []string
+	}{
+		{
+			name:     "ID=1 generates all 4 patterns",
+			id:       1,
+			expected: []string{"0001", "001", "01", "1"},
+		},
+		{
+			name:     "ID=42 generates 3 patterns",
+			id:       42,
+			expected: []string{"0042", "042", "42"},
+		},
+		{
+			name:     "ID=196 generates 2 patterns",
+			id:       196,
+			expected: []string{"0196", "196"},
+		},
+		{
+			name:     "ID=1234 generates 1 pattern",
+			id:       1234,
+			expected: []string{"1234"},
+		},
+		{
+			name:     "ID=9 generates all 4 patterns",
+			id:       9,
+			expected: []string{"0009", "009", "09", "9"},
+		},
+		{
+			name:     "ID=99 generates 3 patterns",
+			id:       99,
+			expected: []string{"0099", "099", "99"},
+		},
+		{
+			name:     "ID=999 generates 2 patterns",
+			id:       999,
+			expected: []string{"0999", "999"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateIDPatterns(tt.id)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestMatchesIDPattern(t *testing.T) {
+	tests := []struct {
+		name     string
+		filename string
+		patterns []string
+		expected bool
+	}{
+		{
+			name:     "matches with dash separator",
+			filename: "0001-col.sqlite.zip",
+			patterns: []string{"0001", "001", "01", "1"},
+			expected: true,
+		},
+		{
+			name:     "matches with underscore separator",
+			filename: "0001_col.sqlite.zip",
+			patterns: []string{"0001", "001", "01", "1"},
+			expected: true,
+		},
+		{
+			name:     "matches with dot separator (extension)",
+			filename: "0001.sqlite.zip",
+			patterns: []string{"0001", "001", "01", "1"},
+			expected: true,
+		},
+		{
+			name:     "matches shorter pattern",
+			filename: "1-col.sqlite.zip",
+			patterns: []string{"0001", "001", "01", "1"},
+			expected: true,
+		},
+		{
+			name:     "does not match without separator",
+			filename: "0001col.sqlite.zip",
+			patterns: []string{"0001", "001", "01", "1"},
+			expected: false,
+		},
+		{
+			name:     "does not match longer ID (1001 vs 1)",
+			filename: "1001-col.sqlite.zip",
+			patterns: []string{"0001", "001", "01", "1"},
+			expected: false,
+		},
+		{
+			name:     "does not match similar but different ID (10 vs 1)",
+			filename: "10-col.sqlite.zip",
+			patterns: []string{"0001", "001", "01", "1"},
+			expected: false,
+		},
+		{
+			name:     "matches exact 3-digit pattern",
+			filename: "042-data.sqlite.zip",
+			patterns: []string{"0042", "042", "42"},
+			expected: true,
+		},
+		{
+			name:     "matches exact 2-digit pattern",
+			filename: "42-data.sqlite.zip",
+			patterns: []string{"0042", "042", "42"},
+			expected: true,
+		},
+		{
+			name:     "does not match when ID is prefix of filename number",
+			filename: "420-data.sqlite.zip",
+			patterns: []string{"0042", "042", "42"},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := matchesIDPattern(tt.filename, tt.patterns)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }

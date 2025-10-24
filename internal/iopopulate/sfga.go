@@ -17,12 +17,13 @@ import (
 )
 
 // resolveSFGAFile finds the SFGA file in the parent directory matching the given ID.
-// Matches pattern: {4-digit-ID}* with SFGA extensions (.sql, .sql.zip, .sqlite, .sqlite.zip)
+// Matches patterns: {ID}-, {ID}_, or {ID}.ext with varying digit lengths (0001, 001, 01, 1)
+// SFGA extensions: .sql, .sql.zip, .sqlite, .sqlite.zip
 // If multiple files match, selects the one with the latest date.
 // Returns (filePath, warningMessage, error). Warning is non-empty when multiple files found.
 func resolveSFGAFile(parentDir string, id int) (string, string, error) {
-	// Format ID with leading zeros (4 digits)
-	idPattern := fmt.Sprintf("%04d", id)
+	// Generate ID patterns to try: 0001, 001, 01, 1 (descending order)
+	idPatterns := generateIDPatterns(id)
 
 	// Read directory
 	entries, err := os.ReadDir(parentDir)
@@ -38,8 +39,8 @@ func resolveSFGAFile(parentDir string, id int) (string, string, error) {
 		}
 
 		filename := entry.Name()
-		// Match files starting with the ID pattern with SFGA extensions
-		if strings.HasPrefix(filename, idPattern) && isSFGAFile(filename) {
+		// Check if this file matches any of our ID patterns
+		if matchesIDPattern(filename, idPatterns) && isSFGAFile(filename) {
 			matches = append(matches, filename)
 		}
 	}
@@ -47,9 +48,9 @@ func resolveSFGAFile(parentDir string, id int) (string, string, error) {
 	// Handle no matches
 	if len(matches) == 0 {
 		return "", "", fmt.Errorf(
-			"no files found matching ID %d (pattern %s*) in %s",
+			"no files found matching ID %d (patterns: %v) in %s",
 			id,
-			idPattern,
+			idPatterns,
 			parentDir,
 		)
 	}
@@ -68,12 +69,12 @@ func resolveSFGAFile(parentDir string, id int) (string, string, error) {
 }
 
 // resolveRemoteSFGAFile finds the SFGA file at a remote URL by listing the directory.
-// Matches pattern: {4-digit-ID}* with SFGA extensions
+// Matches patterns: {ID}-, {ID}_, or {ID}.ext with varying digit lengths (0001, 001, 01, 1)
 // If multiple files match, selects the one with the latest date.
 // Returns (fullURL, warningMessage, error). Warning is non-empty when multiple files found.
 func resolveRemoteSFGAFile(baseURL string, id int) (string, string, error) {
-	// Format ID with leading zeros (4 digits)
-	idPattern := fmt.Sprintf("%04d", id)
+	// Generate ID patterns to try: 0001, 001, 01, 1 (descending order)
+	idPatterns := generateIDPatterns(id)
 
 	// Fetch directory listing
 	resp, err := http.Get(baseURL)
@@ -114,8 +115,8 @@ func resolveRemoteSFGAFile(baseURL string, id int) (string, string, error) {
 			continue
 		}
 
-		// Match files starting with the ID pattern with SFGA extensions
-		if strings.HasPrefix(filename, idPattern) && isSFGAFile(filename) {
+		// Check if this file matches any of our ID patterns
+		if matchesIDPattern(filename, idPatterns) && isSFGAFile(filename) {
 			matches = append(matches, filename)
 		}
 	}
@@ -123,9 +124,9 @@ func resolveRemoteSFGAFile(baseURL string, id int) (string, string, error) {
 	// Handle no matches
 	if len(matches) == 0 {
 		return "", "", fmt.Errorf(
-			"no files found matching ID %d (pattern %s*) at %s",
+			"no files found matching ID %d (patterns: %v) at %s",
 			id,
-			idPattern,
+			idPatterns,
 			baseURL,
 		)
 	}
@@ -226,6 +227,51 @@ func isSFGAFile(filename string) bool {
 		strings.HasSuffix(filename, ".sql.zip") ||
 		strings.HasSuffix(filename, ".sqlite") ||
 		strings.HasSuffix(filename, ".sqlite.zip")
+}
+
+// generateIDPatterns creates ID patterns with varying zero-padding lengths.
+// For ID=1: returns ["0001", "001", "01", "1"]
+// For ID=42: returns ["0042", "042", "42"]
+// For ID=196: returns ["0196", "196"]
+// For ID=1234: returns ["1234"]
+// Patterns are ordered by specificity (most zeros first) to prefer standardized naming.
+func generateIDPatterns(id int) []string {
+	var patterns []string
+
+	// Start with 4-digit format (standard)
+	patterns = append(patterns, fmt.Sprintf("%04d", id))
+
+	// Add 3-digit format if ID < 1000
+	if id < 1000 {
+		patterns = append(patterns, fmt.Sprintf("%03d", id))
+	}
+
+	// Add 2-digit format if ID < 100
+	if id < 100 {
+		patterns = append(patterns, fmt.Sprintf("%02d", id))
+	}
+
+	// Add 1-digit format if ID < 10
+	if id < 10 {
+		patterns = append(patterns, fmt.Sprintf("%d", id))
+	}
+
+	return patterns
+}
+
+// matchesIDPattern checks if a filename matches any of the given ID patterns.
+// A match occurs when the filename starts with: {pattern}- or {pattern}_ or {pattern}.
+// This ensures we match "001-file.sql" or "001_file.sql" or "001.sql" but not "1001.sql" for ID=1.
+func matchesIDPattern(filename string, patterns []string) bool {
+	for _, pattern := range patterns {
+		// Check if filename starts with pattern followed by separator or extension
+		if strings.HasPrefix(filename, pattern+"-") ||
+			strings.HasPrefix(filename, pattern+"_") ||
+			strings.HasPrefix(filename, pattern+".") {
+			return true
+		}
+	}
+	return false
 }
 
 // SFGAMetadata holds metadata extracted from SFGA filename.

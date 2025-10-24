@@ -229,6 +229,17 @@ data_sources:
     outlink_url: "{}"
     outlink_id_column: "taxon.gn__local_id" # Uses local_id which is the full URL
 
+  # NZOR
+  - id: 209
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: NZOR
+    home_url:        https://www.nzor.org.nz/
+    data_url:        https://www.nzor.org.nz/downloads
+    is_curated: true
+    is_outlink_ready: true
+    outlink_url:     "https://www.nzor.org.nz/names/{}"
+    outlink_id_column: "taxon.col__id"
+
   # TAXREF
   - id: 210
     parent: http://opendata.globalnames.org/sfga/

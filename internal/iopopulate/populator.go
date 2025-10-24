@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gnames/gndb/internal/ioconfig"
@@ -14,6 +15,7 @@ import (
 	"github.com/gnames/gndb/pkg/db"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gnlib"
 )
 
 // PopulatorImpl implements the Populator interface.
@@ -99,10 +101,26 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 
 	for i, source := range sourcesToProcess {
 		sourceStartTime := time.Now()
-		slog.Info("Processing source",
+
+		// Print data source header
+		if len(sourcesToProcess) > 1 {
+			if i > 0 {
+				fmt.Println() // Blank line between sources
+			}
+			fmt.Println(strings.Repeat("─", 60))
+		}
+		fmt.Println(gnlib.FormatMessage(
+			fmt.Sprintf("<bold>Data Source [%d]: %s</bold>", source.ID, source.TitleShort),
+			nil,
+		))
+		if len(sourcesToProcess) > 1 {
+			fmt.Println(strings.Repeat("─", 60))
+		}
+
+		slog.Debug("Processing source",
 			"index", i+1,
 			"total", len(sourcesToProcess),
-			"id", source.ID,
+			"data_source_id", source.ID,
 			"title", source.TitleShort,
 		)
 
@@ -118,7 +136,7 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 		if err != nil {
 			errorCount++
 			slog.Error("Failed to process source",
-				"id", source.ID,
+				"data_source_id", source.ID,
 				"title", source.TitleShort,
 				"error", err,
 			)
@@ -128,11 +146,15 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 
 		successCount++
 		sourceDuration := time.Since(sourceStartTime)
-		slog.Info("Source processed successfully",
-			"id", source.ID,
+		slog.Debug("Source processed successfully",
+			"data_source_id", source.ID,
 			"title", source.TitleShort,
 			"duration", sourceDuration.Round(time.Second),
 		)
+
+		// Print summary for this source
+		msg := fmt.Sprintf("<em>Completed in %s</em>", sourceDuration.Round(time.Second).String())
+		fmt.Println(gnlib.FormatMessage(msg, nil))
 	}
 
 	// Step 6: Summary
@@ -168,13 +190,13 @@ func (p *PopulatorImpl) processSource(
 		return fmt.Errorf("failed to clear cache: %w", err)
 	}
 
-	slog.Info("Fetching SFGA", "source_id", source.ID)
+	slog.Debug("Fetching SFGA", "data_source_id", source.ID)
 	sqlitePath, sfgaMetadata, warning, err := fetchSFGA(ctx, source, cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to fetch SFGA: %w", err)
 	}
 	if warning != "" {
-		slog.Warn("Multiple SFGA files found", "source_id", source.ID, "details", warning)
+		slog.Warn("Multiple SFGA files found", "data_source_id", source.ID, "details", warning)
 	}
 
 	// Phase 0: Open SFGA database (T037)
@@ -185,35 +207,35 @@ func (p *PopulatorImpl) processSource(
 	defer sfgaDB.Close()
 
 	// Phase 1: Process name strings (T039)
-	slog.Info("Phase 1: Processing name strings", "source_id", source.ID)
+	slog.Info("Phase 1: Processing name strings", "data_source_id", source.ID)
 	err = processNameStrings(ctx, p, sfgaDB, source.ID)
 	if err != nil {
 		return fmt.Errorf("phase 1 failed (name strings): %w", err)
 	}
 
 	// Phase 1.5: Build hierarchy for classification (T041)
-	slog.Info("Building hierarchy for classification", "source_id", source.ID)
+	slog.Info("Building hierarchy for classification", "data_source_id", source.ID)
 	hierarchy, err := buildHierarchy(ctx, sfgaDB, cfg.JobsNumber)
 	if err != nil {
 		return fmt.Errorf("failed to build hierarchy: %w", err)
 	}
 
 	// Phase 2: Process name indices with classification (T043)
-	slog.Info("Phase 2: Processing name indices", "source_id", source.ID)
+	slog.Info("Phase 2: Processing name indices", "data_source_id", source.ID)
 	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, cfg)
 	if err != nil {
 		return fmt.Errorf("phase 2 failed (name indices): %w", err)
 	}
 
 	// Phase 3-4: Process vernaculars (T045)
-	slog.Info("Phase 3-4: Processing vernaculars", "source_id", source.ID)
+	slog.Info("Phase 3-4: Processing vernaculars", "data_source_id", source.ID)
 	err = processVernaculars(ctx, p, sfgaDB, source.ID)
 	if err != nil {
 		return fmt.Errorf("phase 3-4 failed (vernaculars): %w", err)
 	}
 
 	// Phase 5: Update data source metadata (T047)
-	slog.Info("Phase 5: Updating data source metadata", "source_id", source.ID)
+	slog.Info("Phase 5: Updating data source metadata", "data_source_id", source.ID)
 	err = updateDataSourceMetadata(ctx, p, source, sfgaDB, sfgaMetadata)
 	if err != nil {
 		return fmt.Errorf("phase 5 failed (metadata): %w", err)

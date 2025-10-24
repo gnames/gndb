@@ -10,6 +10,7 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
+	"github.com/gnames/gnlib"
 	"github.com/gnames/gnuuid"
 )
 
@@ -29,7 +30,7 @@ import (
 //   - User aborts when gn__scientific_name_string is empty
 //   - Database insert fails
 func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, sourceID int) error {
-	slog.Debug("Phase 1: Processing name strings", "source_id", sourceID)
+	slog.Debug("Phase 1: Processing name strings", "data_source_id", sourceID)
 
 	// Query SFGA name table
 	// gn__scientific_name_string is preferred (includes authorship)
@@ -77,6 +78,7 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 	// If there are empty gn__scientific_name_string values, prompt user
 	if emptyCount > 0 {
 		slog.Warn("Empty gn__scientific_name_string detected",
+			"data_source_id", sourceID,
 			"count", emptyCount,
 			"total", len(names),
 		)
@@ -93,9 +95,9 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 
 		switch response {
 		case "yes":
-			slog.Info("User chose to continue with fallback to col__scientific_name")
+			slog.Info("User chose to continue with fallback to col__scientific_name", "data_source_id", sourceID)
 		case "no":
-			slog.Info("User chose to skip this source")
+			slog.Info("User chose to skip this source", "data_source_id", sourceID)
 			return nil // Skip this source, continue with next
 		case "abort":
 			return fmt.Errorf("user aborted populate run")
@@ -173,10 +175,15 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 	}
 
 	// Final log with total count
-	slog.Info("Phase 1 complete: Name strings imported",
+	slog.Debug("Phase 1 complete: Name strings imported",
+		"data_source_id", sourceID,
 		"inserted", totalInserted,
 		"total_records", len(names),
 	)
+
+	// Print stats
+	msg := fmt.Sprintf("<em>Imported %s name strings</em>", humanize.Comma(int64(totalInserted)))
+	fmt.Println(gnlib.FormatMessage(msg, nil))
 
 	return nil
 }

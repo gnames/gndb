@@ -11,6 +11,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gnlib"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -96,7 +97,7 @@ func processNameIndices(
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) error {
-	slog.Info("Processing name indices", "sourceID", source.ID)
+	slog.Debug("Processing name indices", "data_source_id", source.ID)
 
 	// Clean old data for this source
 	err := cleanNameIndices(ctx, p, source.ID)
@@ -105,24 +106,36 @@ func processNameIndices(
 	}
 
 	// Process taxa (accepted names with classification)
-	err = processTaxa(ctx, p, sfgaDB, source, hierarchy, cfg)
+	taxaCount, err := processTaxa(ctx, p, sfgaDB, source, hierarchy, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to process taxa: %w", err)
 	}
 
 	// Process synonyms (linked to accepted taxa)
-	err = processSynonyms(ctx, p, sfgaDB, source, hierarchy, cfg)
+	synonymCount, err := processSynonyms(ctx, p, sfgaDB, source, hierarchy, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to process synonyms: %w", err)
 	}
 
 	// Process bare names (orphans not in taxon/synonym)
-	err = processBareNames(ctx, p, sfgaDB, source, cfg)
+	bareCount, err := processBareNames(ctx, p, sfgaDB, source, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to process bare names: %w", err)
 	}
 
-	slog.Info("Name indices processing complete", "sourceID", source.ID)
+	totalCount := taxaCount + synonymCount + bareCount
+	slog.Debug("Name indices processing complete", "data_source_id", source.ID, "total", totalCount)
+
+	// Print stats
+	msg := fmt.Sprintf(
+		"<em>Imported %s name indices (%s taxa, %s synonyms, %s bare names)</em>",
+		humanize.Comma(int64(totalCount)),
+		humanize.Comma(int64(taxaCount)),
+		humanize.Comma(int64(synonymCount)),
+		humanize.Comma(int64(bareCount)),
+	)
+	fmt.Println(gnlib.FormatMessage(msg, nil))
+
 	return nil
 }
 
@@ -136,7 +149,7 @@ func cleanNameIndices(ctx context.Context, p *PopulatorImpl, sourceID int) error
 		return fmt.Errorf("failed to clean name indices: %w", err)
 	}
 
-	slog.Info("Cleaned old name indices", "sourceID", sourceID)
+	slog.Debug("Cleaned old name indices", "data_source_id", sourceID)
 	return nil
 }
 
@@ -149,15 +162,15 @@ func processTaxa(
 	source *populate.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
-) error {
-	slog.Info("Processing taxa (accepted names)")
+) (int, error) {
+	slog.Debug("Processing taxa (accepted names)", "data_source_id", source.ID)
 
 	// Count total taxa for progress bar
 	var totalCount int
 	countQuery := `SELECT COUNT(*) FROM taxon`
 	err := sfgaDB.QueryRow(countQuery).Scan(&totalCount)
 	if err != nil {
-		return fmt.Errorf("failed to count taxa: %w", err)
+		return 0, fmt.Errorf("failed to count taxa: %w", err)
 	}
 
 	// Build outlink column expression if configured
@@ -186,7 +199,7 @@ func processTaxa(
 
 	rows, err := sfgaDB.Query(query)
 	if err != nil {
-		return fmt.Errorf("failed to query taxa: %w", err)
+		return 0, fmt.Errorf("failed to query taxa: %w", err)
 	}
 	defer rows.Close()
 
@@ -223,7 +236,7 @@ func processTaxa(
 
 		err := rows.Scan(scanArgs...)
 		if err != nil {
-			return fmt.Errorf("failed to scan taxon row: %w", err)
+			return 0, fmt.Errorf("failed to scan taxon row: %w", err)
 		}
 
 		// Build flat classification map
@@ -308,7 +321,7 @@ func processTaxa(
 		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			records = records[:0] // Clear batch
 		}
@@ -318,15 +331,15 @@ func processTaxa(
 	if len(records) > 0 {
 		err = insertNameIndices(ctx, p, records)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	if count > 0 {
-		slog.Info("Processed taxa", "count", humanize.Comma(int64(count)))
+		slog.Debug("Processed taxa", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
 	}
 
-	return rows.Err()
+	return count, rows.Err()
 }
 
 // processSynonyms processes synonym records from the SFGA synonym table.
@@ -338,8 +351,8 @@ func processSynonyms(
 	source *populate.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
-) error {
-	slog.Info("Processing synonyms")
+) (int, error) {
+	slog.Debug("Processing synonyms", "data_source_id", source.ID)
 
 	// Check if synonym table exists
 	var tableExists bool
@@ -348,12 +361,12 @@ func processSynonyms(
 		WHERE type='table' AND name='synonym'
 	`).Scan(&tableExists)
 	if err != nil {
-		return fmt.Errorf("failed to check synonym table: %w", err)
+		return 0, fmt.Errorf("failed to check synonym table: %w", err)
 	}
 
 	if !tableExists {
-		slog.Info("No synonym table in SFGA, skipping synonyms")
-		return nil
+		slog.Debug("No synonym table in SFGA, skipping synonyms", "data_source_id", source.ID)
+		return 0, nil
 	}
 
 	// Count total synonyms for progress bar
@@ -361,7 +374,7 @@ func processSynonyms(
 	countQuery := `SELECT COUNT(*) FROM synonym`
 	err = sfgaDB.QueryRow(countQuery).Scan(&totalCount)
 	if err != nil {
-		return fmt.Errorf("failed to count synonyms: %w", err)
+		return 0, fmt.Errorf("failed to count synonyms: %w", err)
 	}
 
 	// Build outlink column expression if configured
@@ -391,7 +404,7 @@ func processSynonyms(
 
 	rows, err := sfgaDB.Query(query)
 	if err != nil {
-		return fmt.Errorf("failed to query synonyms: %w", err)
+		return 0, fmt.Errorf("failed to query synonyms: %w", err)
 	}
 	defer rows.Close()
 
@@ -427,7 +440,7 @@ func processSynonyms(
 
 		err := rows.Scan(scanArgs...)
 		if err != nil {
-			return fmt.Errorf("failed to scan synonym row: %w", err)
+			return 0, fmt.Errorf("failed to scan synonym row: %w", err)
 		}
 
 		// Build flat classification from accepted taxon
@@ -509,7 +522,7 @@ func processSynonyms(
 		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			records = records[:0]
 		}
@@ -518,15 +531,15 @@ func processSynonyms(
 	if len(records) > 0 {
 		err = insertNameIndices(ctx, p, records)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	if count > 0 {
-		slog.Info("Processed synonyms", "count", humanize.Comma(int64(count)))
+		slog.Debug("Processed synonyms", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
 	}
 
-	return rows.Err()
+	return count, rows.Err()
 }
 
 // processBareNames processes names that are not in taxon or synonym tables.
@@ -537,8 +550,8 @@ func processBareNames(
 	sfgaDB *sql.DB,
 	source *populate.DataSourceConfig,
 	cfg *config.Config,
-) error {
-	slog.Info("Processing bare names")
+) (int, error) {
+	slog.Debug("Processing bare names", "data_source_id", source.ID)
 
 	// Count total bare names for progress bar
 	var totalCount int
@@ -553,7 +566,7 @@ func processBareNames(
 	`
 	err := sfgaDB.QueryRow(countQuery).Scan(&totalCount)
 	if err != nil {
-		return fmt.Errorf("failed to count bare names: %w", err)
+		return 0, fmt.Errorf("failed to count bare names: %w", err)
 	}
 
 	// Build outlink column expression if configured
@@ -581,7 +594,7 @@ func processBareNames(
 
 	rows, err := sfgaDB.Query(query)
 	if err != nil {
-		return fmt.Errorf("failed to query bare names: %w", err)
+		return 0, fmt.Errorf("failed to query bare names: %w", err)
 	}
 	defer rows.Close()
 
@@ -607,7 +620,7 @@ func processBareNames(
 
 		err := rows.Scan(scanArgs...)
 		if err != nil {
-			return fmt.Errorf("failed to scan bare name row: %w", err)
+			return 0, fmt.Errorf("failed to scan bare name row: %w", err)
 		}
 
 		// Use gn__scientific_name_string if available, fallback to col__scientific_name
@@ -656,7 +669,7 @@ func processBareNames(
 		if len(records) >= cfg.Database.BatchSize {
 			err = insertNameIndices(ctx, p, records)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			records = records[:0]
 		}
@@ -665,15 +678,15 @@ func processBareNames(
 	if len(records) > 0 {
 		err = insertNameIndices(ctx, p, records)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
 	if count > 0 {
-		slog.Info("Processed bare names", "count", humanize.Comma(int64(count)))
+		slog.Debug("Processed bare names", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
 	}
 
-	return rows.Err()
+	return count, rows.Err()
 }
 
 // insertNameIndices performs bulk insert using pgx CopyFrom.
