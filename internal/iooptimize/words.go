@@ -2,16 +2,16 @@ package iooptimize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
-	"github.com/gnames/gndb/pkg/parserpool"
 	"github.com/gnames/gndb/pkg/schema"
 	"github.com/gnames/gnlib"
-	"github.com/gnames/gnlib/ent/nomcode"
+	"github.com/gnames/gnparser"
 	"github.com/gnames/gnparser/ent/parsed"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
@@ -67,18 +67,9 @@ func createWords(ctx context.Context, o *OptimizerImpl, cfg *config.Config) erro
 		slog.Info("No names to process for word extraction")
 		return nil
 	}
-
-	// Step 3: Create parserpool for concurrent parsing
-	workerCount := cfg.JobsNumber
-	if workerCount == 0 {
-		workerCount = 1
-	}
-	parserPool := parserpool.NewPool(workerCount)
-	defer parserPool.Close()
-
-	// Parse names and extract words using parserpool
+	// parsing names here
 	slog.Debug("Parsing names and extracting words", "totalNames", len(names))
-	words, wordNames, err := parseNamesForWords(ctx, parserPool, names, cfg)
+	words, wordNames, err := parseNamesForWords(ctx, names, cfg)
 	if err != nil {
 		return err
 	}
@@ -195,7 +186,6 @@ func getNameStringsForWords(ctx context.Context, conn *pgx.Conn) ([]nameForWords
 // Reference: gnidump processParsedWords() in words.go
 func parseNamesForWords(
 	ctx context.Context,
-	pool parserpool.Pool,
 	names []nameForWords,
 	cfg *config.Config,
 ) ([]schema.Word, []schema.WordNameString, error) {
@@ -219,7 +209,7 @@ func parseNamesForWords(
 		batch := names[i:end]
 
 		// Process batch concurrently using errgroup
-		batchWords, batchWordNames, err := processBatchConcurrent(ctx, pool, batch, cfg.JobsNumber)
+		batchWords, batchWordNames, err := processBatchConcurrent(ctx, batch, cfg.JobsNumber)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -245,7 +235,6 @@ func parseNamesForWords(
 // Each worker parses names and extracts words.
 func processBatchConcurrent(
 	ctx context.Context,
-	pool parserpool.Pool,
 	batch []nameForWords,
 	jobsNum int,
 ) ([]schema.Word, []schema.WordNameString, error) {
@@ -264,12 +253,14 @@ func processBatchConcurrent(
 		words     []schema.Word
 		wordNames []schema.WordNameString
 	}
-	resultsCh := make(chan result, jobsNum)
+	resultsCh := make(chan result)
 
 	g, ctx := errgroup.WithContext(ctx)
 
 	// Launch workers
-	for i := 0; i < jobsNum; i++ {
+	for i := range jobsNum {
+		parserCfg := gnparser.NewConfig(gnparser.OptWithDetails(true))
+		parser := gnparser.New(parserCfg)
 		start := i * chunkSize
 		end := start + chunkSize
 		if i == jobsNum-1 {
@@ -281,7 +272,7 @@ func processBatchConcurrent(
 
 		chunk := batch[start:end]
 		g.Go(func() error {
-			words, wordNames := processChunk(pool, chunk)
+			words, wordNames := processChunk(parser, chunk)
 			select {
 			case resultsCh <- result{words: words, wordNames: wordNames}:
 				return nil
@@ -292,7 +283,7 @@ func processBatchConcurrent(
 	}
 
 	// Wait for all workers
-	if err := g.Wait(); err != nil {
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		close(resultsCh)
 		return nil, nil, err
 	}
@@ -311,19 +302,18 @@ func processBatchConcurrent(
 
 // processChunk processes a chunk of names and extracts words (worker function).
 func processChunk(
-	pool parserpool.Pool,
+	parser gnparser.GNparser,
 	chunk []nameForWords,
 ) ([]schema.Word, []schema.WordNameString) {
 	words := make([]schema.Word, 0, len(chunk)*5)
 	wordNames := make([]schema.WordNameString, 0, len(chunk)*5)
 
 	for _, n := range chunk {
-		// Parse the name using parserpool (Botanical code by default)
-		p, err := pool.Parse(n.Name, nomcode.Botanical)
-		if err != nil {
-			slog.Warn("Failed to parse name", "name", n.Name, "error", err)
-			continue
-		}
+		// words use default (no code) gnparser, that tries to parser both
+		// zoological and botanical names correctly (should give more accurate)
+		// results than using botanical or zoological code exclusively. The
+		// algorithm is not perfect, but better than nothing.
+		p := parser.ParseName(n.Name)
 
 		// Skip unparsed names, surrogates, and hybrids (following gnidump logic)
 		if !p.Parsed || p.Surrogate != nil || p.Hybrid != nil {

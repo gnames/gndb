@@ -4,14 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gnames/gndb/pkg/parserpool"
+	"github.com/gnames/gnlib"
 	"github.com/gnames/gnlib/ent/nomcode"
+	"github.com/gnames/gnparser"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -27,8 +27,15 @@ type hNode struct {
 
 // badNodes tracks nodes that are referenced but don't exist in the hierarchy.
 // This prevents logging the same missing node warning multiple times.
-var badNodes = make(map[string]struct{})
+var badNodes = make(map[string]badNodeType)
 var badNodesMutex sync.Mutex
+
+type badNodeType int
+
+const (
+	missingBadNode badNodeType = iota + 1
+	circularBadNode
+)
 
 // buildHierarchy constructs a map of taxonomy nodes from the SFGA taxon table.
 // It uses concurrent workers to parse scientific names using gnparser with botanical code.
@@ -44,29 +51,25 @@ var badNodesMutex sync.Mutex
 // Returns:
 //   - map[string]*hNode: Map of taxon IDs to hierarchy nodes
 //   - error: Any error encountered during processing
-func buildHierarchy(ctx context.Context, sfgaDB *sql.DB, jobsNum int) (map[string]*hNode, error) {
+func buildHierarchy(
+	ctx context.Context,
+	sfgaDB *sql.DB,
+	jobsNum int,
+) (map[string]*hNode, error) {
 	// Create channels for worker communication
 	chIn := make(chan nameUsage)
 	chOut := make(chan *hNode)
 
-	// Create cancellable context
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	// Create error group for concurrent processing
-	g, ctx := errgroup.WithContext(ctx)
+	g, ctx := errgroup.WithContext(context.Background())
 	var wg sync.WaitGroup
 
-	// Create gnparser pool for concurrent parsing
-	pool := parserpool.NewPool(jobsNum)
-	defer pool.Close()
-
 	// Start worker goroutines
-	for i := 0; i < jobsNum; i++ {
+	for range jobsNum {
 		wg.Add(1)
 		g.Go(func() error {
 			defer wg.Done()
-			return hierarchyWorker(ctx, pool, chIn, chOut)
+			return hierarchyWorker(ctx, chIn, chOut)
 		})
 	}
 
@@ -112,18 +115,13 @@ type nameUsage struct {
 // It parses scientific names using the gnparser pool and sends results to chOut.
 func hierarchyWorker(
 	ctx context.Context,
-	pool parserpool.Pool,
 	chIn <-chan nameUsage,
 	chOut chan<- *hNode,
 ) error {
+	pCfg := gnparser.NewConfig(gnparser.OptCode(nomcode.Botanical))
+	parser := gnparser.New(pCfg)
 	for nu := range chIn {
-		row, err := processHierarchyRow(pool, nu)
-		if err != nil {
-			// Drain input channel on error
-			for range chIn {
-			}
-			return err
-		}
+		row := processHierarchyRow(parser, nu)
 
 		select {
 		case <-ctx.Done():
@@ -137,12 +135,9 @@ func hierarchyWorker(
 
 // processHierarchyRow converts a nameUsage record into an hNode.
 // It uses gnparser to extract the canonical form of the scientific name.
-func processHierarchyRow(pool parserpool.Pool, nu nameUsage) (*hNode, error) {
+func processHierarchyRow(parser gnparser.GNparser, nu nameUsage) *hNode {
 	// Parse scientific name using botanical code
-	parsed, err := pool.Parse(nu.scientificName, nomcode.Botanical)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse name %q: %w", nu.scientificName, err)
-	}
+	parsed := parser.ParseName(nu.scientificName)
 
 	var name string
 	if parsed.Parsed {
@@ -163,7 +158,7 @@ func processHierarchyRow(pool parserpool.Pool, nu nameUsage) (*hNode, error) {
 		name:            name,
 		parentID:        parentID,
 		taxonomicStatus: nu.taxonomicStatus,
-	}, nil
+	}
 }
 
 // createHierarchy collects hNode results from workers into the hierarchy map.
@@ -188,10 +183,15 @@ func createHierarchy(ctx context.Context, chOut <-chan *hNode, hierarchy map[str
 		}
 	}
 
+	fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
+	msg := "<em>Hierarchy does not exist</em>"
 	if count > 0 {
-		fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
-		slog.Info("Built hierarchy", "nodes", humanize.Comma(int64(count)))
+		msg = fmt.Sprintf(
+			"<em>Built hierarchy with %s nodes</em>",
+			humanize.Comma(int64(count)),
+		)
 	}
+	fmt.Println(gnlib.FormatMessage(msg, nil))
 
 	return nil
 }
@@ -304,9 +304,7 @@ func breadcrumbsNodes(id string, hierarchy map[string]*hNode) []*hNode {
 		if visited[currID] {
 			badNodesMutex.Lock()
 			if _, ok := badNodes[currID]; !ok {
-				badNodes[currID] = struct{}{}
-				fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
-				slog.Warn("Circular reference detected in hierarchy", "id", currID)
+				badNodes[currID] = circularBadNode
 			}
 			badNodesMutex.Unlock()
 			return result
@@ -316,12 +314,10 @@ func breadcrumbsNodes(id string, hierarchy map[string]*hNode) []*hNode {
 		// Get the node
 		node, ok := hierarchy[currID]
 		if !ok {
-			// Node doesn't exist - log warning and return what we have
+			// Node doesn't exist
 			badNodesMutex.Lock()
 			if _, ok := badNodes[currID]; !ok {
-				badNodes[currID] = struct{}{}
-				fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
-				slog.Warn("Hierarchy node not found, making short breadcrumbs", "id", currID)
+				badNodes[currID] = missingBadNode
 			}
 			badNodesMutex.Unlock()
 			return result

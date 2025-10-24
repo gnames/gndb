@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"path/filepath"
+	"strings"
 
 	"github.com/gnames/gndb/internal/ioconfig"
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gnlib"
 	"github.com/spf13/cobra"
 )
 
@@ -91,17 +94,37 @@ Examples:
 
 			// Display configuration warnings (non-fatal issues)
 			if len(sourcesConfig.Warnings) > 0 {
-				lg.Warn("configuration warnings detected", "count", len(sourcesConfig.Warnings))
+				fmt.Println("\n" + gnlib.FormatMessage("<warn>Configuration Issues Detected</warn>", nil))
+				fmt.Println(gnlib.FormatMessage(
+					"Found <em>%d</em> issue(s) in sources configuration:",
+					[]any{len(sourcesConfig.Warnings)},
+				))
+				fmt.Println()
+
 				for _, warning := range sourcesConfig.Warnings {
-					lg.Warn("configuration issue",
-						"file", sourcesYAMLPath,
-						"data_source_id", warning.DataSourceID,
-						"field", warning.Field,
-						"issue", warning.Message,
-						"fix", warning.Suggestion,
-					)
+					fmt.Printf("  • Data Source ID %d:\n", warning.DataSourceID)
+					fmt.Printf("    Field: %s\n", warning.Field)
+					fmt.Printf("    Issue: %s\n", warning.Message)
+					if warning.Suggestion != "" {
+						fmt.Printf("    Suggestion: %s\n", warning.Suggestion)
+					}
+					fmt.Println()
 				}
-				lg.Info("data sources with warnings will be imported but may have limited functionality")
+
+				fmt.Println(gnlib.FormatMessage(
+					"<warn>Datasets with issues may be imported but could have limited functionality.</warn>",
+					nil,
+				))
+
+				// Prompt user to confirm continuation (defaults to yes)
+				response, err := promptUser("Continue with import? [Y/n]: ")
+				if err != nil {
+					return fmt.Errorf("failed to read user input: %w", err)
+				}
+
+				if response == "no" {
+					return fmt.Errorf("import cancelled by user")
+				}
 			}
 
 			// Filter sources based on --sources flag
@@ -131,18 +154,16 @@ Examples:
 			if len(filteredSources) == 1 {
 				if hasReleaseVersion {
 					// Version override will be applied during population
-					lg.Info("release version override", "version", releaseVersion)
+					slog.Info("Dataset version override", "version", releaseVersion)
 				}
 				if hasReleaseDate {
 					// Date override will be applied during population
-					lg.Info("release date override", "date", releaseDate)
+					slog.Info("Dataset release date override", "date", releaseDate)
 				}
 			}
 
 			// Update sources config with filtered list
 			sourcesConfig.DataSources = filteredSources
-
-			lg.Info("sources loaded", "count", len(filteredSources), "filter", sourcesFilter)
 
 			// Extract source IDs and set in Config for Populate()
 			sourceIDs := make([]int, len(filteredSources))
@@ -165,13 +186,11 @@ Examples:
 			populator := iopopulate.NewPopulator(op)
 
 			// Run population
-			lg.Info("starting database population")
 			err = populator.Populate(ctx, cfg)
 			if err != nil {
 				return fmt.Errorf("population failed: %w", err)
 			}
 
-			lg.Info("database population complete")
 			return nil
 		},
 	}
@@ -210,4 +229,28 @@ func validateOverrideFlags(sourceCount int, hasReleaseVersion, hasReleaseDate bo
 	}
 
 	return nil
+}
+
+// promptUser displays a message and reads user input from stdin.
+// Defaults to "yes" - user must explicitly type "n" or "no" to decline.
+// Any other input (including empty/Enter) is treated as "yes".
+func promptUser(message string) (string, error) {
+	fmt.Print(message)
+
+	var response string
+	// Scanln returns error on empty input, but we want to allow that as default "yes"
+	_, err := fmt.Scanln(&response)
+	if err != nil && err.Error() != "unexpected newline" {
+		// Real error, not just empty input
+		return "", err
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	// Explicit "no" or "n" means decline, everything else (including empty) means yes
+	if response == "n" || response == "no" {
+		return "no", nil
+	}
+
+	return "yes", nil
 }

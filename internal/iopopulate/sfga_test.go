@@ -289,9 +289,14 @@ func TestFetchSFGA_LocalDirectory(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	// Test fetchSFGA
+	// Test resolveSFGAPath (new function)
+	sfgaPath, metadata, warning, err := resolveSFGAPath(source)
+	require.NoError(t, err)
+	t.Logf("resolveSFGAPath returned: %s (metadata: %+v, warning: %s)", sfgaPath, metadata, warning)
+
+	// Test fetchSFGA (now takes the resolved path)
 	ctx := context.Background()
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, err := fetchSFGA(ctx, sfgaPath, cacheDir)
 	require.NoError(t, err)
 	t.Logf("fetchSFGA returned: %s (will remain in cache for inspection)", sqlitePath)
 
@@ -384,9 +389,8 @@ func TestFetchSFGA_URL(t *testing.T) {
 		Parent: "http://opendata.globalnames.org/sfga/",
 	}
 
-	// Test fetchSFGA
-	ctx := context.Background()
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	// Test resolveSFGAPath (new function)
+	sfgaPath, metadata, warning, err := resolveSFGAPath(source)
 
 	// Skip if no internet connection or file not available
 	if err != nil {
@@ -396,9 +400,17 @@ func TestFetchSFGA_URL(t *testing.T) {
 			t.Skipf("skipping URL test: no internet connection or server unavailable: %v", err)
 		}
 		// If it's a different error (like file not found on server), that's still useful to know
-		t.Logf("URL fetch error (may indicate file not on server): %v", err)
+		t.Logf("URL resolve error (may indicate file not on server): %v", err)
 		return
 	}
+
+	require.NoError(t, err)
+	t.Logf("resolveSFGAPath returned: %s (metadata: %+v, warning: %s)", sfgaPath, metadata, warning)
+
+	// Test fetchSFGA (now takes the resolved path)
+	ctx := context.Background()
+	sqlitePath, err := fetchSFGA(ctx, sfgaPath, cacheDir)
+	require.NoError(t, err)
 
 	t.Logf("fetchSFGA from URL returned: %s (will remain in cache for inspection)", sqlitePath)
 
@@ -439,8 +451,13 @@ func TestOpenSFGA(t *testing.T) {
 		Parent: testdataDir,
 	}
 
+	// First resolve the path
+	sfgaPath, _, _, err := resolveSFGAPath(source)
+	require.NoError(t, err)
+
+	// Then fetch/extract
 	ctx := context.Background()
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, err := fetchSFGA(ctx, sfgaPath, cacheDir)
 	require.NoError(t, err)
 
 	// Test opening the database
@@ -459,6 +476,24 @@ func TestOpenSFGA(t *testing.T) {
 func TestOpenSFGA_NonexistentFile(t *testing.T) {
 	_, err := openSFGA("/nonexistent/path/to/file.sqlite")
 	assert.Error(t, err)
+}
+
+// Helper function for tests: resolves and fetches SFGA in one call (old behavior)
+// This simplifies test migration and matches the original fetchSFGA signature.
+func resolveFetchSFGA(ctx context.Context, source populate.DataSourceConfig, cacheDir string) (string, SFGAMetadata, string, error) {
+	// Resolve the path first
+	sfgaPath, metadata, warning, err := resolveSFGAPath(source)
+	if err != nil {
+		return "", SFGAMetadata{}, "", err
+	}
+
+	// Then fetch/extract
+	sqlitePath, err := fetchSFGA(ctx, sfgaPath, cacheDir)
+	if err != nil {
+		return "", SFGAMetadata{}, warning, err
+	}
+
+	return sqlitePath, metadata, warning, nil
 }
 
 func TestGenerateIDPatterns(t *testing.T) {

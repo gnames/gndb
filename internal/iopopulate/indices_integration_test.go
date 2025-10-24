@@ -43,7 +43,7 @@ func TestProcessNameIndices_FlatClassification(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err, "Should fetch test SFGA")
 
 	sfgaDB, err := openSFGA(sqlitePath)
@@ -94,7 +94,7 @@ func TestProcessNameIndices_Integration(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err, "Should fetch test SFGA")
 
 	sfgaDB, err := openSFGA(sqlitePath)
@@ -253,7 +253,7 @@ func TestProcessNameIndices_OutlinkIDs_Integration(t *testing.T) {
 		cacheDir, err := prepareCacheDir()
 		require.NoError(t, err)
 
-		sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+		sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 		require.NoError(t, err)
 
 		sfgaDB, err := openSFGA(sqlitePath)
@@ -337,7 +337,7 @@ func TestProcessNameIndices_OutlinkIDs_Integration(t *testing.T) {
 		cacheDir, err := prepareCacheDir()
 		require.NoError(t, err)
 
-		sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+		sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 		require.NoError(t, err)
 
 		sfgaDB, err := openSFGA(sqlitePath)
@@ -388,7 +388,7 @@ func TestProcessNameIndices_OutlinkIDs_Integration(t *testing.T) {
 		cacheDir, err := prepareCacheDir()
 		require.NoError(t, err)
 
-		sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+		sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 		require.NoError(t, err)
 
 		sfgaDB, err := openSFGA(sqlitePath)
@@ -452,7 +452,7 @@ func TestProcessNameIndices_Idempotency(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err)
 
 	sfgaDB, err := openSFGA(sqlitePath)

@@ -6,7 +6,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gnames/gnfmt v0.6.3
-	github.com/gnames/gnlib v0.60.0
+	github.com/gnames/gnlib v0.61.0
 	github.com/gnames/gnparser v1.11.8
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0

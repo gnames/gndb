@@ -17,7 +17,7 @@ func NewConnectionError(host string, port int, database, user string, err error)
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Database Connection Failed</title>
 
-<warning>Could not connect to PostgreSQL database.</warning>
+<warn>Could not connect to PostgreSQL database.</warn>
 
 <em>Possible errs:</em>
   • PostgreSQL is not running
@@ -86,9 +86,9 @@ func NewEmptyDatabaseError(host, database string) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Database Not Ready</title>
 
-<warning>The database appears to be empty or not populated.</warning>
+<warn>The database appears to be empty or not populated.</warn>
 
-<em>Required steps before optimization:</em>
+<em>Required steps before optimization:</e>
   1. Create the database schema:
      <em>gndb create</em>
 

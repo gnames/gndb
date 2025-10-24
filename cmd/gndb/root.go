@@ -14,7 +14,6 @@ import (
 var (
 	cfgFile string
 	cfg     *config.Config
-	lg      *slog.Logger
 )
 
 func getRootCmd() *cobra.Command {
@@ -58,7 +57,7 @@ For more information, see the project's README file.`,
 			cfg = result.Config
 
 			// Initialize logger with config
-			lg = logger.New(&cfg.Logging)
+			lg := logger.New(&cfg.Logging)
 			slog.SetDefault(lg)
 
 			// Display config source using logger
@@ -71,7 +70,7 @@ For more information, see the project's README file.`,
 			case "defaults":
 				source = "built-in defaults"
 			}
-			lg.Info("Config loaded", "source", source)
+			slog.Info("Config loaded", "source", source)
 
 			return nil
 		},

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -37,10 +39,12 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 		return fmt.Errorf("database not connected")
 	}
 
+	// Preparation
+
 	startTime := time.Now()
 	slog.Info("Starting database population")
 
-	// Step 1: Load sources.yaml from default location
+	// Pre 1. Load sources.yaml from default location
 	configDir, err := ioconfig.GetConfigDir()
 	if err != nil {
 		return fmt.Errorf("failed to get config directory: %w", err)
@@ -52,7 +56,7 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 		return fmt.Errorf("failed to load sources configuration from %s: %w", sourcesYAMLPath, err)
 	}
 
-	// Step 2: Filter to requested source IDs (or all if empty)
+	// Pre 2. Filter to requested source IDs (or all if empty)
 	var sourcesToProcess []populate.DataSourceConfig
 	if len(cfg.Populate.SourceIDs) == 0 {
 		// Empty means process all sources
@@ -72,50 +76,55 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 		}
 
 		if len(sourcesToProcess) == 0 {
-			return fmt.Errorf("no sources found matching requested IDs: %v", cfg.Populate.SourceIDs)
+			return fmt.Errorf(
+				"no sources found matching requested IDs: %v",
+				cfg.Populate.SourceIDs,
+			)
 		}
 
-		slog.Info("Processing filtered sources", "count", len(sourcesToProcess), "ids", cfg.Populate.SourceIDs)
+		sources := "source"
+		if len(sourcesToProcess) > 1 {
+			sources += "s"
+		}
+		msg := gnlib.FormatMessage(
+			"<em>Processing %d %s</em>",
+			[]any{len(sourcesToProcess), sources},
+		)
+
+		fmt.Println(msg)
 	}
 
-	// Step 3: Validate release version/date constraints
+	// Pre 3. Validate release version/date constraints
 	hasReleaseVersion := cfg.Populate.ReleaseVersion != ""
 	hasReleaseDate := cfg.Populate.ReleaseDate != ""
 	if (hasReleaseVersion || hasReleaseDate) && len(sourcesToProcess) > 1 {
 		return fmt.Errorf(
-			"release version/date overrides can only be used with a single source (found %d sources)",
+			"release/version overrides can only be used with a single source (found %d sources)",
 			len(sourcesToProcess),
 		)
 	}
 
-	// Step 4: Prepare cache directory (T034)
+	// Pre 4. Prepare cache directory (T034)
 	cacheDir, err := prepareCacheDir()
 	if err != nil {
 		return fmt.Errorf("failed to prepare cache directory: %w", err)
 	}
 	slog.Info("Cache directory prepared", "path", cacheDir)
 
-	// Step 5: Process each source
+	// Pre 5: Process each source
 	successCount := 0
 	errorCount := 0
 
 	for i, source := range sourcesToProcess {
 		sourceStartTime := time.Now()
 
-		// Print data source header
-		if len(sourcesToProcess) > 1 {
-			if i > 0 {
-				fmt.Println() // Blank line between sources
-			}
-			fmt.Println(strings.Repeat("─", 60))
-		}
+		fmt.Println() // Blank line between sources
+		fmt.Println(strings.Repeat("─", 60))
 		fmt.Println(gnlib.FormatMessage(
-			fmt.Sprintf("<bold>Data Source [%d]: %s</bold>", source.ID, source.TitleShort),
+			fmt.Sprintf("<title>Data Source [%d]: %s</title>", source.ID, source.TitleShort),
 			nil,
 		))
-		if len(sourcesToProcess) > 1 {
-			fmt.Println(strings.Repeat("─", 60))
-		}
+		fmt.Println(strings.Repeat("─", 60))
 
 		slog.Debug("Processing source",
 			"index", i+1,
@@ -177,6 +186,123 @@ func (p *PopulatorImpl) Populate(ctx context.Context, cfg *config.Config) error 
 	return nil
 }
 
+// sortFilesByDate sorts filenames in-place by extracted date (oldest first, newest last).
+// Files without dates are placed at the beginning.
+func sortFilesByDate(filenames []string) {
+	type fileWithDate struct {
+		name string
+		date string
+	}
+
+	// Extract dates from filenames
+	datePattern := regexp.MustCompile(`(\d{4}-\d{2}-\d{2})`)
+	filesWithDates := make([]fileWithDate, len(filenames))
+
+	for i, filename := range filenames {
+		matches := datePattern.FindStringSubmatch(filename)
+		date := ""
+		if len(matches) > 1 {
+			date = matches[1]
+		}
+		filesWithDates[i] = fileWithDate{name: filename, date: date}
+	}
+
+	// Sort by date (empty dates first, then chronological)
+	sort.Slice(filesWithDates, func(i, j int) bool {
+		if filesWithDates[i].date == "" && filesWithDates[j].date != "" {
+			return true // Files without dates go first
+		}
+		if filesWithDates[i].date != "" && filesWithDates[j].date == "" {
+			return false // Files with dates go after
+		}
+		return filesWithDates[i].date < filesWithDates[j].date // Chronological order
+	})
+
+	// Update original slice
+	for i, f := range filesWithDates {
+		filenames[i] = f.name
+	}
+}
+
+// handleMultipleFilesWarning displays a user-friendly warning when multiple SFGA files
+// are found for a single data source ID and prompts for confirmation.
+// The warning string format: "found N files matching ID X at/in <location>: [file1, file2, ...] - selected latest: <file>"
+func handleMultipleFilesWarning(sourceID int, warning string) error {
+	// Parse the warning to extract key information
+	// Format: "found N files matching ID X at <url>: [files] - selected latest: <selected>"
+	var allFiles, selectedFile string
+
+	// Extract files list and selected file
+	if idx := strings.Index(warning, ": ["); idx != -1 {
+		rest := warning[idx+3:]
+		if endIdx := strings.Index(rest, "] - selected latest: "); endIdx != -1 {
+			allFiles = rest[:endIdx]
+			selectedFile = rest[endIdx+len("] - selected latest: "):]
+		}
+	}
+
+	// Display formatted warning
+	fmt.Println()
+	fmt.Println(gnlib.FormatMessage("<warn>Multiple Files Found</warn>", nil))
+	fmt.Println(gnlib.FormatMessage(
+		"Data Source ID <em>%d</em> has multiple SFGA files available:",
+		[]any{sourceID},
+	))
+	fmt.Println()
+
+	// Show available files (limit to most recent 3 to avoid clutter)
+	if allFiles != "" {
+		files := strings.Split(allFiles, " ")
+		var validFiles []string
+		for _, file := range files {
+			file = strings.TrimSpace(file)
+			if file != "" {
+				validFiles = append(validFiles, file)
+			}
+		}
+
+		// Sort files by date (oldest first, newest last for CLI convention)
+		sortFilesByDate(validFiles)
+
+		const maxFilesToShow = 3
+		totalFiles := len(validFiles)
+
+		// Show most recent files (take from end since newest is last)
+		filesToShow := validFiles
+		if len(validFiles) > maxFilesToShow {
+			// Take last N files (most recent)
+			filesToShow = validFiles[len(validFiles)-maxFilesToShow:]
+			fmt.Printf("  (Showing %d most recent of %d files)\n", maxFilesToShow, totalFiles)
+		}
+
+		for _, file := range filesToShow {
+			fmt.Printf("  • %s\n", file)
+		}
+		fmt.Println()
+	}
+
+	// Show selected file
+	if selectedFile != "" {
+		fmt.Println(gnlib.FormatMessage(
+			"Auto-selected (latest): <em>%s</em>",
+			[]any{selectedFile},
+		))
+	}
+	fmt.Println()
+
+	// Prompt for confirmation (defaults to yes)
+	response, err := promptUser("Continue with this file? [Y/n]: ")
+	if err != nil {
+		return fmt.Errorf("failed to read user input: %w", err)
+	}
+
+	if response == "no" {
+		return fmt.Errorf("import cancelled by user")
+	}
+
+	return nil
+}
+
 // processSource handles a single data source through all 5 phases.
 func (p *PopulatorImpl) processSource(
 	ctx context.Context,
@@ -190,55 +316,77 @@ func (p *PopulatorImpl) processSource(
 		return fmt.Errorf("failed to clear cache: %w", err)
 	}
 
-	slog.Debug("Fetching SFGA", "data_source_id", source.ID)
-	sqlitePath, sfgaMetadata, warning, err := fetchSFGA(ctx, source, cacheDir)
+	slog.Info("Step 1/6: Fetching SFGA", "data_source_id", source.ID)
+
+	// First, resolve the SFGA file path (without downloading)
+	sfgaPath, sfgaMetadata, warning, err := resolveSFGAPath(source)
+	if err != nil {
+		return fmt.Errorf("failed to resolve SFGA path: %w", err)
+	}
+
+	// If multiple files found, prompt user before downloading
+	if warning != "" {
+		if err := handleMultipleFilesWarning(source.ID, warning); err != nil {
+			return err
+		}
+	}
+
+	// Now download and extract the file
+	sqlitePath, err := fetchSFGA(ctx, sfgaPath, cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to fetch SFGA: %w", err)
 	}
-	if warning != "" {
-		slog.Warn("Multiple SFGA files found", "data_source_id", source.ID, "details", warning)
-	}
 
-	// Phase 0: Open SFGA database (T037)
+	// Open SFGA database (T037)
 	sfgaDB, err := openSFGA(sqlitePath)
 	if err != nil {
 		return fmt.Errorf("failed to open SFGA database: %w", err)
 	}
 	defer sfgaDB.Close()
 
-	// Phase 1: Process name strings (T039)
-	slog.Info("Phase 1: Processing name strings", "data_source_id", source.ID)
+	// Process name strings (T039)
+	slog.Info("Step 2/6: Processing name strings", "data_source_id", source.ID)
 	err = processNameStrings(ctx, p, sfgaDB, source.ID)
 	if err != nil {
-		return fmt.Errorf("phase 1 failed (name strings): %w", err)
+		return fmt.Errorf("step 2 failed (name strings): %w", err)
 	}
 
-	// Phase 1.5: Build hierarchy for classification (T041)
-	slog.Info("Building hierarchy for classification", "data_source_id", source.ID)
+	// Build hierarchy for classification (T041)
+	slog.Info("Step 3/6: Building taxa hierarchy", "data_source_id", source.ID)
 	hierarchy, err := buildHierarchy(ctx, sfgaDB, cfg.JobsNumber)
+
+	// badNodes are package accessible from hierarchy.go
+	for k, v := range badNodes {
+		switch v {
+		case circularBadNode:
+			slog.Warn("Circular reference detected in hierarchy", "id", k)
+		case missingBadNode:
+			slog.Warn("Hierarchy node not found, making short breadcrumbs", "id", k)
+		}
+	}
 	if err != nil {
-		return fmt.Errorf("failed to build hierarchy: %w", err)
+		return fmt.Errorf("Step 3 failed (hierarchy building): %w", err)
 	}
 
-	// Phase 2: Process name indices with classification (T043)
-	slog.Info("Phase 2: Processing name indices", "data_source_id", source.ID)
+	// Process name indices with classification (T043)
+	slog.Info("Step 4/6: Processing name indices", "data_source_id", source.ID)
 	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, cfg)
 	if err != nil {
-		return fmt.Errorf("phase 2 failed (name indices): %w", err)
+		return fmt.Errorf("step 4 failed (name indices): %w", err)
 	}
 
-	// Phase 3-4: Process vernaculars (T045)
-	slog.Info("Phase 3-4: Processing vernaculars", "data_source_id", source.ID)
+	// Process vernaculars (T045)
+	slog.Info("Step 5/6: Processing vernaculars", "data_source_id", source.ID)
 	err = processVernaculars(ctx, p, sfgaDB, source.ID)
 	if err != nil {
-		return fmt.Errorf("phase 3-4 failed (vernaculars): %w", err)
+		return fmt.Errorf("step 5 failed (vernaculars): %w", err)
 	}
 
 	// Phase 5: Update data source metadata (T047)
-	slog.Info("Phase 5: Updating data source metadata", "data_source_id", source.ID)
+	slog.Info("Step 6/6: Updating data source metadata", "data_source_id", source.ID)
 	err = updateDataSourceMetadata(ctx, p, source, sfgaDB, sfgaMetadata)
 	if err != nil {
-		return fmt.Errorf("phase 5 failed (metadata): %w", err)
+		return fmt.Errorf("Step 6 failed (metadata): %w", err)
 	}
 
 	return nil

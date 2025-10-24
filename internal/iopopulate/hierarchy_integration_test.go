@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/gnames/gndb/pkg/populate"
-	_ "modernc.org/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	_ "modernc.org/sqlite"
 )
 
 // Note: This is an integration test that uses real SFGA test data.
@@ -38,7 +38,7 @@ func TestBuildHierarchy_Integration(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err, "Should fetch test SFGA")
 
 	sfgaDB, err := openSFGA(sqlitePath)
@@ -111,7 +111,7 @@ func TestGetBreadcrumbs_Integration(t *testing.T) {
 		Parent: testdataDir,
 	}
 
-	sqlitePath, _, _, err := fetchSFGA(ctx, source, cacheDir)
+	sqlitePath, _, _, err := resolveFetchSFGA(ctx, source, cacheDir)
 	require.NoError(t, err)
 
 	sfgaDB, err := openSFGA(sqlitePath)

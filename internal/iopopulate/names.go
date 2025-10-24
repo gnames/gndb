@@ -30,7 +30,7 @@ import (
 //   - User aborts when gn__scientific_name_string is empty
 //   - Database insert fails
 func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, sourceID int) error {
-	slog.Debug("Phase 1: Processing name strings", "data_source_id", sourceID)
+	slog.Debug("Step 2/6: Processing name strings", "data_source_id", sourceID)
 
 	// Query SFGA name table
 	// gn__scientific_name_string is preferred (includes authorship)
@@ -77,32 +77,34 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 
 	// If there are empty gn__scientific_name_string values, prompt user
 	if emptyCount > 0 {
-		slog.Warn("Empty gn__scientific_name_string detected",
-			"data_source_id", sourceID,
-			"count", emptyCount,
-			"total", len(names),
-		)
+		fmt.Println()
+		fmt.Printf("⚠ Warning: gn__scientific_name_string is empty for %s records.\n",
+			humanize.Comma(int64(emptyCount)))
+		fmt.Println("Falling back to col__scientific_name may lose authorship data.")
+		fmt.Println()
+		fmt.Println("Options:")
+		fmt.Println("  [Y]es    - Continue with fallback (default)")
+		fmt.Println("  [N]o     - Skip this data source")
+		fmt.Println("  [A]bort  - Cancel entire import")
+		fmt.Println()
 
-		response, err := promptUser(fmt.Sprintf(
-			"gn__scientific_name_string is empty for %s records.\n"+
-				"Falling back to col__scientific_name may lose authorship data.\n"+
-				"Continue? (yes/no/abort): ",
-			humanize.Comma(int64(emptyCount)),
-		))
+		response, err := promptUserMulti("Your choice [Y/n/a]: ", []string{"yes", "no", "abort"})
 		if err != nil {
 			return fmt.Errorf("failed to get user response: %w", err)
 		}
 
 		switch response {
 		case "yes":
-			slog.Info("User chose to continue with fallback to col__scientific_name", "data_source_id", sourceID)
+			slog.Info(
+				"User chose to continue with fallback to col__scientific_name",
+				"data_source_id",
+				sourceID,
+			)
 		case "no":
 			slog.Info("User chose to skip this source", "data_source_id", sourceID)
 			return nil // Skip this source, continue with next
 		case "abort":
 			return fmt.Errorf("user aborted populate run")
-		default:
-			return fmt.Errorf("invalid response: %s (expected yes/no/abort)", response)
 		}
 	}
 
@@ -117,7 +119,6 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 	bar := pb.Full.Start(len(names))
 	bar.Set("prefix", "Processing names: ")
 	bar.Set(pb.CleanOnFinish, true)
-	defer bar.Finish()
 
 	// Process names in batches
 	for i := 0; i < len(names); i += batchSize {
@@ -174,6 +175,9 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 		bar.Add(len(batch))
 	}
 
+	// Finish progress bar before printing final stats
+	bar.Finish()
+
 	// Final log with total count
 	slog.Debug("Phase 1 complete: Name strings imported",
 		"data_source_id", sourceID,
@@ -189,15 +193,60 @@ func processNameStrings(ctx context.Context, p *PopulatorImpl, sfgaDB *sql.DB, s
 }
 
 // promptUser displays a message and reads user input from stdin.
-// Returns the trimmed, lowercase response.
+// Defaults to "yes" - user must explicitly type "n" or "no" to decline.
+// Any other input (including empty/Enter) is treated as "yes".
 func promptUser(message string) (string, error) {
 	fmt.Print(message)
 
 	var response string
+	// Scanln returns error on empty input, but we want to allow that as default "yes"
 	_, err := fmt.Scanln(&response)
-	if err != nil {
+	if err != nil && err.Error() != "unexpected newline" {
+		// Real error, not just empty input
 		return "", err
 	}
 
-	return strings.ToLower(strings.TrimSpace(response)), nil
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	// Explicit "no" or "n" means decline, everything else (including empty) means yes
+	if response == "n" || response == "no" {
+		return "no", nil
+	}
+
+	return "yes", nil
+}
+
+// promptUserMulti displays a message and reads user input with multiple options.
+// The first option in validOptions is the default (used on empty input).
+// Accepts both full words and single-letter shortcuts (e.g., "yes"/"y", "no"/"n", "abort"/"a").
+func promptUserMulti(message string, validOptions []string) (string, error) {
+	if len(validOptions) == 0 {
+		return "", fmt.Errorf("no valid options provided")
+	}
+
+	fmt.Print(message)
+
+	var response string
+	// Scanln returns error on empty input, but we want to allow that as default
+	_, err := fmt.Scanln(&response)
+	if err != nil && err.Error() != "unexpected newline" {
+		// Empty input - use first option as default
+		return validOptions[0], nil
+	}
+	if err != nil {
+		// Real error
+		return "", err
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	// Check if response matches any valid option (full word or first letter)
+	for _, opt := range validOptions {
+		if response == opt || (len(response) == 1 && len(opt) > 0 && response[0] == opt[0]) {
+			return opt, nil
+		}
+	}
+
+	// Invalid response
+	return "", fmt.Errorf("invalid response: %s (expected one of: %v)", response, validOptions)
 }

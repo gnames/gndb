@@ -317,10 +317,10 @@ func parseSFGAFilename(filename string) SFGAMetadata {
 // For local files, it resolves by ID pattern and uses sflib Archive.Fetch.
 // For URLs, it lists the remote directory to find the matching file by ID.
 // Returns (sqlitePath, metadata, warningMessage, error). Warning is non-empty when multiple files found.
-func fetchSFGA(
-	_ context.Context,
+// resolveSFGAPath determines the SFGA file path without downloading.
+// Returns (sfgaPath, metadata, warning, error).
+func resolveSFGAPath(
 	source populate.DataSourceConfig,
-	cacheDir string,
 ) (string, SFGAMetadata, string, error) {
 	var sfgaPath string
 	var warning string
@@ -349,25 +349,33 @@ func fetchSFGA(
 	// Parse metadata from filename
 	metadata := parseSFGAFilename(filename)
 
+	return sfgaPath, metadata, warning, nil
+}
+
+func fetchSFGA(
+	_ context.Context,
+	sfgaPath string,
+	cacheDir string,
+) (string, error) {
 	// Create Archive for fetching
 	arc := sflib.NewSfga()
 
 	// Fetch and extract to cache directory
-	err = arc.Fetch(sfgaPath, cacheDir)
+	err := arc.Fetch(sfgaPath, cacheDir)
 	if err != nil {
-		return "", SFGAMetadata{}, "", fmt.Errorf("failed to fetch SFGA from %s: %w", sfgaPath, err)
+		return "", fmt.Errorf("failed to fetch SFGA from %s: %w", sfgaPath, err)
 	}
 
 	// Get the path to the extracted SQLite file
 	sqlitePath := arc.DbPath()
 	if sqlitePath == "" {
-		return "", SFGAMetadata{}, "", fmt.Errorf(
+		return "", fmt.Errorf(
 			"failed to get database path after fetching %s",
 			sfgaPath,
 		)
 	}
 
-	return sqlitePath, metadata, warning, nil
+	return sqlitePath, nil
 }
 
 // openSFGA opens a SQLite database and returns a database handle.

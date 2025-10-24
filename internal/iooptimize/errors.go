@@ -16,7 +16,7 @@ type ReparseQueryError struct {
 func NewReparseQueryError(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Cannot Load Names for Reparsing</title>
-<warning>Failed to query name_strings table for reparsing.</warning>
+<warn>Failed to query name_strings table for reparsing.</warn>
 
 <em>How to fix:</em>
   1. Verify the database connection is active
@@ -43,7 +43,7 @@ type ReparseScanError struct {
 func NewReparseScanError(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Cannot Read Name String Data</title>
-<warning>Failed to read name_strings row data during reparsing.</warning>
+<warn>Failed to read name_strings row data during reparsing.</warn>
 
 <em>Possible causes:</em>
   1. Database schema mismatch (try recreating schema)
@@ -74,7 +74,7 @@ type ReparseIterationError struct {
 func NewReparseIterationError(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Error Reading Name Strings</title>
-<warning>Failed while iterating through name_strings table.</warning>
+<warn>Failed while iterating through name_strings table.</warn>
 
 <em>Possible causes:</em>
   1. Network connection to database lost
@@ -106,7 +106,7 @@ type ReparseTransactionError struct {
 func NewReparseTransactionError(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Cannot Start Database Transaction</title>
-<warning>Failed to begin transaction for updating name_strings.</warning>
+<warn>Failed to begin transaction for updating name_strings.</warn>
 
 <em>Possible causes:</em>
   1. Too many concurrent connections to database
@@ -139,7 +139,7 @@ type ReparseUpdateError struct {
 func NewReparseUpdateError(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Cannot Update Name String</title>
-<warning>Failed to update name_strings table with reparsed data.</warning>
+<warn>Failed to update name_strings table with reparsed data.</warn>
 
 <em>Possible causes:</em>
   1. Database constraint violation
@@ -170,7 +170,7 @@ type ReparseInsertError struct {
 func NewReparseInsertError(table string, err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Cannot Insert Canonical Form</title>
-<warning>Failed to insert record into <em>%s</em> table.</warning>
+<warn>Failed to insert record into <em>%s</em> table.</warn>
 
 <em>Possible causes:</em>
   1. Database constraint violation
@@ -202,7 +202,7 @@ type OrphanRemovalError struct {
 func NewOrphanRemovalError(table string, err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Cannot Remove Orphan Records</title>
-<warning>Failed to delete orphan records from <em>%s</em> table.</warning>
+<warn>Failed to delete orphan records from <em>%s</em> table.</warn>
 
 <em>Possible causes:</em>
   1. Database constraint violation
@@ -239,7 +239,7 @@ type Step1Error struct {
 func NewStep1Error(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Step 1 Failed: Reparse Names</title>
-<warning>Failed to reparse name_strings with latest gnparser algorithms.</warning>
+<warn>Failed to reparse name_strings with latest gnparser algorithms.</warn>
 
 <em>This step updates all scientific names with the latest parsing logic.</em>
 
@@ -275,7 +275,7 @@ type Step2Error struct {
 func NewStep2Error(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Step 2 Failed: Normalize Vernacular Languages</title>
-<warning>Failed to normalize vernacular language codes.</warning>
+<warn>Failed to normalize vernacular language codes.</warn>
 
 <em>This step converts language codes to standard 3-letter ISO codes.</em>
 
@@ -311,7 +311,7 @@ type Step3Error struct {
 func NewStep3Error(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Step 3 Failed: Remove Orphaned Records</title>
-<warning>Failed to remove orphaned records from database.</warning>
+<warn>Failed to remove orphaned records from database.</warn>
 
 <em>This step cleans up unreferenced name_strings and canonical forms.</em>
 
@@ -347,7 +347,7 @@ type Step4Error struct {
 func NewStep4Error(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Step 4 Failed: Create Words Tables</title>
-<warning>Failed to extract and link words for fuzzy matching.</warning>
+<warn>Failed to extract and link words for fuzzy matching.</warn>
 
 <em>This step creates the words and word_name_strings tables for search.</em>
 
@@ -384,7 +384,7 @@ type Step5Error struct {
 func NewStep5Error(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Step 5 Failed: Create Verification View</title>
-<warning>Failed to create verification materialized view.</warning>
+<warn>Failed to create verification materialized view.</warn>
 
 <em>This step creates the verification view and indexes for gnverifier.</em>
 
@@ -421,7 +421,7 @@ type Step6Error struct {
 func NewStep6Error(err error) error {
 	msgBase := gnlib.MessageBase{
 		Msg: `<title>Step 6 Failed: VACUUM ANALYZE</title>
-<warning>Failed to run VACUUM ANALYZE on database.</warning>
+<warn>Failed to run VACUUM ANALYZE on database.</warn>
 
 <em>This step reclaims storage and updates query planner statistics.</em>
 
