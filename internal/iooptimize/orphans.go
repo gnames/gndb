@@ -2,9 +2,12 @@ package iooptimize
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gnlib"
 )
 
 // removeOrphans orchestrates the removal of orphaned records from the database.
@@ -19,30 +22,45 @@ import (
 // Reference: gnidump removeOrphans() in db_views.go
 func removeOrphans(ctx context.Context, o *OptimizerImpl, _ *config.Config) error {
 	var err error
+	var totalDeleted int64
 
 	// Step 1: Remove orphan name_strings
-	err = removeOrphanNameStrings(ctx, o)
+	count, err := removeOrphanNameStrings(ctx, o)
 	if err != nil {
 		return err
 	}
+	totalDeleted += count
 
 	// Step 2: Remove orphan canonicals
-	err = removeOrphanCanonicals(ctx, o)
+	count, err = removeOrphanCanonicals(ctx, o)
 	if err != nil {
 		return err
 	}
+	totalDeleted += count
 
 	// Step 3: Remove orphan canonical_fulls
-	err = removeOrphanCanonicalFulls(ctx, o)
+	count, err = removeOrphanCanonicalFulls(ctx, o)
 	if err != nil {
 		return err
 	}
+	totalDeleted += count
 
 	// Step 4: Remove orphan canonical_stems
-	err = removeOrphanCanonicalStems(ctx, o)
+	count, err = removeOrphanCanonicalStems(ctx, o)
 	if err != nil {
 		return err
 	}
+	totalDeleted += count
+
+	// Report stats
+	msg := "<em>No orphaned records found</em>"
+	if totalDeleted > 0 {
+		msg = fmt.Sprintf(
+			"<em>Removed %s orphaned records</em>",
+			humanize.Comma(totalDeleted),
+		)
+	}
+	fmt.Println(gnlib.FormatMessage(msg, nil))
 
 	return nil
 }
@@ -51,7 +69,7 @@ func removeOrphans(ctx context.Context, o *OptimizerImpl, _ *config.Config) erro
 // Uses LEFT OUTER JOIN pattern from gnidump for performance.
 //
 // Reference: gnidump removeOrphans() in db_views.go
-func removeOrphanNameStrings(ctx context.Context, o *OptimizerImpl) error {
+func removeOrphanNameStrings(ctx context.Context, o *OptimizerImpl) (int64, error) {
 	slog.Debug("Removing orphan name-strings")
 
 	query := `DELETE FROM name_strings
@@ -65,20 +83,20 @@ func removeOrphanNameStrings(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		return NewOrphanRemovalError("name_strings", err)
+		return 0, NewOrphanRemovalError("name_strings", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
 	slog.Debug("Removed orphan name-strings", "count", deletedCount)
 
-	return nil
+	return deletedCount, nil
 }
 
 // removeOrphanCanonicals deletes canonicals not referenced by name_strings.
 // Uses LEFT OUTER JOIN pattern from gnidump for performance.
 //
 // Reference: gnidump removeOrphans() in db_views.go
-func removeOrphanCanonicals(ctx context.Context, o *OptimizerImpl) error {
+func removeOrphanCanonicals(ctx context.Context, o *OptimizerImpl) (int64, error) {
 	slog.Debug("Removing orphan canonicals")
 
 	query := `DELETE FROM canonicals
@@ -92,20 +110,20 @@ func removeOrphanCanonicals(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		return NewOrphanRemovalError("canonicals", err)
+		return 0, NewOrphanRemovalError("canonicals", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
 	slog.Debug("Removed orphan canonicals", "count", deletedCount)
 
-	return nil
+	return deletedCount, nil
 }
 
 // removeOrphanCanonicalFulls deletes canonical_fulls not referenced by name_strings.
 // Uses LEFT OUTER JOIN pattern from gnidump for performance.
 //
 // Reference: gnidump removeOrphans() in db_views.go
-func removeOrphanCanonicalFulls(ctx context.Context, o *OptimizerImpl) error {
+func removeOrphanCanonicalFulls(ctx context.Context, o *OptimizerImpl) (int64, error) {
 	slog.Debug("Removing orphan canonical_fulls")
 
 	query := `DELETE FROM canonical_fulls
@@ -119,20 +137,20 @@ func removeOrphanCanonicalFulls(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		return NewOrphanRemovalError("canonical_fulls", err)
+		return 0, NewOrphanRemovalError("canonical_fulls", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
 	slog.Debug("Removed orphan canonical_fulls", "count", deletedCount)
 
-	return nil
+	return deletedCount, nil
 }
 
 // removeOrphanCanonicalStems deletes canonical_stems not referenced by name_strings.
 // Uses LEFT OUTER JOIN pattern from gnidump for performance.
 //
 // Reference: gnidump removeOrphans() in db_views.go
-func removeOrphanCanonicalStems(ctx context.Context, o *OptimizerImpl) error {
+func removeOrphanCanonicalStems(ctx context.Context, o *OptimizerImpl) (int64, error) {
 	slog.Debug("Removing orphan canonical_stems")
 
 	query := `DELETE FROM canonical_stems
@@ -146,11 +164,11 @@ func removeOrphanCanonicalStems(ctx context.Context, o *OptimizerImpl) error {
 
 	cmdTag, err := o.operator.Pool().Exec(ctx, query)
 	if err != nil {
-		return NewOrphanRemovalError("canonical_stems", err)
+		return 0, NewOrphanRemovalError("canonical_stems", err)
 	}
 
 	deletedCount := cmdTag.RowsAffected()
 	slog.Debug("Removed orphan canonical_stems", "count", deletedCount)
 
-	return nil
+	return deletedCount, nil
 }

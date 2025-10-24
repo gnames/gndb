@@ -2,9 +2,12 @@ package iooptimize
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gnlib"
 )
 
 // createVerificationView orchestrates the creation of the verification materialized view.
@@ -38,6 +41,20 @@ func createVerificationView(ctx context.Context, o *OptimizerImpl, _ *config.Con
 	}
 
 	slog.Debug("View verification is created")
+
+	// Count records in verification view and report stats
+	var count int64
+	err = o.operator.Pool().QueryRow(ctx, "SELECT COUNT(*) FROM verification").Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	msg := fmt.Sprintf(
+		"<em>Created verification view with %s records and 3 indexes</em>",
+		humanize.Comma(count),
+	)
+	fmt.Println(gnlib.FormatMessage(msg, nil))
+
 	return nil
 }
 

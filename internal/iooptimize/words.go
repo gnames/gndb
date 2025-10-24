@@ -6,9 +6,11 @@ import (
 	"log/slog"
 
 	"github.com/cheggaaa/pb/v3"
+	"github.com/dustin/go-humanize"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/parserpool"
 	"github.com/gnames/gndb/pkg/schema"
+	"github.com/gnames/gnlib"
 	"github.com/gnames/gnlib/ent/nomcode"
 	"github.com/gnames/gnparser/ent/parsed"
 	"github.com/gnames/gnuuid"
@@ -100,6 +102,14 @@ func createWords(ctx context.Context, o *OptimizerImpl, cfg *config.Config) erro
 	slog.Debug("Completed words creation",
 		"totalWords", len(uniqueWords),
 		"totalLinks", len(uniqueWordNames))
+
+	// Report stats
+	msg := fmt.Sprintf(
+		"<em>Created %s words and %s word-name linkages</em>",
+		humanize.Comma(int64(len(uniqueWords))),
+		humanize.Comma(int64(len(uniqueWordNames))),
+	)
+	fmt.Println(gnlib.FormatMessage(msg, nil))
 
 	return nil
 }
