@@ -62,6 +62,9 @@ import (
 	"strings"
 )
 
+// All SFGA versions equal or greater are supported by GNdb
+var minSfgaVersion = "v0.3.30"
+
 // Config represents the complete GNdb configuration.
 type Config struct {
 	// Database contains PostgreSQL connection settings.
@@ -134,6 +137,10 @@ type DatabaseConfig struct {
 
 // ImportConfig contains settings for SFGA data import.
 type ImportConfig struct {
+	// MinSfgaVersion determines the SFGA version which is still compatible
+	// with GNdb. Versions higher than minimal are also supported.
+	MinSfgaVersion string
+
 	// WithFlatClassification is true if the 'flat' version of classification
 	// is preferable instead of parent/child hierarchical classification.
 	// Note: If flat classification does not exist in SFGA, classification breadcrumbs
@@ -282,6 +289,12 @@ func (c *Config) MergeWithDefaults() {
 		c.Database.BatchSize = defaults.Database.BatchSize
 	}
 
+	// Merge import config
+	// MinSfgaVersion should always be set from defaults (not user-configurable)
+	if c.Import.MinSfgaVersion == "" {
+		c.Import.MinSfgaVersion = defaults.Import.MinSfgaVersion
+	}
+
 	// Merge optimization config
 	// ConcurrentIndexes defaults to false (zero value), so no check needed
 	if c.Optimization.ReparseBatchSize == 0 {
@@ -320,6 +333,7 @@ func Defaults() *Config {
 			BatchSize:       50000, // Batch size for bulk operations (populate, optimize)
 		},
 		Import: ImportConfig{
+			MinSfgaVersion:         minSfgaVersion,
 			WithFlatClassification: false,
 		},
 		Optimization: OptimizationConfig{

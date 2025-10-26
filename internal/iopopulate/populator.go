@@ -344,6 +344,14 @@ func (p *PopulatorImpl) processSource(
 	}
 	defer sfgaDB.Close()
 
+	// Check SFGA version (must be >= configured minimum)
+	minVersion := cfg.Import.MinSfgaVersion
+	version, err := checkSFGAVersion(sfgaDB, minVersion)
+	if err != nil {
+		return fmt.Errorf("SFGA version check failed: %w", err)
+	}
+	slog.Info("SFGA has compatible schema", "min_version", minVersion, "sfga_version", version)
+
 	// Process name strings (T039)
 	slog.Info("Step 2/6: Processing name strings", "data_source_id", source.ID)
 	err = processNameStrings(ctx, p, sfgaDB, source.ID)
