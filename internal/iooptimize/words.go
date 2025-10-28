@@ -253,9 +253,21 @@ func processBatchConcurrent(
 		words     []schema.Word
 		wordNames []schema.WordNameString
 	}
-	resultsCh := make(chan result)
+	resultsCh := make(chan result, jobsNum) // Buffered channel to prevent blocking
 
 	g, ctx := errgroup.WithContext(ctx)
+
+	// Collect results in a separate goroutine to avoid deadlock
+	var allWords []schema.Word
+	var allWordNames []schema.WordNameString
+	collectDone := make(chan struct{})
+	go func() {
+		for r := range resultsCh {
+			allWords = append(allWords, r.words...)
+			allWordNames = append(allWordNames, r.wordNames...)
+		}
+		close(collectDone)
+	}()
 
 	// Launch workers
 	for i := range jobsNum {
@@ -282,19 +294,15 @@ func processBatchConcurrent(
 		})
 	}
 
-	// Wait for all workers
-	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		close(resultsCh)
-		return nil, nil, err
-	}
-	close(resultsCh)
+	// Wait for all workers to finish
+	err := g.Wait()
+	close(resultsCh) // Close channel after all workers are done
 
-	// Collect results
-	var allWords []schema.Word
-	var allWordNames []schema.WordNameString
-	for r := range resultsCh {
-		allWords = append(allWords, r.words...)
-		allWordNames = append(allWordNames, r.wordNames...)
+	// Wait for collector to finish
+	<-collectDone
+
+	if err != nil && !errors.Is(err, context.Canceled) {
+		return nil, nil, err
 	}
 
 	return allWords, allWordNames, nil

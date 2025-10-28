@@ -18,7 +18,7 @@ test:
 
 # Run all tests including integration tests (requires PostgreSQL)
 test-all:
-    go test -count=1 -p 1 ./...
+    go test -count=1 -p 1 -timeout=10m ./...
 
 # Run tests with coverage
 test-coverage:
