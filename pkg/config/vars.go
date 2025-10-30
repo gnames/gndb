@@ -35,3 +35,9 @@ func LogDir(homeDir string) string {
 func ConfigFilePath(homeDir string) string {
 	return filepath.Join(ConfigDir(homeDir), "config.yaml")
 }
+
+// SourcesFilePath returns the full path to the config.yaml file.
+// Returns ~/.config/gndb/config.yaml by default.
+func SourcesFilePath(homeDir string) string {
+	return filepath.Join(ConfigDir(homeDir), "sources.yaml")
+}

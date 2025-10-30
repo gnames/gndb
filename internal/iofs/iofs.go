@@ -10,6 +10,9 @@ import (
 //go:embed config.yaml
 var ConfigYAML string
 
+//go:embed sources.yaml
+var SourcesYAML string
+
 func EnsureDirs(homeDir string) error {
 	dirs := []string{
 		config.ConfigDir(homeDir),
@@ -48,6 +51,22 @@ func EnsureConfigFile(homeDir string) error {
 	// Write embedded config.yaml to the config directory
 	if err := os.WriteFile(configPath, []byte(ConfigYAML), 0644); err != nil {
 		return CopyFileError(configPath, err)
+	}
+
+	return nil
+}
+
+func EnsureSourcesFile(homeDir string) error {
+	sourcesPath := config.SourcesFilePath(homeDir)
+
+	// Check if sources file already exists
+	if _, err := os.Stat(sourcesPath); err == nil {
+		return nil
+	}
+
+	// Write embedded sources.yaml to the config directory
+	if err := os.WriteFile(sourcesPath, []byte(SourcesYAML), 0644); err != nil {
+		return CopyFileError(sourcesPath, err)
 	}
 
 	return nil
