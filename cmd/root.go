@@ -175,7 +175,6 @@ func reconfigureLogging(cfg *config.Config) error {
 
 func runRoot(cmd *cobra.Command, args []string) error {
 
-	fmt.Printf("CFG: %#v\n", cfg)
 	return nil
 }
 
