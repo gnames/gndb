@@ -214,10 +214,30 @@ func (p *populator) processSource(
 		return NamesError(source.ID, err)
 	}
 
-	// TODO Phase 4: Implement additional data
-	// 1. Import vernacular names
-	// 2. Build classification hierarchy
-	// 3. Import name-string indices
+	// Phase 4: Additional data import
+	gn.Info("Importing vernacular names...")
+	err = processVernaculars(ctx, p, sfgaDB, source.ID)
+	if err != nil {
+		// Vernaculars are optional, log warning and continue
+		slog.Warn("Failed to import vernaculars",
+			"source_id", source.ID,
+			"error", err)
+	}
+
+	gn.Info("Building classification hierarchy...")
+	hierarchy, err := buildHierarchy(ctx, sfgaDB, cfg.JobsNumber)
+	if err != nil {
+		// Hierarchy is optional, log warning and continue
+		slog.Warn("Failed to build hierarchy",
+			"source_id", source.ID,
+			"error", err)
+	}
+
+	gn.Info("Importing name-string indices...")
+	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, cfg)
+	if err != nil {
+		return NamesError(source.ID, err)
+	}
 
 	slog.Info("Source processing complete",
 		"source_id", source.ID)
