@@ -272,11 +272,31 @@ Cobra and Viper are used as a framework for CLI and they are located under cmd d
 ## Code Style
 
 - Follow standard Go formatting (enforced by `go fmt`)
-- Code should unless absolutely necessary fit into 80 columns.
+- Code should unless absolutely necessary fit into 80 columns
 - Use golangci-lint for linting
 - Run `go mod tidy` before finalizing tasks to avoid lint warnings
 - Comments use full sentences with periods
 - Exported types/functions have doc comments
+
+### Interface Implementations
+
+- **Concrete implementations of interfaces must be private**
+  (lowercase struct names)
+- Only the constructor function should be exported
+- This enforces interface-driven design and prevents misuse
+- Example:
+  ```go
+  // pgxOperator implements db.Operator (private struct)
+  type pgxOperator struct {
+      pool *pgxpool.Pool
+  }
+
+  // NewPgxOperator creates a new operator (public constructor)
+  func NewPgxOperator() db.Operator {
+      return &pgxOperator{}
+  }
+  ```
+- Benefits: encapsulation, future-proof, best practice
 
 ## Human Development Oriented Style
 
