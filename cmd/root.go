@@ -42,21 +42,42 @@ var (
 	cfg     *config.Config
 )
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Version: fmt.Sprintf("version: %s\nbuild:   %s", app.Version, app.Build),
-	Use:     "gndb",
-	Short:   "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+// getRootCmd creates and returns the root command.
+// Extracted as a function to facilitate testing.
+func getRootCmd() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Version: fmt.Sprintf("version: %s\nbuild:   %s", app.Version, app.Build),
+		Use:     "gndb",
+		Short:   "GNdb manages GNverifier database lifecycle",
+		Long: `GNdb is a command-line tool for managing the lifecycle of a PostgreSQL
+database for GNverifier. It allows users to set up and maintain a local
+GNverifier instance with custom data sources.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	PersistentPreRunE: bootstrap,
-	RunE:              runRoot,
-	SilenceErrors:     true,
-	SilenceUsage:      true,
+The tool supports the following functionalities:
+
+- Database Schema Management: Create and migrate the database schema.
+- Data Population: Populate the database with nomenclature data.
+- Database Optimization: Optimize the database for fast name verification.
+
+Configuration is managed through a config.yaml file, environment variables
+(with GNDB_ prefix), and command-line flags.
+
+For more information, see the project's README file.`,
+		PersistentPreRunE: bootstrap,
+		SilenceErrors:     true,
+		SilenceUsage:      true,
+	}
+
+	// Remove the automatic "gndb version" prefix
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
+
+	// Override version flag to use -V (consistent with other gn projects)
+	rootCmd.Flags().BoolP("version", "V", false, "version for gndb")
+
+	// Add subcommands
+	rootCmd.AddCommand(getCreateCmd())
+
+	return rootCmd
 }
 
 func bootstrap(cmd *cobra.Command, args []string) error {
@@ -73,8 +94,9 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Initialize logging with hardcoded defaults ASAP so all subsequent logs are captured
-	// Will be reconfigured later with user's config settings
+	// Initialize logging with hardcoded defaults ASAP so all
+	// subsequent logs are captured. Will be reconfigured later
+	// with user's config settings.
 	defaultLog := config.LogConfig{
 		Format:      "json",
 		Level:       "info",
@@ -88,7 +110,6 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 
 	// Now that logging is initialized, all subsequent logs will be captured
 	slog.Info("Bootstrap process started")
-	slog.Info("User home directory resolved", "home_dir", homeDir)
 	slog.Info("Required directories ensured",
 		"config_dir", config.ConfigDir(homeDir),
 		"log_dir", config.LogDir(homeDir),
@@ -103,7 +124,6 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 		gn.PrintErrorMessage(err)
 		return err
 	}
-	slog.Info("Config file ensured", "config_file", config.ConfigFilePath(homeDir))
 
 	gn.Info(
 		"Configuration files are available at <em>%s</em>",
@@ -116,20 +136,12 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 		gn.PrintErrorMessage(err)
 		return err
 	}
-	slog.Info("Configuration initialized from config file")
 
 	cfg = config.New()
-	slog.Info("Default configuration created")
-
 	opts = cfgViper.ToOptions()
-	slog.Info("Configuration options extracted from config file", "options_count", len(opts))
-
 	cfg.Update(opts)
-	slog.Info("Configuration updated with config file options")
-
 	// Set HomeDir after config is loaded
 	cfg.Update([]config.Option{config.OptHomeDir(homeDir)})
-	slog.Info("Home directory set in configuration", "home_dir", homeDir)
 
 	// Reconfigure logging with user's settings and proper log file location
 	if err = reconfigureLogging(cfg); err != nil {
@@ -173,36 +185,23 @@ func reconfigureLogging(cfg *config.Config) error {
 	return nil
 }
 
-func runRoot(cmd *cobra.Command, args []string) error {
-
-	return nil
-}
-
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// Execute adds all child commands to the root command and
+// sets flags appropriately. This is called by main.main().
+// It only needs to happen once to the rootCmd.
 func Execute() {
+	rootCmd := getRootCmd()
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
-func init() {
-	// Remove the automatic "gndb version" prefix
-	rootCmd.SetVersionTemplate("{{.Version}}\n")
-
-	// Override version flag to use -V (consistent with other gn projects)
-	rootCmd.Flags().BoolP("version", "V", false, "version for gndb")
-}
-
 func initConfig(home string) (*config.Config, error) {
 	var err error
 	cfgPath := config.ConfigFilePath(home)
-	slog.Info("Initializing configuration from file", "config_path", cfgPath)
 
 	v := viper.New()
 	v.SetConfigFile(cfgPath)
-	slog.Info("Viper initialized with config file path")
 
 	initEnvVars(v)
 
@@ -210,7 +209,6 @@ func initConfig(home string) (*config.Config, error) {
 		slog.Error("Failed to read config file", "error", err, "config_path", cfgPath)
 		return nil, iofs.ReadFileError(cfgPath, err)
 	}
-	slog.Info("Config file read successfully", "config_path", cfgPath)
 
 	var res config.Config
 	if err = v.Unmarshal(&res); err != nil {
@@ -233,11 +231,9 @@ func initEnvVars(v *viper.Viper) {
 	// We set them manually so we can see clearly which env variables are allowed.
 	// These match the fields included in config.ToOptions() - i.e., persistent
 	// configuration that can be stored in config.yaml.
-	slog.Info("Binding environment variables to configuration")
 
 	v.SetEnvPrefix("GNDB")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	slog.Info("Environment variable prefix and key replacer set", "prefix", "GNDB")
 
 	// Database configuration
 	v.BindEnv("database.host", "DATABASE_HOST")
@@ -257,8 +253,8 @@ func initEnvVars(v *viper.Viper) {
 
 	// General configuration
 	v.BindEnv("jobs_number", "JOBS_NUMBER")
-	slog.Info("General environment variables bound")
 
 	v.AutomaticEnv()
-	slog.Info("Environment variable binding complete, automatic env lookup enabled")
+	slog.Info("Environment variable binding complete",
+		"automatic_env_lookup", "enabled")
 }
