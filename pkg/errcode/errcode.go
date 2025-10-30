@@ -30,4 +30,16 @@ const (
 	SchemaCreateError
 	SchemaMigrateError
 	SchemaCollationError
+
+	// Populate errors
+	PopulateSourcesConfigError
+	PopulateSFGAFileNotFoundError
+	PopulateSFGAReadError
+	PopulateMetadataError
+	PopulateNamesError
+	PopulateVernacularsError
+	PopulateHierarchyError
+	PopulateIndicesError
+	PopulateCacheError
+	PopulateAllSourcesFailedError
 )
