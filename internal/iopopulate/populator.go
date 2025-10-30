@@ -182,17 +182,44 @@ func (p *populator) processSource(
 		"version", metadata.Version,
 		"date", metadata.RevisionDate)
 
-	// TODO Phase 3: Implement data import phases
-	// 1. Import metadata (DataSource records)
-	// 2. Import name-strings (NameString, Canonical, etc.)
-	// 3. Import vernacular names
+	// Prepare cache directory
+	cacheDir, err := prepareCacheDir(cfg.HomeDir)
+	if err != nil {
+		return CacheError("prepare cache directory", err)
+	}
+
+	// Fetch SFGA file to cache
+	sqlitePath, err := fetchSFGA(ctx, sfgaPath, cacheDir)
+	if err != nil {
+		return SFGAReadError(sfgaPath, err)
+	}
+
+	// Open SFGA database
+	sfgaDB, err := openSFGA(sqlitePath)
+	if err != nil {
+		return SFGAReadError(sqlitePath, err)
+	}
+	defer sfgaDB.Close()
+
+	// Phase 3: Data import
+	gn.Info("Importing metadata...")
+	err = updateDataSourceMetadata(ctx, p, source, sfgaDB, metadata)
+	if err != nil {
+		return MetadataError(source.ID, err)
+	}
+
+	gn.Info("Importing name-strings...")
+	err = processNameStrings(ctx, p, sfgaDB, source.ID)
+	if err != nil {
+		return NamesError(source.ID, err)
+	}
 
 	// TODO Phase 4: Implement additional data
-	// 1. Build classification hierarchy
-	// 2. Import name-string indices
-	// 3. Optimize indexes
+	// 1. Import vernacular names
+	// 2. Build classification hierarchy
+	// 3. Import name-string indices
 
-	slog.Info("Source processing complete (stub)",
+	slog.Info("Source processing complete",
 		"source_id", source.ID)
 
 	return nil
