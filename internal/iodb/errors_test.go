@@ -28,7 +28,8 @@ func TestConnectionError_Structure(t *testing.T) {
 
 	assert.Equal(t, errcode.DBConnectionError, gnErr.Code)
 	assert.NotEmpty(t, gnErr.Msg)
-	assert.Len(t, gnErr.Vars, 4)
+	assert.Len(t, gnErr.Vars, 5,
+		"Should have 5 vars: host, port, database, user, database")
 	assert.ErrorIs(t, gnErr.Err, originalErr)
 }
 

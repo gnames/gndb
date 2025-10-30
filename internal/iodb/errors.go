@@ -26,15 +26,19 @@ func ConnectionError(
 
 <em>Possible causes:</em>
   - PostgreSQL is not running
+  - Database does not exist
   - Database configuration is incorrect
   - Network connectivity issues
 
 <em>How to fix:</em>
-  1. Check if PostgreSQL is running
-  2. Verify database exists
-  3. Review ~/.config/gndb/config.yaml`
+  1. Check if PostgreSQL is running: <em>pg_isready</em>
+  2. Create database if needed: <em>createdb %s</em>
+  3. Verify connection settings in ~/.config/gndb/config.yaml
 
-	vars := []any{host, port, database, user}
+<em>Note:</em> <em>gndb create</em> creates the schema (tables),
+      but the database itself must be created manually`
+
+	vars := []any{host, port, database, user, database}
 
 	return &gn.Error{
 		Code: errcode.DBConnectionError,
