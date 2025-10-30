@@ -61,6 +61,7 @@ to quickly create a Cobra application.`,
 
 func bootstrap(cmd *cobra.Command, args []string) error {
 	var err error
+
 	homeDir, err = os.UserHomeDir()
 	if err != nil {
 		gn.PrintErrorMessage(err)
@@ -72,22 +73,37 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Initialize logging with hardcoded defaults
+	// Initialize logging with hardcoded defaults ASAP so all subsequent logs are captured
 	// Will be reconfigured later with user's config settings
 	defaultLog := config.LogConfig{
 		Format:      "json",
 		Level:       "info",
 		Destination: "file",
 	}
-	if err = iologger.Init(config.LogDir(homeDir), defaultLog); err != nil {
+
+	if err = iologger.Init(config.LogDir(homeDir), defaultLog, false); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}
 
+	// Now that logging is initialized, all subsequent logs will be captured
+	slog.Info("Bootstrap process started")
+	slog.Info("User home directory resolved", "home_dir", homeDir)
+	slog.Info("Required directories ensured",
+		"config_dir", config.ConfigDir(homeDir),
+		"log_dir", config.LogDir(homeDir),
+		"cache_dir", config.CacheDir(homeDir))
+	slog.Info("Logger initialized with default configuration",
+		"format", defaultLog.Format,
+		"level", defaultLog.Level,
+		"destination", defaultLog.Destination)
+
 	if err = iofs.EnsureConfigFile(homeDir); err != nil {
+		slog.Error("Failed to ensure config file", "error", err)
 		gn.PrintErrorMessage(err)
 		return err
 	}
+	slog.Info("Config file ensured", "config_file", config.ConfigFilePath(homeDir))
 
 	gn.Info(
 		"Configuration files are available at <em>%s</em>",
@@ -96,33 +112,65 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 
 	var cfgViper *config.Config
 	if cfgViper, err = initConfig(homeDir); err != nil {
+		slog.Error("Failed to initialize configuration", "error", err)
 		gn.PrintErrorMessage(err)
 		return err
 	}
+	slog.Info("Configuration initialized from config file")
 
 	cfg = config.New()
+	slog.Info("Default configuration created")
+
 	opts = cfgViper.ToOptions()
+	slog.Info("Configuration options extracted from config file", "options_count", len(opts))
+
 	cfg.Update(opts)
+	slog.Info("Configuration updated with config file options")
 
 	// Set HomeDir after config is loaded
 	cfg.Update([]config.Option{config.OptHomeDir(homeDir)})
+	slog.Info("Home directory set in configuration", "home_dir", homeDir)
 
 	// Reconfigure logging with user's settings and proper log file location
 	if err = reconfigureLogging(cfg); err != nil {
+		slog.Error("Failed to reconfigure logging", "error", err)
 		gn.PrintErrorMessage(err)
 		return err
 	}
 
-	slog.Info("Configuration loaded", "config_file", config.ConfigFilePath(homeDir))
+	slog.Info("Configuration loaded successfully",
+		"config_file", config.ConfigFilePath(homeDir),
+		"log_format", cfg.Log.Format,
+		"log_level", cfg.Log.Level,
+		"log_destination", cfg.Log.Destination,
+		"database_host", cfg.Database.Host,
+		"database_port", cfg.Database.Port,
+		"database_name", cfg.Database.Database,
+		"batch_size", cfg.Database.BatchSize,
+		"jobs_number", cfg.JobsNumber)
 
 	return nil
 }
 
 // reconfigureLogging reinitializes the logger with the loaded configuration.
 // Creates log file in the proper location now that we know HomeDir.
+// Appends to existing log file to preserve bootstrap logs.
 func reconfigureLogging(cfg *config.Config) error {
 	logDir := config.LogDir(cfg.HomeDir)
-	return iologger.Init(logDir, cfg.Log)
+	slog.Info("Reconfiguring logger with user settings",
+		"log_dir", logDir,
+		"format", cfg.Log.Format,
+		"level", cfg.Log.Level,
+		"destination", cfg.Log.Destination)
+
+	err := iologger.Init(logDir, cfg.Log, true)
+	if err != nil {
+		slog.Error("Failed to reconfigure logger", "error", err, "log_dir", logDir)
+		return err
+	}
+
+	slog.Info("Logger reconfigured successfully", "log_file", logDir+"/gndb.log")
+	return nil
 }
 
 func runRoot(cmd *cobra.Command, args []string) error {
@@ -151,19 +199,32 @@ func init() {
 func initConfig(home string) (*config.Config, error) {
 	var err error
 	cfgPath := config.ConfigFilePath(home)
+	slog.Info("Initializing configuration from file", "config_path", cfgPath)
+
 	v := viper.New()
 	v.SetConfigFile(cfgPath)
+	slog.Info("Viper initialized with config file path")
 
 	initEnvVars(v)
 
 	if err = v.ReadInConfig(); err != nil {
+		slog.Error("Failed to read config file", "error", err, "config_path", cfgPath)
 		return nil, iofs.ReadFileError(cfgPath, err)
 	}
+	slog.Info("Config file read successfully", "config_path", cfgPath)
 
 	var res config.Config
 	if err = v.Unmarshal(&res); err != nil {
+		slog.Error("Failed to unmarshal config", "error", err, "config_path", cfgPath)
 		return nil, iofs.ReadFileError(cfgPath, err)
 	}
+	slog.Info("Configuration unmarshaled successfully",
+		"database_host", res.Database.Host,
+		"database_port", res.Database.Port,
+		"database_name", res.Database.Database,
+		"log_level", res.Log.Level,
+		"log_format", res.Log.Format,
+		"jobs_number", res.JobsNumber)
 
 	return &res, nil
 }
@@ -173,8 +234,11 @@ func initEnvVars(v *viper.Viper) {
 	// We set them manually so we can see clearly which env variables are allowed.
 	// These match the fields included in config.ToOptions() - i.e., persistent
 	// configuration that can be stored in config.yaml.
+	slog.Info("Binding environment variables to configuration")
+
 	v.SetEnvPrefix("GNDB")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	slog.Info("Environment variable prefix and key replacer set", "prefix", "GNDB")
 
 	// Database configuration
 	v.BindEnv("database.host", "DATABASE_HOST")
@@ -184,14 +248,18 @@ func initEnvVars(v *viper.Viper) {
 	v.BindEnv("database.database", "DATABASE_DATABASE")
 	v.BindEnv("database.ssl_mode", "DATABASE_SSL_MODE")
 	v.BindEnv("database.batch_size", "DATABASE_BATCH_SIZE")
+	slog.Info("Database environment variables bound")
 
 	// Log configuration
 	v.BindEnv("log.level", "LOG_LEVEL")
 	v.BindEnv("log.format", "LOG_FORMAT")
 	v.BindEnv("log.destination", "LOG_DESTINATION")
+	slog.Info("Log environment variables bound")
 
 	// General configuration
 	v.BindEnv("jobs_number", "JOBS_NUMBER")
+	slog.Info("General environment variables bound")
 
 	v.AutomaticEnv()
+	slog.Info("Environment variable binding complete, automatic env lookup enabled")
 }

@@ -12,8 +12,8 @@ import (
 
 // Init initializes the global slog logger with the given configuration.
 // Creates log file in logDir if destination is "file".
-// Overwrites existing log file on each run (starts fresh).
-func Init(logDir string, cfg config.LogConfig) error {
+// If append is true, appends to existing log file; otherwise creates fresh file.
+func Init(logDir string, cfg config.LogConfig, append bool) error {
 	var writer io.Writer
 
 	// Determine output destination
@@ -23,9 +23,18 @@ func Init(logDir string, cfg config.LogConfig) error {
 	case "stderr", "stdin": // stdin is treated as stderr (typo compatibility)
 		writer = os.Stderr
 	case "file":
-		// Create log file (overwrite if exists)
 		logPath := filepath.Join(logDir, "gndb.log")
-		file, err := os.Create(logPath)
+		var file *os.File
+		var err error
+
+		if append {
+			// Append to existing log file (preserve previous logs)
+			file, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		} else {
+			// Create fresh log file (truncate if exists)
+			file, err = os.Create(logPath)
+		}
+
 		if err != nil {
 			return CreateLogFileError(logPath, err)
 		}
@@ -39,23 +48,22 @@ func Init(logDir string, cfg config.LogConfig) error {
 
 	// Create handler based on format
 	var handler slog.Handler
+	handlerOpts := &slog.HandlerOptions{
+		Level: level,
+	}
+
 	switch cfg.Format {
+	case "json":
+		handler = slog.NewJSONHandler(writer, handlerOpts)
 	case "text":
-		handler = slog.NewTextHandler(writer, &slog.HandlerOptions{
-			Level: level,
-		})
+		handler = slog.NewTextHandler(writer, handlerOpts)
 	case "tint":
 		// For now, treat tint same as text
 		// TODO: Use github.com/lmittmann/tint if desired
-		handler = slog.NewTextHandler(writer, &slog.HandlerOptions{
-			Level: level,
-		})
-	case "json":
-		fallthrough
+		handler = slog.NewTextHandler(writer, handlerOpts)
 	default:
-		handler = slog.NewJSONHandler(writer, &slog.HandlerOptions{
-			Level: level,
-		})
+		// Default to JSON format for any unrecognized format
+		handler = slog.NewJSONHandler(writer, handlerOpts)
 	}
 
 	// Set as default logger

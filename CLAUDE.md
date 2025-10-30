@@ -67,6 +67,25 @@ The project uses direnv for environment configuration:
 
 ## Architecture
 
+### Application Directories
+
+GNdb uses standard XDG-compliant directories for different types of data:
+
+- **Config Directory** (`config.ConfigDir(homeDir)`): `~/.config/gndb/`
+  - Contains `config.yaml` - main configuration file
+  - Created automatically on first run
+
+- **Cache Directory** (`config.CacheDir(homeDir)`): `~/.cache/gndb/`
+  - Used for downloaded SFGA files and temporary data
+  - Safe to delete; will be recreated as needed
+
+- **Log Directory** (`config.LogDir(homeDir)`): `~/.local/share/gndb/logs/`
+  - Contains `gndb.log` - structured JSON logs (or text, depending on config)
+  - Fresh log file created on each application run
+  - Bootstrap logs preserved during logger reconfiguration
+
+All directories are created automatically during bootstrap (cmd/root.go).
+
 ### Package Structure
 
 **cmd/** - CLI command definitions using Cobra
