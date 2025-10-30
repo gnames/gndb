@@ -274,6 +274,7 @@ Cobra and Viper are used as a framework for CLI and they are located under cmd d
 - Follow standard Go formatting (enforced by `go fmt`)
 - Code should unless absolutely necessary fit into 80 columns
 - Use golangci-lint for linting
+- **Task completion requires running `just lint` and fixing all lint issues**
 - Run `go mod tidy` before finalizing tasks to avoid lint warnings
 - Comments use full sentences with periods
 - Exported types/functions have doc comments

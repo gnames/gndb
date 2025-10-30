@@ -242,23 +242,23 @@ func initEnvVars(v *viper.Viper) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// Database configuration
-	v.BindEnv("database.host", "DATABASE_HOST")
-	v.BindEnv("database.port", "DATABASE_PORT")
-	v.BindEnv("database.user", "DATABASE_USER")
-	v.BindEnv("database.password", "DATABASE_PASSWORD")
-	v.BindEnv("database.database", "DATABASE_DATABASE")
-	v.BindEnv("database.ssl_mode", "DATABASE_SSL_MODE")
-	v.BindEnv("database.batch_size", "DATABASE_BATCH_SIZE")
+	_ = v.BindEnv("database.host", "DATABASE_HOST")
+	_ = v.BindEnv("database.port", "DATABASE_PORT")
+	_ = v.BindEnv("database.user", "DATABASE_USER")
+	_ = v.BindEnv("database.password", "DATABASE_PASSWORD")
+	_ = v.BindEnv("database.database", "DATABASE_DATABASE")
+	_ = v.BindEnv("database.ssl_mode", "DATABASE_SSL_MODE")
+	_ = v.BindEnv("database.batch_size", "DATABASE_BATCH_SIZE")
 	slog.Info("Database environment variables bound")
 
 	// Log configuration
-	v.BindEnv("log.level", "LOG_LEVEL")
-	v.BindEnv("log.format", "LOG_FORMAT")
-	v.BindEnv("log.destination", "LOG_DESTINATION")
+	_ = v.BindEnv("log.level", "LOG_LEVEL")
+	_ = v.BindEnv("log.format", "LOG_FORMAT")
+	_ = v.BindEnv("log.destination", "LOG_DESTINATION")
 	slog.Info("Log environment variables bound")
 
 	// General configuration
-	v.BindEnv("jobs_number", "JOBS_NUMBER")
+	_ = v.BindEnv("jobs_number", "JOBS_NUMBER")
 
 	v.AutomaticEnv()
 	slog.Info("Environment variable binding complete",
