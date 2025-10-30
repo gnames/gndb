@@ -24,4 +24,10 @@ const (
 	DBQueryTablesError
 	DBScanTableError
 	DBDropTableError
+
+	// Schema errors
+	SchemaGORMConnectionError
+	SchemaCreateError
+	SchemaMigrateError
+	SchemaCollationError
 )
