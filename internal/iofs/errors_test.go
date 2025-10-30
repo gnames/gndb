@@ -159,55 +159,6 @@ func TestReadFileError_Message(t *testing.T) {
 		"Error should contain original error message")
 }
 
-// TestErrorFunctions_CallerInfo verifies caller info
-// is captured.
-func TestErrorFunctions_CallerInfo(t *testing.T) {
-	tests := []struct {
-		name     string
-		errorFn  func() error
-		funcName string
-	}{
-		{
-			name: "CreateDirError",
-			errorFn: func() error {
-				return CreateDirError("/test",
-					errors.New("test"))
-			},
-			funcName: "CreateDirError",
-		},
-		{
-			name: "CopyFileError",
-			errorFn: func() error {
-				return CopyFileError("/test.txt",
-					errors.New("test"))
-			},
-			funcName: "CopyFileError",
-		},
-		{
-			name: "ReadFileError",
-			errorFn: func() error {
-				return ReadFileError("/data",
-					errors.New("test"))
-			},
-			funcName: "ReadFileError",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.errorFn()
-			gnErr := err.(*gn.Error)
-
-			// Verify error contains function context
-			// (from runtime.Caller)
-			assert.NotNil(t, gnErr.Err,
-				"Should capture caller context")
-			assert.Contains(t, gnErr.Err.Error(), "from",
-				"Error should mention caller context")
-		})
-	}
-}
-
 // TestErrorFunctions_ErrorWrapping verifies proper
 // error wrapping.
 func TestErrorFunctions_ErrorWrapping(t *testing.T) {

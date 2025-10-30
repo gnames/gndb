@@ -2,7 +2,6 @@ package ioschema
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/errcode"
@@ -12,15 +11,12 @@ import (
 // operation is attempted without database connection.
 func NotConnectedError() error {
 	msg := "Schema operation attempted without database connection"
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBNotConnectedError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: not connected to database",
-			fn),
+		Err:  fmt.Errorf("not connected to database"),
 	}
 }
 
@@ -39,15 +35,11 @@ func GORMConnectionError(err error) error {
   2. Check database configuration
   3. Verify GORM dependencies are installed`
 
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
-
 	return &gn.Error{
 		Code: errcode.SchemaGORMConnectionError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: failed to connect with GORM: %w",
-			fn, err),
+		Err:  fmt.Errorf("failed to connect with GORM: %w", err),
 	}
 }
 
@@ -66,15 +58,11 @@ func CreateSchemaError(err error) error {
   2. Review schema model definitions
   3. Check database logs for details`
 
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
-
 	return &gn.Error{
 		Code: errcode.SchemaCreateError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: failed to create schema: %w",
-			fn, err),
+		Err:  fmt.Errorf("failed to create schema: %w", err),
 	}
 }
 
@@ -93,15 +81,11 @@ func MigrateSchemaError(err error) error {
   2. Check database user permissions
   3. Backup data before migration`
 
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
-
 	return &gn.Error{
 		Code: errcode.SchemaMigrateError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: failed to migrate schema: %w",
-			fn, err),
+		Err:  fmt.Errorf("failed to migrate schema: %w", err),
 	}
 }
 
@@ -121,15 +105,13 @@ func CollationError(table, column string, err error) error {
   3. Review column data for compatibility`
 
 	vars := []any{table, column}
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.SchemaCollationError,
 		Msg:  msg,
 		Vars: vars,
 		Err: fmt.Errorf(
-			"from %s: failed to set collation on %s.%s: %w",
-			fn, table, column, err),
+			"failed to set collation on %s.%s: %w",
+			table, column, err),
 	}
 }

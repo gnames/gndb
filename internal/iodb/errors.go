@@ -2,7 +2,6 @@ package iodb
 
 import (
 	"fmt"
-	"runtime"
 
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/errcode"
@@ -36,15 +35,14 @@ func ConnectionError(
   3. Review ~/.config/gndb/config.yaml`
 
 	vars := []any{host, port, database, user}
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBConnectionError,
 		Msg:  msg,
 		Vars: vars,
-		Err: fmt.Errorf("from %s: failed to connect to %s:%d/%s: %w",
-			fn, host, port, database, err),
+		Err: fmt.Errorf(
+			"failed to connect to %s:%d/%s: %w",
+			host, port, database, err),
 	}
 }
 
@@ -52,15 +50,12 @@ func ConnectionError(
 // table existence fails.
 func TableCheckError(err error) error {
 	msg := "Cannot check database tables"
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBTableCheckError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: failed to check tables: %w",
-			fn, err),
+		Err:  fmt.Errorf("failed to check tables: %w", err),
 	}
 }
 
@@ -80,15 +75,12 @@ func EmptyDatabaseError(host, database string) error {
   3. Then optimize:     <em>gndb optimize</em>`
 
 	vars := []any{host, database}
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBEmptyDatabaseError,
 		Msg:  msg,
 		Vars: vars,
-		Err: fmt.Errorf("from %s: database %s has no tables",
-			fn, database),
+		Err:  fmt.Errorf("database %s has no tables", database),
 	}
 }
 
@@ -96,15 +88,12 @@ func EmptyDatabaseError(host, database string) error {
 // is attempted without connection.
 func NotConnectedError() error {
 	msg := "Database operation attempted without connection"
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBNotConnectedError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: not connected to database",
-			fn),
+		Err:  fmt.Errorf("not connected to database"),
 	}
 }
 
@@ -113,16 +102,12 @@ func NotConnectedError() error {
 func TableExistsCheckError(tableName string, err error) error {
 	msg := "Cannot check if table <em>%s</em> exists"
 	vars := []any{tableName}
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBTableExistsCheckError,
 		Msg:  msg,
 		Vars: vars,
-		Err: fmt.Errorf(
-			"from %s: failed to check table %s: %w",
-			fn, tableName, err),
+		Err:  fmt.Errorf("failed to check table %s: %w", tableName, err),
 	}
 }
 
@@ -130,15 +115,12 @@ func TableExistsCheckError(tableName string, err error) error {
 // table list fails.
 func QueryTablesError(err error) error {
 	msg := "Cannot query database tables"
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBQueryTablesError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: failed to query tables: %w",
-			fn, err),
+		Err:  fmt.Errorf("failed to query tables: %w", err),
 	}
 }
 
@@ -146,15 +128,12 @@ func QueryTablesError(err error) error {
 // table name fails.
 func ScanTableError(err error) error {
 	msg := "Cannot read table information"
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBScanTableError,
 		Msg:  msg,
 		Vars: nil,
-		Err: fmt.Errorf("from %s: failed to scan table: %w",
-			fn, err),
+		Err:  fmt.Errorf("failed to scan table: %w", err),
 	}
 }
 
@@ -163,14 +142,11 @@ func ScanTableError(err error) error {
 func DropTableError(tableName string, err error) error {
 	msg := "Cannot drop table <em>%s</em>"
 	vars := []any{tableName}
-	pc, _, _, _ := runtime.Caller(1)
-	fn := runtime.FuncForPC(pc)
 
 	return &gn.Error{
 		Code: errcode.DBDropTableError,
 		Msg:  msg,
 		Vars: vars,
-		Err: fmt.Errorf("from %s: failed to drop table %s: %w",
-			fn, tableName, err),
+		Err:  fmt.Errorf("failed to drop table %s: %w", tableName, err),
 	}
 }
