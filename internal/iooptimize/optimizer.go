@@ -91,6 +91,13 @@ func (o *optimizer) Optimize(
 	}
 	slog.Info("Step 4/6: Complete - Words extracted and linked")
 
+	// Step 5: Create verification materialized view
+	slog.Info("Step 5/6: Creating verification view")
+	if err := createVerificationView(ctx, o, cfg); err != nil {
+		return err
+	}
+	slog.Info("Step 5/6: Complete - Verification view created")
+
 	// TODO: Remaining steps will be implemented in subsequent
 	// phases
 
