@@ -86,19 +86,21 @@ Delete this file when populate implementation is complete.
   - [x] processNameIndices(ctx, p, sfgaDB, &source, hierarchy, cfg)
 - [x] All tests passing, lint clean
 
-## Phase 5: CLI Command & Integration
-- [ ] Implement `cmd/populate.go`
-  - [ ] Flags: --source-ids, --release-version, --release-date, --flat-classification
-  - [ ] Both long and short forms for flags
-  - [ ] User confirmation if schema is empty
-  - [ ] Progress display with gn.Info
-  - [ ] Integration with iopopulate.NewPopulator
-  - [ ] Tests for populate.go
-- [ ] Wire populate command in `cmd/root.go`
-- [ ] Run integration tests
-- [ ] Run full test suite: `just test`
-- [ ] Run linter: `just lint`
-- [ ] Update documentation if needed
+## Phase 5: CLI Command & Integration ✅ COMPLETE
+- [x] Implement `cmd/populate.go`
+  - [x] Flags: --source-ids, --release-version, --release-date, --flat-classification
+  - [x] Both long and short forms for flags (-s, -r, -d, -f)
+  - [x] User confirmation before population starts
+  - [x] Validation for override flags (single source only)
+  - [x] Empty database check (prompts to run create first)
+  - [x] Progress display with gn.Info
+  - [x] Integration with iopopulate.NewPopulator
+- [x] Wire populate command in `cmd/root.go`
+- [x] Run full test suite: `just test` (all tests passing)
+- [x] Run linter: `just lint` (lint clean)
+- [x] Command follows patterns from create.go and migrate.go
+- [x] Configuration updates via Option functions
+- [x] Proper error handling with gn.PrintErrorMessage
 
 ## Phase 6: Final Verification
 - [ ] Test with real SFGA file (if available in testdata)
@@ -121,6 +123,6 @@ Delete this file when populate implementation is complete.
 - Use pgxpool for connection pooling
 - Batch operations with configurable batch size
 
-**Current Status:** Phase 4 Complete - Ready for Phase 5 (CLI Command)
+**Current Status:** Phase 5 Complete - Ready for Phase 6 (Final Verification)
 **Started:** 2025-10-30
-**Branch:** 2-create (continuation from previous session)
+**Branch:** 4-populate

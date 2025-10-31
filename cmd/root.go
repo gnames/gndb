@@ -77,6 +77,7 @@ For more information, see the project's README file.`,
 	// Add subcommands
 	rootCmd.AddCommand(getCreateCmd())
 	rootCmd.AddCommand(getMigrateCmd())
+	rootCmd.AddCommand(getPopulateCmd())
 
 	return rootCmd
 }
