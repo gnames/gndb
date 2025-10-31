@@ -86,9 +86,8 @@ func runMigrate(_ *cobra.Command, _ []string) error {
 	}
 
 	if !hasTables {
-		gn.Warn("\nWarning: Database appears to be empty.")
-		gn.Warn("Run 'gndb create' first to initialize " +
-			"the schema.")
+		gn.Warn(`Warning: Database appears to be empty.
+	Run 'gndb create' first to initialize the schema.`)
 		return nil
 	}
 
@@ -102,7 +101,6 @@ func runMigrate(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	gn.Info("\nDatabase schema migration complete!")
 	gn.Info("Schema is now up to date.")
 
 	return nil

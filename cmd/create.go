@@ -101,20 +101,15 @@ func runCreate(
 	if hasTables {
 		if force {
 			// Force flag set - drop without prompting
-			gn.Info("Dropping all existing tables " +
-				"(--force enabled)...")
 			if err := op.DropAllTables(ctx); err != nil {
 				gn.PrintErrorMessage(err)
 				return err
 			}
-			gn.Info("All tables dropped")
 		} else {
 			// Prompt user for confirmation
-			gn.Warn("\nWarning: Database contains " +
-				"existing tables.")
-			gn.Warn("Creating schema will drop ALL " +
-				"existing tables and data.")
-			fmt.Print("\nDo you want to continue? (yes/no): ")
+			gn.Warn(`<warn>Warning: Database contains existing tables.</warn>
+   <warn>Creating schema will drop ALL existing tables and data.</warn>`)
+			fmt.Print("\nDo you want to continue? (yes/No): ")
 
 			reader := bufio.NewReader(os.Stdin)
 			response, err := reader.ReadString('\n')
@@ -131,12 +126,10 @@ func runCreate(
 			}
 
 			// User confirmed - drop tables
-			gn.Info("Dropping all existing tables...")
 			if err := op.DropAllTables(ctx); err != nil {
 				gn.PrintErrorMessage(err)
 				return err
 			}
-			gn.Info("All tables dropped")
 		}
 	}
 
@@ -144,16 +137,15 @@ func runCreate(
 	sm := ioschema.NewManager(op)
 
 	// Run GORM AutoMigrate to create schema
-	gn.Info("Creating schema using GORM AutoMigrate...")
 	if err := sm.Create(ctx, cfg); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}
-
-	gn.Info("\nDatabase schema creation complete!")
-	gn.Info("\nNext steps:")
-	gn.Info("  - Run 'gndb populate' to import data")
-	gn.Info("  - Run 'gndb optimize' to create indexes")
+	fmt.Println()
+	gn.Info(`Database schema creation complete!
+   Next steps:
+   - Run '<em>gndb populate</em>' to import data
+   - Run '<em>gndb optimize</em>' to create indexes`)
 
 	return nil
 }

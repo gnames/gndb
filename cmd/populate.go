@@ -25,6 +25,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -127,14 +128,18 @@ func runPopulate(
 
 	if hasSourceIDs && len(sourceIDs) > 1 {
 		if hasVersion {
-			gn.Warn(`Cannot override release version with multiple sources
-Use --source-ids to select a single source`)
-			return fmt.Errorf("invalid flag combination")
+			gn.Warn(`<warn>Cannot override release version with multiple sources</warn>
+   <warn>Use --source-ids to select a single source</warn>`)
+			err := fmt.Errorf("invalid flag combination")
+			slog.Error("invalid flag combination", "error", err)
+			return err
 		}
 		if hasDate {
-			gn.Warn(`Cannot override release date with multiple sources"
-Use --source-ids to select a single source`)
-			return fmt.Errorf("invalid flag combination")
+			gn.Warn(`<warn>Cannot override release date with multiple sources</warn>"
+   <warn>Use --source-ids to select a single source</warn>`)
+			err := fmt.Errorf("invalid flag combination")
+			slog.Error("invalid flag combination", "error", err)
+			return err
 		}
 	}
 
@@ -196,20 +201,20 @@ Use --source-ids to select a single source`)
 	}
 
 	if !hasTables {
-		gn.Warn(`Warning: Database appears to be empty.
-Run 'gndb create' first to initialize the schema.`)
+		gn.Warn(`<warn>Warning: Database appears to be empty.</warn>
+   <warn>Run 'gndb create' first to initialize the schema.</warn>`)
 		return nil
 	}
 
 	// Prompt user to confirm population
 	gn.Info(`This will import data from SFGA sources.
-	Depending on the number of sources, this may take several minutes.`)
+   Depending on the number of sources, this may take quite a while.`)
 	fmt.Print("\nContinue? (yes/no): ")
 
 	reader := bufio.NewReader(os.Stdin)
 	response, err := reader.ReadString('\n')
 	if err != nil {
-		gn.Warn("Failed to read user input")
+		gn.Warn("<warn>Failed to read user input</warn>")
 		return err
 	}
 

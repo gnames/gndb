@@ -323,9 +323,13 @@ func TestOptimize_EmptyDatabase(t *testing.T) {
 
 	ctx := context.Background()
 
+	// Create temporary home directory for test isolation
+	tmpHome := t.TempDir()
+
 	// Setup test config
 	testCfg := config.New()
 	testCfg.Update([]config.Option{
+		config.OptHomeDir(tmpHome),
 		config.OptDatabaseHost(cfg.Host),
 		config.OptDatabasePort(cfg.Port),
 		config.OptDatabaseUser(cfg.User),

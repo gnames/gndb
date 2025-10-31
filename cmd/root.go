@@ -135,7 +135,7 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 	}
 
 	gn.Info(
-		"Configuration files are available at <em>%s</em>",
+		"Configuration files are available at <em>%s</em>\n",
 		config.ConfigDir(homeDir),
 	)
 
