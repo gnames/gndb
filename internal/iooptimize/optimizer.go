@@ -67,6 +67,16 @@ func (o *optimizer) Optimize(
 	}
 	slog.Info("Step 1/6: Complete - Name strings reparsed")
 
+	// Step 2: Normalize vernacular language codes
+	slog.Info("Step 2/6: Normalizing vernacular languages")
+	if err := normalizeVernaculars(ctx, o, cfg); err != nil {
+		return err
+	}
+	slog.Info(
+		"Step 2/6: Complete - " +
+			"Vernacular languages normalized",
+	)
+
 	// TODO: Remaining steps will be implemented in subsequent
 	// phases
 

@@ -6,6 +6,7 @@ require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gnames/gn v0.1.1
+	github.com/gnames/gnfmt v0.6.3
 	github.com/gnames/gnlib v0.61.0
 	github.com/gnames/gnparser v1.11.8
 	github.com/gnames/gnuuid v0.2.0
@@ -28,7 +29,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
-	github.com/gnames/gnfmt v0.6.3 // indirect
 	github.com/gnames/gnsys v0.4.0 // indirect
 	github.com/gnames/organizer v0.1.1 // indirect
 	github.com/gnames/tribool v0.1.1 // indirect

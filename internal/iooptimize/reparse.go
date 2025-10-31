@@ -359,7 +359,7 @@ func reparseNames(
 	}
 
 	// Create temp table
-	slog.Debug("Creating temporary table for name processing")
+	slog.Info("Creating temporary table for name processing")
 	err := createReparseTempTable(ctx, pool)
 	if err != nil {
 		return err
@@ -419,7 +419,7 @@ func reparseNames(
 	}
 
 	// Stage 4: Batch operations
-	slog.Debug("Executing batch UPDATE on name_strings")
+	slog.Info("Executing batch UPDATE on name_strings")
 	rowsUpdated, err := batchUpdateNameStrings(ctx, pool)
 	if err != nil {
 		return err
@@ -434,7 +434,7 @@ func reparseNames(
 	}
 	gn.Info(msg)
 
-	slog.Debug("Inserting unique canonicals")
+	slog.Info("Inserting unique canonicals")
 	err = batchInsertCanonicals(ctx, pool)
 	if err != nil {
 		return err
