@@ -84,6 +84,13 @@ func (o *optimizer) Optimize(
 	}
 	slog.Info("Step 3/6: Complete - Orphaned records removed")
 
+	// Step 4: Extract and link words for fuzzy matching
+	slog.Info("Step 4/6: Extracting words for fuzzy matching")
+	if err := extractWords(ctx, o, cfg); err != nil {
+		return err
+	}
+	slog.Info("Step 4/6: Complete - Words extracted and linked")
+
 	// TODO: Remaining steps will be implemented in subsequent
 	// phases
 

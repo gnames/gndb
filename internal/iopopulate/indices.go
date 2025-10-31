@@ -97,7 +97,7 @@ func processNameIndices(
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) error {
-	slog.Debug("Processing name indices", "data_source_id", source.ID)
+	slog.Info("Processing name indices", "data_source_id", source.ID)
 
 	// Clean old data for this source
 	err := cleanNameIndices(ctx, p, source.ID)
@@ -124,7 +124,7 @@ func processNameIndices(
 	}
 
 	totalCount := taxaCount + synonymCount + bareCount
-	slog.Debug("Name indices processing complete", "data_source_id", source.ID, "total", totalCount)
+	slog.Info("Name indices processing complete", "data_source_id", source.ID, "total", totalCount)
 
 	// Print stats
 	msg := fmt.Sprintf(
@@ -149,7 +149,7 @@ func cleanNameIndices(ctx context.Context, p *populator, sourceID int) error {
 		return fmt.Errorf("failed to clean name indices: %w", err)
 	}
 
-	slog.Debug("Cleaned old name indices", "data_source_id", sourceID)
+	slog.Info("Cleaned old name indices", "data_source_id", sourceID)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func processTaxa(
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) (int, error) {
-	slog.Debug("Processing taxa (accepted names)", "data_source_id", source.ID)
+	slog.Info("Processing taxa (accepted names)", "data_source_id", source.ID)
 
 	// Count total taxa for progress bar
 	var totalCount int
@@ -340,7 +340,7 @@ func processTaxa(
 	}
 
 	if count > 0 {
-		slog.Debug("Processed taxa", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
+		slog.Info("Processed taxa", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
 	}
 
 	return count, rows.Err()
@@ -356,7 +356,7 @@ func processSynonyms(
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) (int, error) {
-	slog.Debug("Processing synonyms", "data_source_id", source.ID)
+	slog.Info("Processing synonyms", "data_source_id", source.ID)
 
 	// Check if synonym table exists
 	var tableExists bool
@@ -369,7 +369,7 @@ func processSynonyms(
 	}
 
 	if !tableExists {
-		slog.Debug("No synonym table in SFGA, skipping synonyms", "data_source_id", source.ID)
+		slog.Info("No synonym table in SFGA, skipping synonyms", "data_source_id", source.ID)
 		return 0, nil
 	}
 
@@ -544,7 +544,7 @@ func processSynonyms(
 	}
 
 	if count > 0 {
-		slog.Debug("Processed synonyms", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
+		slog.Info("Processed synonyms", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
 	}
 
 	return count, rows.Err()
@@ -559,7 +559,7 @@ func processBareNames(
 	source *populate.DataSourceConfig,
 	cfg *config.Config,
 ) (int, error) {
-	slog.Debug("Processing bare names", "data_source_id", source.ID)
+	slog.Info("Processing bare names", "data_source_id", source.ID)
 
 	// Count total bare names for progress bar
 	var totalCount int
@@ -691,7 +691,7 @@ func processBareNames(
 	}
 
 	if count > 0 {
-		slog.Debug("Processed bare names", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
+		slog.Info("Processed bare names", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
 	}
 
 	return count, rows.Err()

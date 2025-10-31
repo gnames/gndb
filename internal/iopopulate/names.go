@@ -30,7 +30,7 @@ import (
 //   - User aborts when gn__scientific_name_string is empty
 //   - Database insert fails
 func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourceID int) error {
-	slog.Debug("Step 2/6: Processing name strings", "data_source_id", sourceID)
+	slog.Info("Step 2/6: Processing name strings", "data_source_id", sourceID)
 
 	// Query SFGA name table
 	// gn__scientific_name_string is preferred (includes authorship)
@@ -179,7 +179,7 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 	bar.Finish()
 
 	// Final log with total count
-	slog.Debug("Phase 1 complete: Name strings imported",
+	slog.Info("Phase 1 complete: Name strings imported",
 		"data_source_id", sourceID,
 		"inserted", totalInserted,
 		"total_records", len(names),

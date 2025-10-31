@@ -44,7 +44,7 @@ func updateDataSourceMetadata(
 	sfgaDB *sql.DB,
 	sfgaFileMeta SFGAMetadata,
 ) error {
-	slog.Debug("Updating data source metadata", "data_source_id", source.ID)
+	slog.Info("Updating data source metadata", "data_source_id", source.ID)
 
 	// Step 1: Read metadata from SFGA
 	sfgaMetadata, err := readSFGAMetadata(sfgaDB)
@@ -78,7 +78,7 @@ func updateDataSourceMetadata(
 		return fmt.Errorf("failed to insert data source: %w", err)
 	}
 
-	slog.Debug("Data source metadata updated",
+	slog.Info("Data source metadata updated",
 		"data_source_id", source.ID,
 		"title_short", ds.TitleShort,
 		"record_count", ds.RecordCount,

@@ -45,7 +45,7 @@ type vernIndex struct {
 //   - SFGA query fails
 //   - Database insert fails
 func processVernaculars(ctx context.Context, p *populator, sfgaDB *sql.DB, sourceID int) error {
-	slog.Debug("Processing vernacular names", "data_source_id", sourceID)
+	slog.Info("Processing vernacular names", "data_source_id", sourceID)
 
 	// Phase 1: Process vernacular strings (unique names)
 	stringCount, err := processVernacularStrings(ctx, p, sfgaDB)
@@ -59,7 +59,7 @@ func processVernaculars(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 		return fmt.Errorf("failed to process vernacular indices: %w", err)
 	}
 
-	slog.Debug("Vernacular processing complete", "data_source_id", sourceID, "strings", stringCount, "indices", indexCount)
+	slog.Info("Vernacular processing complete", "data_source_id", sourceID, "strings", stringCount, "indices", indexCount)
 
 	// Print stats
 	if stringCount == 0 && indexCount == 0 {
@@ -81,7 +81,7 @@ func processVernaculars(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 // inserts them into vernacular_strings table with UUID v5 identifiers.
 // Uses ON CONFLICT DO NOTHING for deduplication across data sources.
 func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB) (int, error) {
-	slog.Debug("Phase 1: Processing vernacular strings")
+	slog.Info("Phase 1: Processing vernacular strings")
 
 	// Query unique vernacular names from SFGA
 	query := `SELECT DISTINCT col__name FROM vernacular`
@@ -135,7 +135,7 @@ func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB)
 
 	// If no vernaculars, nothing to do
 	if len(vernStrings) == 0 {
-		slog.Debug("No vernacular names found in SFGA")
+		slog.Info("No vernacular names found in SFGA")
 		return 0, nil
 	}
 
@@ -183,14 +183,14 @@ func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB)
 		}
 	}
 
-	slog.Debug("Processed vernacular strings", "count", len(vernStrings))
+	slog.Info("Processed vernacular strings", "count", len(vernStrings))
 	return len(vernStrings), nil
 }
 
 // processVernacularIndices reads vernacular records from SFGA with metadata
 // and inserts them into vernacular_string_indices table, linking to data source.
 func processVernacularIndices(ctx context.Context, p *populator, sfgaDB *sql.DB, sourceID int) (int, error) {
-	slog.Debug("Phase 2: Processing vernacular indices", "data_source_id", sourceID)
+	slog.Info("Phase 2: Processing vernacular indices", "data_source_id", sourceID)
 
 	// Clean old vernacular indices for this data source
 	if err := cleanVernacularIndices(ctx, p, sourceID); err != nil {
@@ -267,7 +267,7 @@ func processVernacularIndices(ctx context.Context, p *populator, sfgaDB *sql.DB,
 
 	// If no indices, nothing to do
 	if len(indices) == 0 {
-		slog.Debug("No vernacular indices to process", "data_source_id", sourceID)
+		slog.Info("No vernacular indices to process", "data_source_id", sourceID)
 		return 0, nil
 	}
 
@@ -277,13 +277,13 @@ func processVernacularIndices(ctx context.Context, p *populator, sfgaDB *sql.DB,
 		return 0, fmt.Errorf("failed to bulk insert vernacular indices: %w", err)
 	}
 
-	slog.Debug("Processed vernacular indices", "data_source_id", sourceID, "count", len(indices))
+	slog.Info("Processed vernacular indices", "data_source_id", sourceID, "count", len(indices))
 	return len(indices), nil
 }
 
 // cleanVernacularIndices removes old vernacular indices for a data source.
 func cleanVernacularIndices(ctx context.Context, p *populator, sourceID int) error {
-	slog.Debug("Cleaning old vernacular indices", "data_source_id", sourceID)
+	slog.Info("Cleaning old vernacular indices", "data_source_id", sourceID)
 
 	query := `DELETE FROM vernacular_string_indices WHERE data_source_id = $1`
 

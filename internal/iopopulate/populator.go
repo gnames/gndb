@@ -97,7 +97,7 @@ func (p *populator) Populate(
 		gn.Info(msg)
 		fmt.Println(strings.Repeat("─", 60))
 
-		slog.Debug("Processing source",
+		slog.Info("Processing source",
 			"index", i+1,
 			"total", len(sourcesToProcess),
 			"data_source_id", source.ID,
@@ -126,7 +126,7 @@ func (p *populator) Populate(
 
 		successCount++
 		sourceDuration := time.Since(sourceStartTime)
-		slog.Debug("Source processed successfully",
+		slog.Info("Source processed successfully",
 			"data_source_id", source.ID,
 			"title", source.TitleShort,
 			"duration", sourceDuration.Round(time.Second),
