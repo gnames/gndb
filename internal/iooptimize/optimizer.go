@@ -29,11 +29,11 @@ func NewOptimizer(op db.Operator) lifecycle.Optimizer {
 // Optimize applies performance optimizations by executing 6
 // sequential steps:
 //  1. Reparse all name_strings with latest gnparser algorithms
-//  2. Normalize vernacular language codes - TODO
-//  3. Remove orphaned records - TODO
-//  4. Extract and link words for fuzzy matching - TODO
-//  5. Create verification materialized view with indexes - TODO
-//  6. Run VACUUM ANALYZE to update statistics - TODO
+//  2. Normalize vernacular language codes
+//  3. Remove orphaned records
+//  4. Extract and link words for fuzzy matching
+//  5. Create verification materialized view with indexes
+//  6. Run VACUUM ANALYZE to update statistics
 //
 // Errors are returned to the CLI layer for user-friendly display
 // via gn.PrintErrorMessage(). Progress messages are logged via
@@ -98,8 +98,12 @@ func (o *optimizer) Optimize(
 	}
 	slog.Info("Step 5/6: Complete - Verification view created")
 
-	// TODO: Remaining steps will be implemented in subsequent
-	// phases
+	// Step 6: Run VACUUM ANALYZE
+	slog.Info("Step 6/6: Running VACUUM ANALYZE")
+	if err := vacuumAnalyze(ctx, o, cfg); err != nil {
+		return err
+	}
+	slog.Info("Step 6/6: Complete - VACUUM ANALYZE finished")
 
 	slog.Info("Database optimization completed successfully")
 	return nil
