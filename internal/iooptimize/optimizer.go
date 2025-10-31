@@ -77,6 +77,13 @@ func (o *optimizer) Optimize(
 			"Vernacular languages normalized",
 	)
 
+	// Step 3: Remove orphaned records
+	slog.Info("Step 3/6: Removing orphaned records")
+	if err := removeOrphans(ctx, o, cfg); err != nil {
+		return err
+	}
+	slog.Info("Step 3/6: Complete - Orphaned records removed")
+
 	// TODO: Remaining steps will be implemented in subsequent
 	// phases
 
