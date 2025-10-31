@@ -42,4 +42,14 @@ const (
 	PopulateIndicesError
 	PopulateCacheError
 	PopulateAllSourcesFailedError
+
+	// Optimizer errors
+	OptimizerReparseError
+	OptimizerTempTableError
+	OptimizerCanonicalInsertError
+	OptimizerVernacularNormalizeError
+	OptimizerOrphanRemovalError
+	OptimizerWordExtractionError
+	OptimizerViewCreationError
+	OptimizerVacuumError
 )
