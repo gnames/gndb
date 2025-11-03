@@ -20,12 +20,13 @@ import (
 
 // populator implements the Populator interface.
 type populator struct {
+	cfg      *config.Config
 	operator db.Operator
 }
 
-// NewPopulator creates a new Populator.
-func NewPopulator(op db.Operator) lifecycle.Populator {
-	return &populator{operator: op}
+// New creates a new Populator.
+func New(cfg *config.Config, op db.Operator) lifecycle.Populator {
+	return &populator{cfg: cfg, operator: op}
 }
 
 // Populate imports data from SFGA sources into the database.
@@ -33,7 +34,6 @@ func NewPopulator(op db.Operator) lifecycle.Populator {
 // indices, and vernaculars.
 func (p *populator) Populate(
 	ctx context.Context,
-	cfg *config.Config,
 ) error {
 	pool := p.operator.Pool()
 	if pool == nil {
@@ -44,15 +44,30 @@ func (p *populator) Populate(
 	slog.Info("Starting database population")
 
 	// Load sources.yaml from config directory
-	sourcesPath := config.SourcesFilePath(cfg.HomeDir)
+	sourcesPath := config.SourcesFilePath(p.cfg.HomeDir)
 	sourcesConfig, err := populate.LoadSourcesConfig(sourcesPath)
 	if err != nil {
 		return SourcesConfigError(sourcesPath, err)
 	}
 
+	sourcesToProcess, err := p.collectSources(sourcesConfig)
+	if err != nil {
+		return err
+	}
+
+	if err = p.processSources(ctx, sourcesToProcess, startTime); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *populator) collectSources(
+	sourcesConfig *populate.SourcesConfig,
+) ([]populate.DataSourceConfig, error) {
 	// Filter to requested source IDs (or all if empty)
 	var sourcesToProcess []populate.DataSourceConfig
-	if len(cfg.Populate.SourceIDs) == 0 {
+	if len(p.cfg.Populate.SourceIDs) == 0 {
 		// Empty means process all sources
 		sourcesToProcess = sourcesConfig.DataSources
 		slog.Info("Processing all sources",
@@ -60,7 +75,7 @@ func (p *populator) Populate(
 	} else {
 		// Filter to requested IDs
 		sourceIDMap := make(map[int]bool)
-		for _, id := range cfg.Populate.SourceIDs {
+		for _, id := range p.cfg.Populate.SourceIDs {
 			sourceIDMap[id] = true
 		}
 
@@ -71,7 +86,7 @@ func (p *populator) Populate(
 		}
 
 		if len(sourcesToProcess) == 0 {
-			return NoSourcesError(cfg.Populate.SourceIDs)
+			return nil, NoSourcesError(p.cfg.Populate.SourceIDs)
 		}
 
 		sources := "source"
@@ -82,7 +97,14 @@ func (p *populator) Populate(
 			len(sourcesToProcess), sources)
 		gn.Info(msg)
 	}
+	return sourcesToProcess, nil
+}
 
+func (p *populator) processSources(
+	ctx context.Context,
+	sourcesToProcess []populate.DataSourceConfig,
+	startTime time.Time,
+) error {
 	// Process each source
 	successCount := 0
 	errorCount := 0
@@ -112,7 +134,7 @@ func (p *populator) Populate(
 		}
 
 		// Process this source through all phases
-		err := p.processSource(ctx, cfg, source)
+		err := p.processSource(ctx, source)
 		if err != nil {
 			errorCount++
 			slog.Error("Failed to process source",
@@ -145,6 +167,15 @@ func (p *populator) Populate(
 		"total", len(sourcesToProcess),
 		"duration", totalDuration.Round(time.Second),
 	)
+	gn.Info(`Population complete
+Sources succeded: %d, failed %d, total %d.
+		Elapsed time: %dsec 
+`,
+		successCount,
+		errorCount,
+		len(sourcesToProcess),
+		totalDuration.Round(time.Second),
+	)
 
 	if errorCount > 0 && successCount == 0 {
 		return AllSourcesFailedError(errorCount)
@@ -155,7 +186,6 @@ func (p *populator) Populate(
 			"failed", errorCount,
 			"succeeded", successCount)
 	}
-
 	return nil
 }
 
@@ -163,7 +193,6 @@ func (p *populator) Populate(
 // This is a stub for Phase 2 - detailed implementation in Phase 3/4.
 func (p *populator) processSource(
 	ctx context.Context,
-	cfg *config.Config,
 	source populate.DataSourceConfig,
 ) error {
 	// Resolve SFGA file location
@@ -183,7 +212,7 @@ func (p *populator) processSource(
 		"date", metadata.RevisionDate)
 
 	// Prepare cache directory
-	cacheDir, err := prepareCacheDir(cfg.HomeDir)
+	cacheDir, err := prepareCacheDir(p.cfg.HomeDir)
 	if err != nil {
 		return CacheError("prepare cache directory", err)
 	}
@@ -225,7 +254,7 @@ func (p *populator) processSource(
 	}
 
 	gn.Info("Building classification hierarchy...")
-	hierarchy, err := buildHierarchy(ctx, sfgaDB, cfg.JobsNumber)
+	hierarchy, err := buildHierarchy(ctx, sfgaDB, p.cfg.JobsNumber)
 	if err != nil {
 		// Hierarchy is optional, log warning and continue
 		slog.Warn("Failed to build hierarchy",
@@ -234,7 +263,7 @@ func (p *populator) processSource(
 	}
 
 	gn.Info("Importing name-string indices...")
-	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, cfg)
+	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, p.cfg)
 	if err != nil {
 		return NamesError(source.ID, err)
 	}

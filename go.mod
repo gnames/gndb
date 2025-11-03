@@ -2,6 +2,8 @@ module github.com/gnames/gndb
 
 go 1.25.1
 
+replace github.com/gnames/gn => ../gn
+
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/dustin/go-humanize v1.0.1

@@ -22,12 +22,9 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/internal/iodb"
@@ -206,30 +203,12 @@ func runPopulate(
 		return nil
 	}
 
-	// Prompt user to confirm population
-	gn.Info(`This will import data from SFGA sources.
-   Depending on the number of sources, this may take quite a while.`)
-	fmt.Print("\nContinue? (yes/no): ")
-
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		gn.Warn("<warn>Failed to read user input</warn>")
-		return err
-	}
-
-	response = strings.TrimSpace(strings.ToLower(response))
-	if response != "yes" && response != "y" {
-		gn.Info("Aborted. No changes made.")
-		return nil
-	}
-
 	// Create populator
-	populator := iopopulate.NewPopulator(op)
+	populator := iopopulate.New(cfg, op)
 
 	// Run populate
 	gn.Info("Starting data population from SFGA sources...")
-	if err := populator.Populate(ctx, cfg); err != nil {
+	if err := populator.Populate(ctx); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}
