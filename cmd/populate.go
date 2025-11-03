@@ -22,12 +22,9 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"strings"
 
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/internal/iodb"
@@ -189,7 +186,7 @@ func runPopulate(
 	}
 	defer op.Close()
 
-	gn.Info("Connected to database: %s@%s:%d/%s",
+	gn.Info("Connected to database: <em>%s@%s:%d/%s</em>",
 		cfg.Database.User, cfg.Database.Host,
 		cfg.Database.Port, cfg.Database.Database)
 
@@ -206,38 +203,20 @@ func runPopulate(
 		return nil
 	}
 
-	// Prompt user to confirm population
-	gn.Info(`This will import data from SFGA sources.
-   Depending on the number of sources, this may take quite a while.`)
-	fmt.Print("\nContinue? (yes/no): ")
-
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		gn.Warn("<warn>Failed to read user input</warn>")
-		return err
-	}
-
-	response = strings.TrimSpace(strings.ToLower(response))
-	if response != "yes" && response != "y" {
-		gn.Info("Aborted. No changes made.")
-		return nil
-	}
-
 	// Create populator
-	populator := iopopulate.NewPopulator(op)
+	populator := iopopulate.New(cfg, op)
 
 	// Run populate
 	gn.Info("Starting data population from SFGA sources...")
-	if err := populator.Populate(ctx, cfg); err != nil {
+	if err := populator.Populate(ctx); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}
 
 	gn.Info(`Data population complete!
 	 Next steps:
-	 - Run 'gndb populate' until you get all data you need
-	 - Run 'gndb optimize' to create indexes
+	 - Run '<em>gndb populate</em>' until you get all data you need
+	 - Run '<em>gndb optimize</em>' to create indexes
 	 - Database is ready for verification
 `)
 

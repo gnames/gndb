@@ -9,9 +9,9 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
+	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/populate"
-	"github.com/gnames/gnlib"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -127,14 +127,13 @@ func processNameIndices(
 	slog.Info("Name indices processing complete", "data_source_id", source.ID, "total", totalCount)
 
 	// Print stats
-	msg := fmt.Sprintf(
+	gn.Message(
 		"<em>Imported %s name indices (%s taxa, %s synonyms, %s bare names)</em>",
 		humanize.Comma(int64(totalCount)),
 		humanize.Comma(int64(taxaCount)),
 		humanize.Comma(int64(synonymCount)),
 		humanize.Comma(int64(bareCount)),
 	)
-	fmt.Println(gnlib.FormatMessage(msg, nil))
 
 	return nil
 }
@@ -340,7 +339,13 @@ func processTaxa(
 	}
 
 	if count > 0 {
-		slog.Info("Processed taxa", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
+		slog.Info(
+			"Processed taxa",
+			"data_source_id",
+			source.ID,
+			"count",
+			humanize.Comma(int64(count)),
+		)
 	}
 
 	return count, rows.Err()
@@ -544,7 +549,13 @@ func processSynonyms(
 	}
 
 	if count > 0 {
-		slog.Info("Processed synonyms", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
+		slog.Info(
+			"Processed synonyms",
+			"data_source_id",
+			source.ID,
+			"count",
+			humanize.Comma(int64(count)),
+		)
 	}
 
 	return count, rows.Err()
@@ -691,7 +702,13 @@ func processBareNames(
 	}
 
 	if count > 0 {
-		slog.Info("Processed bare names", "data_source_id", source.ID, "count", humanize.Comma(int64(count)))
+		slog.Info(
+			"Processed bare names",
+			"data_source_id",
+			source.ID,
+			"count",
+			humanize.Comma(int64(count)),
+		)
 	}
 
 	return count, rows.Err()

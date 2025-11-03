@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/populate"
 	"github.com/gnames/gndb/pkg/schema"
-	"github.com/gnames/gnlib"
 	"github.com/google/uuid"
 )
 
@@ -87,11 +87,10 @@ func updateDataSourceMetadata(
 
 	// Print stats
 	totalRecords := ds.RecordCount + ds.VernRecordCount
-	msg := fmt.Sprintf(
-		"<em>Updated metadata (%s total records)</em>",
+	gn.Message(
+		"<em>Imported metadata and found %s total records</em>",
 		humanize.Comma(int64(totalRecords)),
 	)
-	fmt.Println(gnlib.FormatMessage(msg, nil))
 
 	return nil
 }

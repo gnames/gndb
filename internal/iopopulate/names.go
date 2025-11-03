@@ -10,7 +10,7 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
-	"github.com/gnames/gnlib"
+	"github.com/gnames/gn"
 	"github.com/gnames/gnuuid"
 )
 
@@ -29,7 +29,12 @@ import (
 //   - SFGA query fails
 //   - User aborts when gn__scientific_name_string is empty
 //   - Database insert fails
-func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourceID int) error {
+func processNameStrings(
+	ctx context.Context,
+	p *populator,
+	sfgaDB *sql.DB,
+	sourceID int,
+) (int, error) {
 	slog.Info("Step 2/6: Processing name strings", "data_source_id", sourceID)
 
 	// Query SFGA name table
@@ -42,7 +47,7 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 
 	rows, err := sfgaDB.Query(query)
 	if err != nil {
-		return fmt.Errorf("failed to query SFGA name table: %w", err)
+		return 0, fmt.Errorf("failed to query SFGA name table: %w", err)
 	}
 	defer rows.Close()
 
@@ -60,7 +65,7 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 		var rec nameRecord
 		err := rows.Scan(&rec.colID, &rec.gnScientificName, &rec.colScientificName)
 		if err != nil {
-			return fmt.Errorf("failed to scan SFGA name row: %w", err)
+			return 0, fmt.Errorf("failed to scan SFGA name row: %w", err)
 		}
 
 		// Check if gn__scientific_name_string is empty
@@ -72,13 +77,13 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 	}
 
 	if err = rows.Err(); err != nil {
-		return fmt.Errorf("error iterating SFGA name rows: %w", err)
+		return 0, fmt.Errorf("error iterating SFGA name rows: %w", err)
 	}
 
 	// If there are empty gn__scientific_name_string values, prompt user
 	if emptyCount > 0 {
 		fmt.Println()
-		fmt.Printf("⚠ Warning: gn__scientific_name_string is empty for %s records.\n",
+		gn.Warn("<em>Warning</em>: gn__scientific_name_string is empty for %s records.\n",
 			humanize.Comma(int64(emptyCount)))
 		fmt.Println("Falling back to col__scientific_name may lose authorship data.")
 		fmt.Println()
@@ -90,7 +95,7 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 
 		response, err := promptUserMulti("Your choice [Y/n/a]: ", []string{"yes", "no", "abort"})
 		if err != nil {
-			return fmt.Errorf("failed to get user response: %w", err)
+			return 0, fmt.Errorf("failed to get user response: %w", err)
 		}
 
 		switch response {
@@ -102,9 +107,9 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 			)
 		case "no":
 			slog.Info("User chose to skip this source", "data_source_id", sourceID)
-			return nil // Skip this source, continue with next
+			return 0, nil // Skip this source, continue with next
 		case "abort":
-			return fmt.Errorf("user aborted populate run")
+			return 0, fmt.Errorf("user aborted populate run")
 		}
 	}
 
@@ -125,7 +130,7 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 		// Check context cancellation
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return 0, ctx.Err()
 		default:
 		}
 
@@ -165,7 +170,7 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 
 		result, err := p.operator.Pool().Exec(ctx, insertQuery, valueArgs...)
 		if err != nil {
-			return fmt.Errorf("failed to insert name strings batch: %w", err)
+			return 0, fmt.Errorf("failed to insert name strings batch: %w", err)
 		}
 
 		rowsAffected := result.RowsAffected()
@@ -179,17 +184,13 @@ func processNameStrings(ctx context.Context, p *populator, sfgaDB *sql.DB, sourc
 	bar.Finish()
 
 	// Final log with total count
-	slog.Info("Phase 1 complete: Name strings imported",
+	slog.Info("Name strings imported",
 		"data_source_id", sourceID,
 		"inserted", totalInserted,
 		"total_records", len(names),
 	)
 
-	// Print stats
-	msg := fmt.Sprintf("<em>Imported %s name strings</em>", humanize.Comma(int64(totalInserted)))
-	fmt.Println(gnlib.FormatMessage(msg, nil))
-
-	return nil
+	return totalInserted, nil
 }
 
 // promptUser displays a message and reads user input from stdin.

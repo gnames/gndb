@@ -57,7 +57,7 @@ func runOptimize(
 	}
 	defer op.Close()
 
-	gn.Info("Connected to database: %s@%s:%d/%s",
+	gn.Info("Connected to database: <em>%s@%s:%d/%s</em>",
 		cfg.Database.User, cfg.Database.Host,
 		cfg.Database.Port, cfg.Database.Database)
 

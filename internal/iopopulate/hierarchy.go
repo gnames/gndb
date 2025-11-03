@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gnames/gnlib"
+	"github.com/gnames/gn"
 	"github.com/gnames/gnlib/ent/nomcode"
 	"github.com/gnames/gnparser"
 	"golang.org/x/sync/errgroup"
@@ -184,14 +184,14 @@ func createHierarchy(ctx context.Context, chOut <-chan *hNode, hierarchy map[str
 	}
 
 	fmt.Fprintf(os.Stderr, "\r%s\r", strings.Repeat(" ", 80))
-	msg := "<em>Hierarchy does not exist</em>"
-	if count > 0 {
-		msg = fmt.Sprintf(
+	if count == 0 {
+		gn.Message("<em>Hierarchy does not exist</em>")
+	} else {
+		gn.Message(
 			"<em>Built hierarchy with %s nodes</em>",
 			humanize.Comma(int64(count)),
 		)
 	}
-	fmt.Println(gnlib.FormatMessage(msg, nil))
 
 	return nil
 }
