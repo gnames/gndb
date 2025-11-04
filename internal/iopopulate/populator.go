@@ -8,9 +8,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
@@ -204,7 +206,7 @@ func (p *populator) processSource(
 	if warning != "" {
 		slog.Warn(warning)
 	}
-
+	gn.Info("(1/6) getting SFGA file")
 	slog.Info("Resolved SFGA file",
 		"source_id", source.ID,
 		"path", sfgaPath,
@@ -229,31 +231,41 @@ func (p *populator) processSource(
 		return SFGAReadError(sqlitePath, err)
 	}
 	defer sfgaDB.Close()
+	gn.Message(
+		"<em>Prepared %s SFGA file for import</em>",
+		filepath.Base(sfgaPath),
+	)
 
-	// Phase 3: Data import
-	gn.Info("Importing metadata...")
-	err = updateDataSourceMetadata(ctx, p, source, sfgaDB, metadata)
-	if err != nil {
-		return MetadataError(source.ID, err)
-	}
-
-	gn.Info("Importing name-strings...")
-	err = processNameStrings(ctx, p, sfgaDB, source.ID)
+	gn.Info("(2/6) Importing name-strings...")
+	var nameStrNum int
+	nameStrNum, err = processNameStrings(ctx, p, sfgaDB, source.ID)
 	if err != nil {
 		return NamesError(source.ID, err)
 	}
+	gn.Message(
+		"<em>Imported %s name strings</em>",
+		humanize.Comma(int64(nameStrNum)))
 
-	// Phase 4: Additional data import
-	gn.Info("Importing vernacular names...")
-	err = processVernaculars(ctx, p, sfgaDB, source.ID)
+	gn.Info("(3/6) Importing vernacular names...")
+	var vernNum, vernIdxNum int
+	vernNum, vernIdxNum, err = processVernaculars(ctx, p, sfgaDB, source.ID)
 	if err != nil {
-		// Vernaculars are optional, log warning and continue
-		slog.Warn("Failed to import vernaculars",
+		// Vernaculars are optional, report error and continue
+		slog.Error("Failed to import vernaculars",
 			"source_id", source.ID,
 			"error", err)
 	}
+	if vernNum == 0 && vernIdxNum == 0 {
+		gn.Message("<em>No vernacular names found</em>")
+	} else {
+		gn.Message(
+			"<em>Imported %s vernacular strings and %s vernacular indices</em>",
+			humanize.Comma(int64(vernNum)),
+			humanize.Comma(int64(vernIdxNum)),
+		)
+	}
 
-	gn.Info("Building classification hierarchy...")
+	gn.Info("(4/6) Building classification hierarchy...")
 	hierarchy, err := buildHierarchy(ctx, sfgaDB, p.cfg.JobsNumber)
 	if err != nil {
 		// Hierarchy is optional, log warning and continue
@@ -262,10 +274,16 @@ func (p *populator) processSource(
 			"error", err)
 	}
 
-	gn.Info("Importing name-string indices...")
+	gn.Info("(5/6) Importing name-string indices...")
 	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, p.cfg)
 	if err != nil {
 		return NamesError(source.ID, err)
+	}
+
+	gn.Info("(6/6) Importing metadata...")
+	err = updateDataSourceMetadata(ctx, p, source, sfgaDB, metadata)
+	if err != nil {
+		return MetadataError(source.ID, err)
 	}
 
 	slog.Info("Source processing complete",

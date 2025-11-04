@@ -42,13 +42,21 @@ var (
 	cfg     *config.Config
 )
 
+func runRoot(cmd *cobra.Command, _ []string) error {
+	b, _ := cmd.Flags().GetBool("version")
+	if b {
+		fmt.Printf("version: %s\nbuild:   %s\n", app.Version, app.Build)
+	}
+	return nil
+}
+
 // getRootCmd creates and returns the root command.
 // Extracted as a function to facilitate testing.
 func getRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Version: fmt.Sprintf("version: %s\nbuild:   %s", app.Version, app.Build),
-		Use:     "gndb",
-		Short:   "GNdb manages GNverifier database lifecycle",
+		// Version: fmt.Sprintf("version: %s\nbuild:   %s", app.Version, app.Build),
+		Use:   "gndb",
+		Short: "GNdb manages GNverifier database lifecycle",
 		Long: `GNdb is a command-line tool for managing the lifecycle of a PostgreSQL
 database for GNverifier. It allows users to set up and maintain a local
 GNverifier instance with custom data sources.
@@ -66,13 +74,11 @@ For more information, see the project's README file.`,
 		PersistentPreRunE: bootstrap,
 		SilenceErrors:     true,
 		SilenceUsage:      true,
+		RunE:              runRoot,
 	}
 
-	// Remove the automatic "gndb version" prefix
-	rootCmd.SetVersionTemplate("{{.Version}}\n")
-
 	// Override version flag to use -V (consistent with other gn projects)
-	rootCmd.Flags().BoolP("version", "V", false, "version for gndb")
+	rootCmd.Flags().BoolP("version", "V", false, "version of gndb")
 
 	// Add subcommands
 	rootCmd.AddCommand(getCreateCmd())

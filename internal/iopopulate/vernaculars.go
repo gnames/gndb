@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/dustin/go-humanize"
 	"github.com/gnames/gnlib"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
@@ -44,37 +43,32 @@ type vernIndex struct {
 // Returns error if:
 //   - SFGA query fails
 //   - Database insert fails
-func processVernaculars(ctx context.Context, p *populator, sfgaDB *sql.DB, sourceID int) error {
+func processVernaculars(
+	ctx context.Context,
+	p *populator,
+	sfgaDB *sql.DB,
+	sourceID int,
+) (int, int, error) {
 	slog.Info("Processing vernacular names", "data_source_id", sourceID)
 
 	// Phase 1: Process vernacular strings (unique names)
 	stringCount, err := processVernacularStrings(ctx, p, sfgaDB)
 	if err != nil {
-		return fmt.Errorf("failed to process vernacular strings: %w", err)
+		return 0, 0, fmt.Errorf("failed to process vernacular strings: %w", err)
 	}
 
 	// Phase 2: Process vernacular indices (links to data source with metadata)
 	indexCount, err := processVernacularIndices(ctx, p, sfgaDB, sourceID)
 	if err != nil {
-		return fmt.Errorf("failed to process vernacular indices: %w", err)
+		return 0, 0, fmt.Errorf("failed to process vernacular indices: %w", err)
 	}
 
-	slog.Info("Vernacular processing complete", "data_source_id", sourceID, "strings", stringCount, "indices", indexCount)
+	slog.Info("Vernacular processing complete",
+		"data_source_id", sourceID,
+		"strings", stringCount,
+		"indices", indexCount)
 
-	// Print stats
-	if stringCount == 0 && indexCount == 0 {
-		msg := "<em>No vernacular names found</em>"
-		fmt.Println(gnlib.FormatMessage(msg, nil))
-	} else {
-		msg := fmt.Sprintf(
-			"<em>Imported %s vernacular strings and %s vernacular indices</em>",
-			humanize.Comma(int64(stringCount)),
-			humanize.Comma(int64(indexCount)),
-		)
-		fmt.Println(gnlib.FormatMessage(msg, nil))
-	}
-
-	return nil
+	return stringCount, indexCount, nil
 }
 
 // processVernacularStrings reads unique vernacular names from SFGA and
@@ -189,7 +183,12 @@ func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB)
 
 // processVernacularIndices reads vernacular records from SFGA with metadata
 // and inserts them into vernacular_string_indices table, linking to data source.
-func processVernacularIndices(ctx context.Context, p *populator, sfgaDB *sql.DB, sourceID int) (int, error) {
+func processVernacularIndices(
+	ctx context.Context,
+	p *populator,
+	sfgaDB *sql.DB,
+	sourceID int,
+) (int, error) {
 	slog.Info("Phase 2: Processing vernacular indices", "data_source_id", sourceID)
 
 	// Clean old vernacular indices for this data source
