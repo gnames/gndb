@@ -18,6 +18,7 @@ import (
 	"github.com/gnames/gndb/pkg/db"
 	"github.com/gnames/gndb/pkg/lifecycle"
 	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gnfmt"
 )
 
 // populator implements the Populator interface.
@@ -153,11 +154,11 @@ func (p *populator) processSources(
 		slog.Info("Source processed successfully",
 			"data_source_id", source.ID,
 			"title", source.TitleShort,
-			"duration", sourceDuration.Round(time.Second),
+			"duration", gnfmt.TimeString(sourceDuration.Seconds()),
 		)
 
 		msg = fmt.Sprintf("Completed in %s",
-			sourceDuration.Round(time.Second).String())
+			gnfmt.TimeString(sourceDuration.Seconds()))
 		gn.Info(msg)
 	}
 
@@ -167,16 +168,16 @@ func (p *populator) processSources(
 		"success", successCount,
 		"errors", errorCount,
 		"total", len(sourcesToProcess),
-		"duration", totalDuration.Round(time.Second),
+		"duration", gnfmt.TimeString(totalDuration.Seconds()),
 	)
 	gn.Info(`Population complete
 Sources succeded: %d, failed %d, total %d.
-		Elapsed time: %dsec 
+		Elapsed time: <em>%s</em>
 `,
 		successCount,
 		errorCount,
 		len(sourcesToProcess),
-		totalDuration.Round(time.Second),
+		gnfmt.TimeString(totalDuration.Seconds()),
 	)
 
 	if errorCount > 0 && successCount == 0 {
@@ -247,22 +248,12 @@ func (p *populator) processSource(
 		humanize.Comma(int64(nameStrNum)))
 
 	gn.Info("(3/6) Importing vernacular names...")
-	var vernNum, vernIdxNum int
-	vernNum, vernIdxNum, err = processVernaculars(ctx, p, sfgaDB, source.ID)
+	err = processVernaculars(ctx, p, sfgaDB, source.ID)
 	if err != nil {
 		// Vernaculars are optional, report error and continue
 		slog.Error("Failed to import vernaculars",
 			"source_id", source.ID,
 			"error", err)
-	}
-	if vernNum == 0 && vernIdxNum == 0 {
-		gn.Message("<em>No vernacular names found</em>")
-	} else {
-		gn.Message(
-			"<em>Imported %s vernacular strings and %s vernacular indices</em>",
-			humanize.Comma(int64(vernNum)),
-			humanize.Comma(int64(vernIdxNum)),
-		)
 	}
 
 	gn.Info("(4/6) Building classification hierarchy...")

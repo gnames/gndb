@@ -186,7 +186,7 @@ func runPopulate(
 	}
 	defer op.Close()
 
-	gn.Info("Connected to database: %s@%s:%d/%s",
+	gn.Info("Connected to database: <em>%s@%s:%d/%s</em>",
 		cfg.Database.User, cfg.Database.Host,
 		cfg.Database.Port, cfg.Database.Database)
 
@@ -215,8 +215,8 @@ func runPopulate(
 
 	gn.Info(`Data population complete!
 	 Next steps:
-	 - Run 'gndb populate' until you get all data you need
-	 - Run 'gndb optimize' to create indexes
+	 - Run '<em>gndb populate</em>' until you get all data you need
+	 - Run '<em>gndb optimize</em>' to create indexes
 	 - Database is ready for verification
 `)
 

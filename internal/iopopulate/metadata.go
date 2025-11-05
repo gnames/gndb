@@ -88,7 +88,7 @@ func updateDataSourceMetadata(
 	// Print stats
 	totalRecords := ds.RecordCount + ds.VernRecordCount
 	gn.Message(
-		"   <em>Imported metadata and found %s total records</em>",
+		"<em>Imported metadata and found %s total records</em>",
 		humanize.Comma(int64(totalRecords)),
 	)
 

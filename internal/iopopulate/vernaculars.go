@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/dustin/go-humanize"
+	"github.com/gnames/gn"
 	"github.com/gnames/gnlib"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
@@ -48,27 +50,36 @@ func processVernaculars(
 	p *populator,
 	sfgaDB *sql.DB,
 	sourceID int,
-) (int, int, error) {
+) error {
 	slog.Info("Processing vernacular names", "data_source_id", sourceID)
 
 	// Phase 1: Process vernacular strings (unique names)
-	stringCount, err := processVernacularStrings(ctx, p, sfgaDB)
+	vernStrNum, err := processVernacularStrings(ctx, p, sfgaDB)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to process vernacular strings: %w", err)
+		return fmt.Errorf("failed to process vernacular strings: %w", err)
 	}
 
 	// Phase 2: Process vernacular indices (links to data source with metadata)
-	indexCount, err := processVernacularIndices(ctx, p, sfgaDB, sourceID)
+	vernIdxNum, err := processVernacularIndices(ctx, p, sfgaDB, sourceID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("failed to process vernacular indices: %w", err)
+		return fmt.Errorf("failed to process vernacular indices: %w", err)
 	}
 
 	slog.Info("Vernacular processing complete",
 		"data_source_id", sourceID,
-		"strings", stringCount,
-		"indices", indexCount)
+		"strings", vernStrNum,
+		"indices", vernIdxNum)
 
-	return stringCount, indexCount, nil
+	if vernStrNum == 0 && vernIdxNum == 0 {
+		gn.Message("<em>No vernacular names found</em>")
+	} else {
+		gn.Message(
+			"<em>Imported %s vernacular strings and %s vernacular indices</em>",
+			humanize.Comma(int64(vernStrNum)),
+			humanize.Comma(int64(vernIdxNum)),
+		)
+	}
+	return nil
 }
 
 // processVernacularStrings reads unique vernacular names from SFGA and
