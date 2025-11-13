@@ -1,4 +1,4 @@
-package iopopulate
+package iosources
 
 import (
 	"os"
@@ -32,7 +32,7 @@ data_sources:
 	require.NoError(t, err)
 
 	// Load config
-	config, err := LoadSourcesConfig(configPath)
+	config, err := loadSourcesConfig(configPath)
 	require.NoError(t, err)
 	require.Len(t, config.DataSources, 1)
 
@@ -42,7 +42,7 @@ data_sources:
 }
 
 func TestLoadSourcesConfig_FileNotFound(t *testing.T) {
-	_, err := LoadSourcesConfig("nonexistent.yaml")
+	_, err := loadSourcesConfig("nonexistent.yaml")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read sources config file")
 }
@@ -65,7 +65,7 @@ data_sources:
 	require.NoError(t, err)
 
 	// Load config - should fail with directory not found
-	_, err = LoadSourcesConfig(configPath)
+	_, err = loadSourcesConfig(configPath)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "parent directory does not exist")
 }
@@ -88,7 +88,7 @@ data_sources:
 	require.NoError(t, err)
 
 	// Load config - should succeed even though URL doesn't exist locally
-	config, err := LoadSourcesConfig(configPath)
+	config, err := loadSourcesConfig(configPath)
 	require.NoError(t, err)
 	require.Len(t, config.DataSources, 1)
 	assert.Equal(t, 1, config.DataSources[0].ID)
