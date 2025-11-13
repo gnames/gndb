@@ -1,9 +1,12 @@
-// Package populate provides configuration and operations for populating the GNdb
-// database with data from SFGA (Standard Format for Global Archiving) files.
+// Package sources provides configuration and validation for SFGA data sources.
 //
-// The main entry point is the sources.yaml file which users provide to specify
-// which SFGA data sources to import. See sources-yaml-spec.md for details.
-package populate
+// This package defines the schema for sources.yaml, which users provide to
+// specify which SFGA (Standard Format for Global Archiving) data sources to
+// import. It handles source configuration validation, filtering, and metadata
+// extraction from SFGA filenames.
+//
+// See sources-yaml-spec.md for the complete sources.yaml specification.
+package sources
 
 import (
 	"fmt"
@@ -112,7 +115,6 @@ type FileMetadata struct {
 	ReleaseDate string // Extracted from filename in YYYY-MM-DD format (if present)
 	IsURL       bool   // True if file is a URL
 }
-
 
 // Validate checks the configuration for errors and applies defaults.
 func (c *SourcesConfig) Validate() error {
@@ -264,7 +266,7 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 	return warnings, nil
 }
 
-// ParseFilename extracts metadata from SFGA filename.
+// parseFilename extracts metadata from SFGA filename.
 // Expected format: {id}_{name}_{date}_{version}.(sql|sqlite)[.zip]
 // Examples:
 //   - 0001_col_2025-10-03_v2024.1.sqlite.zip  → ID=1, Date=2025-10-03, Version=v2024.1
@@ -275,7 +277,7 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 // Version extraction rules:
 //   - If release date is last segment before extension: no version
 //   - If underscore + text after date: everything until .sql|.sqlite is version
-func ParseFilename(path string) FileMetadata {
+func parseFilename(path string) FileMetadata {
 	var metadata FileMetadata
 
 	// Get filename without directory
@@ -324,7 +326,7 @@ func IsValidURL(str string) bool {
 	return err == nil && (u.Scheme == "http" || u.Scheme == "https")
 }
 
-// FilterSources filters data sources based on the filter string.
+// filterSources filters data sources based on the filter string.
 // Returns filtered sources, warnings (for user display), and error (for fatal issues).
 // Supported filters:
 //   - "main": Returns sources with ID < 1000 (official sources)
@@ -335,7 +337,7 @@ func IsValidURL(str string) bool {
 //   - "197-": Returns sources with IDs from 197 to end (inclusive)
 //   - "1,5,10-20,50-": Mix of individual IDs and ranges
 //   - "": Returns all sources (no filtering)
-func FilterSources(
+func filterSources(
 	sources []DataSourceConfig,
 	filter string,
 ) ([]DataSourceConfig, []string, error) {

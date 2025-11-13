@@ -11,7 +11,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/config"
-	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gndb/pkg/sources"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -93,7 +93,7 @@ func processNameIndices(
 	ctx context.Context,
 	p *populator,
 	sfgaDB *sql.DB,
-	source *populate.DataSourceConfig,
+	source *sources.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) error {
@@ -158,7 +158,7 @@ func processTaxa(
 	ctx context.Context,
 	p *populator,
 	sfgaDB *sql.DB,
-	source *populate.DataSourceConfig,
+	source *sources.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) (int, error) {
@@ -292,7 +292,7 @@ func processTaxa(
 			parts := strings.Split(source.OutlinkIDColumn, ".")
 			if len(parts) == 2 {
 				columnName := parts[1]
-				outlinkID = populate.ExtractOutlinkID(columnName, outlinkIDRaw.String)
+				outlinkID = sources.ExtractOutlinkID(columnName, outlinkIDRaw.String)
 			}
 		}
 
@@ -357,7 +357,7 @@ func processSynonyms(
 	ctx context.Context,
 	p *populator,
 	sfgaDB *sql.DB,
-	source *populate.DataSourceConfig,
+	source *sources.DataSourceConfig,
 	hierarchy map[string]*hNode,
 	cfg *config.Config,
 ) (int, error) {
@@ -505,7 +505,7 @@ func processSynonyms(
 			parts := strings.Split(source.OutlinkIDColumn, ".")
 			if len(parts) == 2 {
 				columnName := parts[1]
-				outlinkID = populate.ExtractOutlinkID(columnName, outlinkIDRaw.String)
+				outlinkID = sources.ExtractOutlinkID(columnName, outlinkIDRaw.String)
 			}
 		}
 
@@ -567,7 +567,7 @@ func processBareNames(
 	ctx context.Context,
 	p *populator,
 	sfgaDB *sql.DB,
-	source *populate.DataSourceConfig,
+	source *sources.DataSourceConfig,
 	cfg *config.Config,
 ) (int, error) {
 	slog.Info("Processing bare names", "data_source_id", source.ID)
@@ -658,7 +658,7 @@ func processBareNames(
 			parts := strings.Split(source.OutlinkIDColumn, ".")
 			if len(parts) == 2 {
 				columnName := parts[1]
-				outlinkID = populate.ExtractOutlinkID(columnName, outlinkIDRaw.String)
+				outlinkID = sources.ExtractOutlinkID(columnName, outlinkIDRaw.String)
 			}
 		}
 

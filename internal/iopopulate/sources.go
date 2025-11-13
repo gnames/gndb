@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gndb/pkg/sources"
 	"gopkg.in/yaml.v3"
 )
 
 // LoadSourcesConfig reads and validates sources.yaml from disk.
-// It performs both data structure validation (via populate.SourcesConfig.Validate)
+// It performs both data structure validation (via sources.SourcesConfig.Validate)
 // and file system validation (directory existence checks).
-func LoadSourcesConfig(path string) (*populate.SourcesConfig, error) {
+func LoadSourcesConfig(path string) (*sources.SourcesConfig, error) {
 	// Read file from disk
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -22,7 +22,7 @@ func LoadSourcesConfig(path string) (*populate.SourcesConfig, error) {
 	}
 
 	// Parse YAML
-	var config populate.SourcesConfig
+	var config sources.SourcesConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse sources config: %w", err)
 	}
@@ -50,11 +50,11 @@ func LoadSourcesConfig(path string) (*populate.SourcesConfig, error) {
 }
 
 // validateSourcesFileSystem checks that parent directories exist for local paths.
-// This is the I/O layer validation that was removed from pkg/populate validation.
-func validateSourcesFileSystem(config *populate.SourcesConfig) error {
+// This is the I/O layer validation that was removed from pkg/sources validation.
+func validateSourcesFileSystem(config *sources.SourcesConfig) error {
 	for i, ds := range config.DataSources {
 		// Skip URLs - they'll be validated at fetch time
-		if populate.IsValidURL(ds.Parent) {
+		if sources.IsValidURL(ds.Parent) {
 			continue
 		}
 

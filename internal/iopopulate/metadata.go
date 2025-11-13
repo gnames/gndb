@@ -9,7 +9,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
-	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gndb/pkg/sources"
 	"github.com/gnames/gndb/pkg/schema"
 	"github.com/google/uuid"
 )
@@ -40,7 +40,7 @@ import (
 func updateDataSourceMetadata(
 	ctx context.Context,
 	p *populator,
-	source populate.DataSourceConfig,
+	source sources.DataSourceConfig,
 	sfgaDB *sql.DB,
 	sfgaFileMeta SFGAMetadata,
 ) error {
@@ -168,7 +168,7 @@ func queryVernacularIndicesCount(ctx context.Context, p *populator, sourceID int
 //   - Citation: Would come from SFGA metadata
 //   - Authors: Would come from SFGA metadata
 func buildDataSourceRecord(
-	source populate.DataSourceConfig,
+	source sources.DataSourceConfig,
 	sfgaMetadata *sfgaMetadata,
 	sfgaFileMeta SFGAMetadata,
 	recordCount int,

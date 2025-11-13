@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gndb/pkg/errcode"
 	"github.com/spf13/cobra"
 )
 
@@ -81,10 +83,14 @@ Examples:
   # Use flat classification
   gndb populate --flat-classification`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPopulate(
-				cmd, args, sourceIDs, releaseVersion,
+			err := runPopulate(
+				cmd, sourceIDs, releaseVersion,
 				releaseDate, flatClassification,
 			)
+			if err != nil {
+				gn.PrintErrorMessage(err)
+			}
+			return err
 		},
 	}
 
@@ -110,7 +116,6 @@ Examples:
 
 func runPopulate(
 	cmd *cobra.Command,
-	_ []string,
 	sourceIDs []int,
 	releaseVersion string,
 	releaseDate string,
@@ -193,14 +198,17 @@ func runPopulate(
 	// Check if database has tables
 	hasTables, err := op.HasTables(ctx)
 	if err != nil {
-		gn.PrintErrorMessage(err)
 		return err
 	}
 
 	if !hasTables {
-		gn.Warn(`<warn>Warning: Database appears to be empty.</warn>
-   <warn>Run 'gndb create' first to initialize the schema.</warn>`)
-		return nil
+		err = &gn.Error{
+			Code: errcode.DBEmptyDatabaseError,
+			Msg: `<err>Database appears to be empty.</err>
+   Run <em>'gndb create'</em> first to initialize the schema.`,
+			Err: errors.New("cannot insert data into empty database"),
+		}
+		return err
 	}
 
 	// Create populator
