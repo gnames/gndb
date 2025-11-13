@@ -119,13 +119,13 @@ func TestGetRootCmd_HasPreRun(t *testing.T) {
 		"PersistentPreRunE should be set for bootstrap")
 }
 
-// TestGetRootCmd_NoRunE verifies root has no run function.
-// Without subcommands, root should show help.
-func TestGetRootCmd_NoRunE(t *testing.T) {
+// TestGetRootCmd_HasRunE verifies root has a run function.
+// This is needed to handle the version flag after bootstrap.
+func TestGetRootCmd_HasRunE(t *testing.T) {
 	cmd := getRootCmd()
 
-	assert.Nil(t, cmd.RunE,
-		"RunE should not be set - root shows help by default")
+	assert.NotNil(t, cmd.RunE,
+		"RunE should be set to handle version flag")
 }
 
 // TestGetRootCmd_ErrorSilencing verifies error and

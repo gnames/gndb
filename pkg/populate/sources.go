@@ -8,14 +8,10 @@ package populate
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/gnames/gndb/pkg/templates"
-	"gopkg.in/yaml.v3"
 )
 
 // SourcesConfig represents the complete sources.yaml configuration file.
@@ -117,25 +113,6 @@ type FileMetadata struct {
 	IsURL       bool   // True if file is a URL
 }
 
-// LoadSourcesConfig loads the data sources configuration from a YAML file.
-func LoadSourcesConfig(path string) (*SourcesConfig, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read sources config file: %w", err)
-	}
-
-	var config SourcesConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse sources config: %w", err)
-	}
-
-	// Validate and process configuration
-	if err := config.Validate(); err != nil {
-		return nil, err
-	}
-
-	return &config, nil
-}
 
 // Validate checks the configuration for errors and applies defaults.
 func (c *SourcesConfig) Validate() error {
@@ -168,7 +145,8 @@ func (c *SourcesConfig) Validate() error {
 	return nil
 }
 
-// Validate checks a single data source configuration.
+// Validate checks a single data source configuration for data structure validity.
+// File system validation (directory existence) is deferred to runtime (I/O layer).
 // Returns a slice of warnings (non-fatal issues) and an error (fatal issues).
 func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 	var warnings []ValidationWarning
@@ -180,33 +158,6 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 	// Parent is required
 	if d.Parent == "" {
 		return nil, fmt.Errorf("parent directory or URL is required")
-	}
-
-	// Check if parent is URL or local directory
-	isURL := IsValidURL(d.Parent)
-
-	if !isURL {
-		// For local directories, expand ~ if needed
-		parentPath := d.Parent
-		if strings.HasPrefix(parentPath, "~/") {
-			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				return nil, fmt.Errorf("failed to expand ~: %w", err)
-			}
-			parentPath = filepath.Join(homeDir, parentPath[2:])
-		}
-
-		// Check if directory exists
-		stat, err := os.Stat(parentPath)
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("parent directory does not exist: %s", d.Parent)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to check parent directory: %w", err)
-		}
-		if !stat.IsDir() {
-			return nil, fmt.Errorf("parent path is not a directory: %s", d.Parent)
-		}
 	}
 
 	// Validate data source type if provided
@@ -374,6 +325,7 @@ func IsValidURL(str string) bool {
 }
 
 // FilterSources filters data sources based on the filter string.
+// Returns filtered sources, warnings (for user display), and error (for fatal issues).
 // Supported filters:
 //   - "main": Returns sources with ID < 1000 (official sources)
 //   - "exclude main": Returns sources with ID >= 1000 (custom sources)
@@ -383,12 +335,15 @@ func IsValidURL(str string) bool {
 //   - "197-": Returns sources with IDs from 197 to end (inclusive)
 //   - "1,5,10-20,50-": Mix of individual IDs and ranges
 //   - "": Returns all sources (no filtering)
-func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfig, error) {
+func FilterSources(
+	sources []DataSourceConfig,
+	filter string,
+) ([]DataSourceConfig, []string, error) {
 	filter = strings.TrimSpace(filter)
 
 	// No filter - return all sources
 	if filter == "" {
-		return sources, nil
+		return sources, nil, nil
 	}
 
 	// Handle "main" filter (ID < 1000)
@@ -399,7 +354,7 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 				filtered = append(filtered, src)
 			}
 		}
-		return filtered, nil
+		return filtered, nil, nil
 	}
 
 	// Handle "exclude main" filter (ID >= 1000)
@@ -410,7 +365,7 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 				filtered = append(filtered, src)
 			}
 		}
-		return filtered, nil
+		return filtered, nil, nil
 	}
 
 	// Parse comma-separated items (can be individual IDs or ranges)
@@ -426,7 +381,7 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 		if strings.Contains(item, "-") {
 			start, end, err := parseRange(item, sources)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse range '%s': %w", item, err)
+				return nil, nil, fmt.Errorf("failed to parse range '%s': %w", item, err)
 			}
 
 			// Add all IDs in range (will silently skip non-existent ones)
@@ -447,7 +402,7 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 			// Single explicit ID
 			id, err := strconv.Atoi(item)
 			if err != nil {
-				return nil, fmt.Errorf("invalid source ID '%s': must be a number or range", item)
+				return nil, nil, fmt.Errorf("invalid source ID '%s': must be a number or range", item)
 			}
 			requestedIDs[id] = true
 			explicitIDs[id] = true
@@ -475,23 +430,17 @@ func FilterSources(sources []DataSourceConfig, filter string) ([]DataSourceConfi
 	// Return error if no sources matched at all
 	if len(filtered) == 0 {
 		if len(warnings) > 0 {
-			return nil, fmt.Errorf(
+			return nil, warnings, fmt.Errorf(
 				"no sources matched filter '%s': %s",
 				filter,
 				strings.Join(warnings, "; "),
 			)
 		}
-		return nil, fmt.Errorf("no sources matched filter '%s'", filter)
+		return nil, nil, fmt.Errorf("no sources matched filter '%s'", filter)
 	}
 
-	// Log warnings if any (using fmt.Fprintf to stderr since we're in pkg/)
-	if len(warnings) > 0 {
-		for _, warn := range warnings {
-			fmt.Fprintf(os.Stderr, "WARNING: %s\n", warn)
-		}
-	}
-
-	return filtered, nil
+	// Return filtered sources and warnings for caller to handle
+	return filtered, warnings, nil
 }
 
 // parseRange parses a range string like "180-208", "-10", or "197-"
@@ -596,18 +545,4 @@ func ExtractOutlinkID(columnName, value string) string {
 
 	// gnoutlink namespace not found
 	return ""
-}
-
-// GenerateExampleConfig creates an example configuration file with all official sources.
-func GenerateExampleConfig(path string) error {
-	// Check if file already exists
-	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("config file already exists: %s", path)
-	}
-
-	if err := os.WriteFile(path, []byte(templates.SourcesYAML), 0644); err != nil {
-		return fmt.Errorf("failed to write example config: %w", err)
-	}
-
-	return nil
 }
