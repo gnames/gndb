@@ -1,10 +1,9 @@
-package populate_test
+package sources
 
 import (
 	"sort"
 	"testing"
 
-	"github.com/gnames/gndb/pkg/populate"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,14 +14,14 @@ import (
 
 func TestFilterSources(t *testing.T) {
 	// Helper to create test sources
-	createSource := func(id int) populate.DataSourceConfig {
-		return populate.DataSourceConfig{
+	createSource := func(id int) DataSourceConfig {
+		return DataSourceConfig{
 			ID:     id,
 			Parent: "https://example.com/sfga/",
 		}
 	}
 
-	sources := []populate.DataSourceConfig{
+	sources := []DataSourceConfig{
 		createSource(1),
 		createSource(5),
 		createSource(10),
@@ -96,7 +95,7 @@ func TestFilterSources(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filtered, warnings, err := populate.FilterSources(sources, tt.filter)
+			filtered, warnings, err := filterSources(sources, tt.filter)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -118,14 +117,14 @@ func TestFilterSources(t *testing.T) {
 
 func TestFilterSources_Ranges(t *testing.T) {
 	// Create test sources with gaps: 1, 5, 10, 15, 20, 50, 100, 200, 1000
-	createSource := func(id int) populate.DataSourceConfig {
-		return populate.DataSourceConfig{
+	createSource := func(id int) DataSourceConfig {
+		return DataSourceConfig{
 			ID:     id,
 			Parent: "https://example.com/sfga/",
 		}
 	}
 
-	sources := []populate.DataSourceConfig{
+	sources := []DataSourceConfig{
 		createSource(1),
 		createSource(5),
 		createSource(10),
@@ -183,7 +182,7 @@ func TestFilterSources_Ranges(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filtered, warnings, err := populate.FilterSources(sources, tt.filter)
+			filtered, warnings, err := filterSources(sources, tt.filter)
 
 			if tt.expectError {
 				assert.Error(t, err, tt.description)
@@ -256,7 +255,7 @@ func TestParseFilename(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metadata := populate.ParseFilename(tt.filename)
+			metadata := parseFilename(tt.filename)
 			assert.Equal(t, tt.expectedID, metadata.ID)
 			assert.Equal(t, tt.expectedVersion, metadata.Version)
 			assert.Equal(t, tt.expectedDate, metadata.ReleaseDate)
@@ -299,7 +298,7 @@ func TestExtractOutlinkID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := populate.ExtractOutlinkID(tt.column, tt.value)
+			result := ExtractOutlinkID(tt.column, tt.value)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -340,7 +339,7 @@ func TestIsValidURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := populate.IsValidURL(tt.input)
+			result := IsValidURL(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

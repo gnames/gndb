@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gndb/pkg/sources"
 	"github.com/gnames/gnlib"
 	"github.com/sfborg/sflib"
 	_ "modernc.org/sqlite" // Pure Go SQLite driver (no CGo)
@@ -321,14 +321,14 @@ func parseSFGAFilename(filename string) SFGAMetadata {
 // resolveSFGAPath determines the SFGA file path without downloading.
 // Returns (sfgaPath, metadata, warning, error).
 func resolveSFGAPath(
-	source populate.DataSourceConfig,
+	source sources.DataSourceConfig,
 ) (string, SFGAMetadata, string, error) {
 	var sfgaPath string
 	var warning string
 	var err error
 
 	// Determine if parent is URL or local directory
-	isURL := populate.IsValidURL(source.Parent)
+	isURL := sources.IsValidURL(source.Parent)
 
 	if isURL {
 		// For URLs, list the directory and find the file matching the ID

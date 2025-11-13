@@ -8,21 +8,21 @@ import (
 
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
-	"github.com/gnames/gndb/pkg/lifecycle"
+	"github.com/gnames/gndb/pkg/gndb"
 	"github.com/gnames/gndb/pkg/schema"
 	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// manager implements the lifecycle.SchemaManager interface
+// manager implements the gndb.SchemaManager interface
 // using GORM AutoMigrate.
 type manager struct {
 	operator db.Operator
 }
 
 // NewManager creates a new SchemaManager.
-func NewManager(op db.Operator) lifecycle.SchemaManager {
+func NewManager(op db.Operator) gndb.SchemaManager {
 	return &manager{operator: op}
 }
 

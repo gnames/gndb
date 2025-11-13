@@ -37,34 +37,34 @@ test-race:
 # Build the gndb binary (development build with timestamp and git version)
 build:
     @mkdir -p bin
-    CGO_ENABLED=0 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg.Version={{VERSION}}'" -o bin/gndb 
+    CGO_ENABLED=0 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg/gndb.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg/gndb.Version={{VERSION}}'" -o bin/gndb 
     @echo "✅ gndb built to bin/gndb (version: {{VERSION}}, build: {{DATE}})"
 
 # Build release binary (uses version.go for Version, timestamp for Build)
 build-release:
     @mkdir -p bin
-    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X 'github.com/gnames/gndb/pkg.Build={{DATE}}'" -o bin/gndb
+    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X 'github.com/gnames/gndb/pkg/gndb.Build={{DATE}}'" -o bin/gndb
     @echo "✅ gndb release binary built to bin/gndb"
 
 # Install gndb to ~/go/bin (development build with timestamp and git version)
 install:
-    CGO_ENABLED=0 go install -ldflags "-w -s -X 'github.com/gnames/gndb/pkg.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg.Version={{VERSION}}'" 
+    CGO_ENABLED=0 go install -ldflags "-w -s -X 'github.com/gnames/gndb/pkg/gndb.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg/gndb.Version={{VERSION}}'" 
     @echo "✅ gndb installed to ~/go/bin/gndb (version: {{VERSION}}, build: {{DATE}})"
 
 # Build releases for multiple platforms
 release:
     @echo "Building releases for Linux, Mac (Intel), Mac (ARM), Windows"
     @mkdir -p bin/releases
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg.Version={{VERSION}}'" -o bin/releases/gndb 
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg/gndb.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg/gndb.Version={{VERSION}}'" -o bin/releases/gndb 
     tar zcvf bin/releases/gndb-{{VER}}-linux.tar.gz -C bin/releases gndb
     rm bin/releases/gndb
-    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg.Version={{VERSION}}'" -o bin/releases/gndb 
+    CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg/gndb.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg/gndb.Version={{VERSION}}'" -o bin/releases/gndb 
     tar zcvf bin/releases/gndb-{{VER}}-mac.tar.gz -C bin/releases gndb
     rm bin/releases/gndb
-    CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg.Version={{VERSION}}'" -o bin/releases/gndb 
+    CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg/gndb.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg/gndb.Version={{VERSION}}'" -o bin/releases/gndb 
     tar zcvf bin/releases/gndb-{{VER}}-mac-arm64.tar.gz -C bin/releases gndb
     rm bin/releases/gndb
-    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg.Version={{VERSION}}'" -o bin/releases/gndb.exe 
+    CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-w -s -X 'github.com/gnames/gndb/pkg/gndb.Build={{DATE}}' -X 'github.com/gnames/gndb/pkg/gndb.Version={{VERSION}}'" -o bin/releases/gndb.exe 
     cd bin/releases && zip -9 gndb-{{VER}}-win-64.zip gndb.exe
     rm bin/releases/gndb.exe
     @echo "✅ Release binaries created in bin/releases/"

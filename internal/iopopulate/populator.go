@@ -16,8 +16,8 @@ import (
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
-	"github.com/gnames/gndb/pkg/lifecycle"
-	"github.com/gnames/gndb/pkg/populate"
+	"github.com/gnames/gndb/pkg/gndb"
+	"github.com/gnames/gndb/pkg/sources"
 	"github.com/gnames/gnfmt"
 )
 
@@ -28,7 +28,7 @@ type populator struct {
 }
 
 // New creates a new Populator.
-func New(cfg *config.Config, op db.Operator) lifecycle.Populator {
+func New(cfg *config.Config, op db.Operator) gndb.Populator {
 	return &populator{cfg: cfg, operator: op}
 }
 
@@ -66,10 +66,10 @@ func (p *populator) Populate(
 }
 
 func (p *populator) collectSources(
-	sourcesConfig *populate.SourcesConfig,
-) ([]populate.DataSourceConfig, error) {
+	sourcesConfig *sources.SourcesConfig,
+) ([]sources.DataSourceConfig, error) {
 	// Filter to requested source IDs (or all if empty)
-	var sourcesToProcess []populate.DataSourceConfig
+	var sourcesToProcess []sources.DataSourceConfig
 	if len(p.cfg.Populate.SourceIDs) == 0 {
 		// Empty means process all sources
 		sourcesToProcess = sourcesConfig.DataSources
@@ -105,7 +105,7 @@ func (p *populator) collectSources(
 
 func (p *populator) processSources(
 	ctx context.Context,
-	sourcesToProcess []populate.DataSourceConfig,
+	sourcesToProcess []sources.DataSourceConfig,
 	startTime time.Time,
 ) error {
 	// Process each source
@@ -196,7 +196,7 @@ Sources succeded: %d, failed %d, total %d.
 // This is a stub for Phase 2 - detailed implementation in Phase 3/4.
 func (p *populator) processSource(
 	ctx context.Context,
-	source populate.DataSourceConfig,
+	source sources.DataSourceConfig,
 ) error {
 	// Resolve SFGA file location
 	sfgaPath, metadata, warning, err := resolveSFGAPath(source)

@@ -11,7 +11,7 @@ import (
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
 	"github.com/gnames/gndb/pkg/errcode"
-	"github.com/gnames/gndb/pkg/lifecycle"
+	"github.com/gnames/gndb/pkg/gndb"
 )
 
 // optimizer implements the Optimizer interface.
@@ -20,7 +20,7 @@ type optimizer struct {
 }
 
 // NewOptimizer creates a new Optimizer.
-func NewOptimizer(op db.Operator) lifecycle.Optimizer {
+func NewOptimizer(op db.Operator) gndb.Optimizer {
 	return &optimizer{
 		operator: op,
 	}

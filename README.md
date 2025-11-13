@@ -10,6 +10,7 @@ GNdb provides tools to create and populate database for a local gnverifier app.
    * [PostgreSQL](#postgresql)
    * [SQLite](#sqlite)
 * [Installation](#installation)
+* [Architecture](#architecture)
 * [Authors](#authors)
 * [License](#license)
 
@@ -53,6 +54,10 @@ produced SFGA files.
 
 ## Installation
 
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed information about the project's Clean Architecture design, package structure, and design patterns.
+
 ## Authors
 
 [Dima Mozzherin] with much assistance from [Claude Code]
@@ -69,3 +74,4 @@ The project is released uner [MIT License]
 [SQLite tools]: https://datasette.io
 [Dima Mozzherin]: https://github.com/dimus
 [Claude Code]: https://claude.ai/code
+[MIT License]: LICENSE

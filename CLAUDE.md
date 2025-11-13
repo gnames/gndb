@@ -102,9 +102,9 @@ All directories are created automatically during bootstrap (cmd/root.go).
 **pkg/** - Public API packages
 - `config/` - Configuration management with Viper (precedence: flags > env vars > config file > defaults)
 - `db/` - Database operator interface (connection pooling, basic operations)
-- `lifecycle/` - Core interfaces: SchemaManager, Populator, Optimizer
+- `gndb/` - Core interfaces (SchemaManager, Populator, Optimizer) and version info
 - `schema/` - GORM models aligned with gnverifier database schema
-- `populate/` - SFGA data source configuration and validation
+- `sources/` - SFGA data source configuration and validation
 - `templates/` - Embedded YAML templates for config files
 
 **internal/** - Internal implementation (not importable by external code)
@@ -118,18 +118,18 @@ All directories are created automatically during bootstrap (cmd/root.go).
    - Final overrides from CLI flags
    - Configuration precedence: flags > env vars > config file > defaults
 
-2. **Database Schema** (lifecycle.SchemaManager):
+2. **Database Schema** (gndb.SchemaManager):
    - Uses GORM AutoMigrate for idempotent schema creation/migration
    - Models defined in pkg/schema/models.go
    - Key tables: DataSource, NameString, Canonical, NameStringIndex, VernacularString, Word
 
-3. **Data Population** (lifecycle.Populator):
+3. **Data Population** (gndb.Populator):
    - Reads sources.yaml configuration (in testdata/ for examples)
    - Connects to SFGA SQLite files using sflib
    - Transforms data to PostgreSQL schema
    - Performs bulk inserts using pgx CopyFrom for performance
 
-4. **Optimization** (lifecycle.Optimizer):
+4. **Optimization** (gndb.Optimizer):
    - Creates indexes for fast lookups
    - Builds materialized views
    - Generates denormalized tables for performance
@@ -184,7 +184,7 @@ Sources are configured in `sources.yaml` (see testdata/sources.yaml for examples
 
 ### Interface-Driven Design
 
-Core functionality is defined through interfaces in pkg/lifecycle/:
+Core functionality is defined through interfaces in pkg/gndb/:
 - **SchemaManager**: Database schema creation and migration
 - **Populator**: SFGA data import
 - **Optimizer**: Performance optimizations

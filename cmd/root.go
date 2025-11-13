@@ -30,7 +30,7 @@ import (
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/internal/iofs"
 	"github.com/gnames/gndb/internal/iologger"
-	app "github.com/gnames/gndb/pkg"
+	"github.com/gnames/gndb/pkg/gndb"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -45,7 +45,7 @@ var (
 func runRoot(cmd *cobra.Command, _ []string) error {
 	b, _ := cmd.Flags().GetBool("version")
 	if b {
-		fmt.Printf("version: %s\nbuild:   %s\n", app.Version, app.Build)
+		fmt.Printf("version: %s\nbuild:   %s\n", gndb.Version, gndb.Build)
 	}
 	return nil
 }
