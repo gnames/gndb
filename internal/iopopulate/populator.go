@@ -48,7 +48,7 @@ func (p *populator) Populate(
 
 	// Load sources.yaml from config directory
 	sourcesPath := config.SourcesFilePath(p.cfg.HomeDir)
-	sourcesConfig, err := populate.LoadSourcesConfig(sourcesPath)
+	sourcesConfig, err := LoadSourcesConfig(sourcesPath)
 	if err != nil {
 		return SourcesConfigError(sourcesPath, err)
 	}
