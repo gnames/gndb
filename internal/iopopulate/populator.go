@@ -14,6 +14,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
+	"github.com/gnames/gndb/internal/iosources"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
 	"github.com/gnames/gndb/pkg/gndb"
@@ -47,10 +48,10 @@ func (p *populator) Populate(
 	slog.Info("Starting database population")
 
 	// Load sources.yaml from config directory
-	sourcesPath := config.SourcesFilePath(p.cfg.HomeDir)
-	sourcesConfig, err := LoadSourcesConfig(sourcesPath)
+	src := iosources.New(p.cfg)
+	sourcesConfig, err := src.Load()
 	if err != nil {
-		return SourcesConfigError(sourcesPath, err)
+		return err
 	}
 
 	sourcesToProcess, err := p.collectSources(sourcesConfig)
@@ -207,7 +208,8 @@ func (p *populator) processSource(
 	if warning != "" {
 		slog.Warn(warning)
 	}
-	gn.Info("(1/6) getting SFGA file")
+	file := filepath.Base(sfgaPath)
+	gn.Info("(1/6) getting SFGA file <em>%s</em>", file)
 	slog.Info("Resolved SFGA file",
 		"source_id", source.ID,
 		"path", sfgaPath,
@@ -232,10 +234,7 @@ func (p *populator) processSource(
 		return SFGAReadError(sqlitePath, err)
 	}
 	defer sfgaDB.Close()
-	gn.Message(
-		"<em>Prepared %s SFGA file for import</em>",
-		filepath.Base(sfgaPath),
-	)
+	gn.Message("<em>Prepared SFGA file for import</em>")
 
 	gn.Info("(2/6) Importing name-strings...")
 	var nameStrNum int

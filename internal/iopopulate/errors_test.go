@@ -24,25 +24,6 @@ func TestNotConnectedError(t *testing.T) {
 	assert.Contains(t, gnErr.Err.Error(), "not connected")
 }
 
-// TestSourcesConfigError verifies error structure.
-func TestSourcesConfigError(t *testing.T) {
-	path := "/test/sources.yaml"
-	originalErr := errors.New("file not found")
-
-	err := SourcesConfigError(path, originalErr)
-
-	require.NotNil(t, err)
-
-	gnErr, ok := err.(*gn.Error)
-	require.True(t, ok, "Error should be of type *gn.Error")
-
-	assert.Equal(t, errcode.PopulateSourcesConfigError, gnErr.Code)
-	assert.NotEmpty(t, gnErr.Msg)
-	assert.Len(t, gnErr.Vars, 2)
-	assert.Equal(t, path, gnErr.Vars[0])
-	assert.ErrorIs(t, gnErr.Err, originalErr)
-}
-
 // TestNoSourcesError verifies error structure.
 func TestNoSourcesError(t *testing.T) {
 	requestedIDs := []int{1, 2, 3}

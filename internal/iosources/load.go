@@ -1,4 +1,4 @@
-package iopopulate
+package iosources
 
 import (
 	"fmt"
@@ -11,10 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// LoadSourcesConfig reads and validates sources.yaml from disk.
-// It performs both data structure validation (via sources.SourcesConfig.Validate)
-// and file system validation (directory existence checks).
-func LoadSourcesConfig(path string) (*sources.SourcesConfig, error) {
+func loadSourcesConfig(path string) (*sources.SourcesConfig, error) {
 	// Read file from disk
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -50,7 +47,6 @@ func LoadSourcesConfig(path string) (*sources.SourcesConfig, error) {
 }
 
 // validateSourcesFileSystem checks that parent directories exist for local paths.
-// This is the I/O layer validation that was removed from pkg/sources validation.
 func validateSourcesFileSystem(config *sources.SourcesConfig) error {
 	for i, ds := range config.DataSources {
 		// Skip URLs - they'll be validated at fetch time
