@@ -216,13 +216,12 @@ func runPopulate(
 
 	// Run populate
 	gn.Info("Starting data population from SFGA sources...")
-	if err := populator.Populate(ctx); err != nil {
+	if err := populator.Populate(); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}
 
-	gn.Info(`Data population complete!
-	 Next steps:
+	gn.Info(`Next steps:
 	 - Run '<em>gndb populate</em>' until you get all data you need
 	 - Run '<em>gndb optimize</em>' to create indexes
 	 - Database is ready for verification

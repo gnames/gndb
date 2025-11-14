@@ -1,7 +1,6 @@
 package iopopulate
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"io"
@@ -355,7 +354,6 @@ func resolveSFGAPath(
 
 //nolint:unused // Will be used in Phase 3
 func fetchSFGA(
-	_ context.Context,
 	sfgaPath string,
 	cacheDir string,
 ) (string, error) {

@@ -2,7 +2,7 @@ package iopopulate
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -16,7 +16,8 @@ import (
 )
 
 // hNode represents a node in the taxonomic hierarchy.
-// It stores the essential information needed to build classification breadcrumbs.
+// It stores the essential information needed to build classification
+// breadcrumbs.
 type hNode struct {
 	id              string
 	parentID        string
@@ -37,25 +38,24 @@ const (
 	circularBadNode
 )
 
-// buildHierarchy constructs a map of taxonomy nodes from the SFGA taxon table.
-// It uses concurrent workers to parse scientific names using gnparser with botanical code.
+// buildHierarchy implements Phase 3: Classification Hierarchy construction.
+// It constructs a map of taxonomy nodes from the SFGA taxon table using
+// concurrent workers.
 //
-// The botanical code is used to avoid issues with names like "Aus (Bus)" which would
-// incorrectly parse as "Bus" with zoological code, but correctly as "Aus" with botanical code.
+// The hierarchy is used in Phase 4 to provide full classification paths
+// for taxa and synonyms. Uses gnparser with botanical code to avoid issues
+// like "Aus (Bus)" parsing incorrectly.
 //
-// Parameters:
-//   - ctx: Context for cancellation
-//   - sfgaDB: Open SQLite database connection to SFGA
-//   - jobsNum: Number of concurrent workers (0 = auto-detect)
+// Concurrent Processing:
+//   - Creates its own context for goroutine cancellation
+//   - Uses p.cfg.JobsNumber workers to parse names in parallel
+//   - Employs errgroup for coordinated error handling
 //
 // Returns:
-//   - map[string]*hNode: Map of taxon IDs to hierarchy nodes
+//   - map[string]*hNode: Map of taxon IDs to hierarchy nodes with parent
+//     pointers
 //   - error: Any error encountered during processing
-func buildHierarchy(
-	ctx context.Context,
-	sfgaDB *sql.DB,
-	jobsNum int,
-) (map[string]*hNode, error) {
+func (p *populator) buildHierarchy() (map[string]*hNode, error) {
 	// Create channels for worker communication
 	chIn := make(chan nameUsage)
 	chOut := make(chan *hNode)
@@ -65,7 +65,7 @@ func buildHierarchy(
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
-	for range jobsNum {
+	for range p.cfg.JobsNumber {
 		wg.Add(1)
 		g.Go(func() error {
 			defer wg.Done()
@@ -88,14 +88,14 @@ func buildHierarchy(
 	}()
 
 	// Load name usage data from SFGA
-	err := loadNameUsage(ctx, sfgaDB, chIn)
+	err := p.loadNameUsage(ctx, chIn)
 	if err != nil {
 		return nil, err
 	}
 	close(chIn)
 
 	// Wait for all goroutines to complete
-	if err := g.Wait(); err != nil {
+	if err := g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 		return nil, err
 	}
 
@@ -198,7 +198,10 @@ func createHierarchy(ctx context.Context, chOut <-chan *hNode, hierarchy map[str
 
 // loadNameUsage reads taxon and name data from SFGA and sends it to chIn.
 // It performs a JOIN to get all necessary fields for hierarchy building.
-func loadNameUsage(ctx context.Context, sfgaDB *sql.DB, chIn chan<- nameUsage) error {
+func (p *populator) loadNameUsage(
+	ctx context.Context,
+	chIn chan<- nameUsage,
+) error {
 	query := `
 		SELECT t.col__id, t.col__parent_id, t.col__status_id,
 		       n.col__scientific_name, n.col__rank_id
@@ -206,7 +209,7 @@ func loadNameUsage(ctx context.Context, sfgaDB *sql.DB, chIn chan<- nameUsage) e
 		JOIN name n ON n.col__id = t.col__name_id
 	`
 
-	rows, err := sfgaDB.Query(query)
+	rows, err := p.sfgaDB.Query(query)
 	if err != nil {
 		return err
 	}

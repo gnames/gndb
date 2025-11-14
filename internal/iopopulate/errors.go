@@ -29,8 +29,7 @@ func NoSourcesError(requestedIDs []int) error {
 
 <em>How to fix:</em>
   1. Check available sources: review sources.yaml
-  2. Verify source IDs are correct
-  3. Use --source-ids flag to specify valid IDs`
+  2. Verify source IDs are correct`
 
 	vars := []any{requestedIDs}
 
@@ -58,11 +57,11 @@ func SFGAFileNotFoundError(
 
 <em>Possible causes:</em>
   - SFGA file not downloaded
-  - Incorrect parent directory
+  - Incorrect parent directory/URL
   - File naming doesn't match ID pattern
 
 <em>How to fix:</em>
-  1. Check parent directory exists
+  1. Check parent directory/URL exists
   2. Verify SFGA file naming: %04d*.{sql,sqlite}{,.zip}
   3. Download SFGA file if missing`
 
@@ -129,18 +128,7 @@ func AllSourcesFailedError(count int) error {
 
 // MetadataError creates an error for metadata import failures.
 func MetadataError(sourceID int, err error) error {
-	msg := `Failed to import metadata for data source <em>%d</em>
-
-<em>Possible causes:</em>
-  - Database constraint violation
-  - SFGA metadata missing
-  - Connection interrupted
-
-<em>How to fix:</em>
-  1. Check database logs
-  2. Verify SFGA file integrity
-  3. Check database connection`
-
+	msg := `Failed to import metadata for data source <em>%d</em>`
 	vars := []any{sourceID}
 
 	return &gn.Error{
@@ -153,19 +141,7 @@ func MetadataError(sourceID int, err error) error {
 
 // NamesError creates an error for name-string import failures.
 func NamesError(sourceID int, err error) error {
-	msg := `Failed to import name-strings for data source <em>%d</em>
-
-<em>Possible causes:</em>
-  - Name parsing errors
-  - Database constraint violation
-  - Out of memory
-  - Connection interrupted
-
-<em>How to fix:</em>
-  1. Check available memory
-  2. Review database logs
-  3. Verify SFGA file integrity`
-
+	msg := `Failed to import name-strings for data source <em>%d</em>`
 	vars := []any{sourceID}
 
 	return &gn.Error{
@@ -178,18 +154,7 @@ func NamesError(sourceID int, err error) error {
 
 // CacheError creates an error for cache-related failures.
 func CacheError(operation string, err error) error {
-	msg := `Cache operation failed: <em>%s</em>
-
-<em>Possible causes:</em>
-  - Disk space full
-  - Permission denied
-  - Cache corrupted
-
-<em>How to fix:</em>
-  1. Check disk space: <em>df -h</em>
-  2. Check cache directory permissions
-  3. Clear cache and retry`
-
+	msg := `Cache operation failed: <em>%s</em>`
 	vars := []any{operation}
 
 	return &gn.Error{

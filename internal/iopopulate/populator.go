@@ -5,14 +5,13 @@
 package iopopulate
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/internal/iosources"
 	"github.com/gnames/gndb/pkg/config"
@@ -26,6 +25,7 @@ import (
 type populator struct {
 	cfg      *config.Config
 	operator db.Operator
+	sfgaDB   *sql.DB
 }
 
 // New creates a new Populator.
@@ -36,9 +36,7 @@ func New(cfg *config.Config, op db.Operator) gndb.Populator {
 // Populate imports data from SFGA sources into the database.
 // Orchestrates all phases: SFGA fetch, metadata, names, hierarchy,
 // indices, and vernaculars.
-func (p *populator) Populate(
-	ctx context.Context,
-) error {
+func (p *populator) Populate() error {
 	pool := p.operator.Pool()
 	if pool == nil {
 		return NotConnectedError()
@@ -59,7 +57,7 @@ func (p *populator) Populate(
 		return err
 	}
 
-	if err = p.processSources(ctx, sourcesToProcess, startTime); err != nil {
+	if err = p.processSources(sourcesToProcess, startTime); err != nil {
 		return err
 	}
 
@@ -105,7 +103,6 @@ func (p *populator) collectSources(
 }
 
 func (p *populator) processSources(
-	ctx context.Context,
 	sourcesToProcess []sources.DataSourceConfig,
 	startTime time.Time,
 ) error {
@@ -130,15 +127,8 @@ func (p *populator) processSources(
 			"title", source.TitleShort,
 		)
 
-		// Check context cancellation
-		select {
-		case <-ctx.Done():
-			return CancelledError(ctx.Err())
-		default:
-		}
-
 		// Process this source through all phases
-		err := p.processSource(ctx, source)
+		err := p.processSource(source)
 		if err != nil {
 			errorCount++
 			slog.Error("Failed to process source",
@@ -146,6 +136,7 @@ func (p *populator) processSources(
 				"title", source.TitleShort,
 				"error", err,
 			)
+			gn.PrintErrorMessage(err)
 			// Continue with next source instead of failing
 			continue
 		}
@@ -171,6 +162,8 @@ func (p *populator) processSources(
 		"total", len(sourcesToProcess),
 		"duration", gnfmt.TimeString(totalDuration.Seconds()),
 	)
+	fmt.Println(strings.Repeat("─", 60))
+	fmt.Println() // Blank line between sources
 	gn.Info(`Population complete
 Sources succeded: %d, failed %d, total %d.
 		Elapsed time: <em>%s</em>
@@ -193,10 +186,14 @@ Sources succeded: %d, failed %d, total %d.
 	return nil
 }
 
-// processSource handles a single data source through all phases.
-// This is a stub for Phase 2 - detailed implementation in Phase 3/4.
+// processSource handles a single data source through all phases:
+// 1. SFGA file resolution and caching
+// 2. Name strings import
+// 3. Classification hierarchy construction
+// 4. Name indices import (taxa, synonyms, bare names)
+// 5. Vernacular names import
+// 6. Data source metadata update
 func (p *populator) processSource(
-	ctx context.Context,
 	source sources.DataSourceConfig,
 ) error {
 	// Resolve SFGA file location
@@ -223,40 +220,27 @@ func (p *populator) processSource(
 	}
 
 	// Fetch SFGA file to cache
-	sqlitePath, err := fetchSFGA(ctx, sfgaPath, cacheDir)
+	sqlitePath, err := fetchSFGA(sfgaPath, cacheDir)
 	if err != nil {
 		return SFGAReadError(sfgaPath, err)
 	}
 
 	// Open SFGA database
-	sfgaDB, err := openSFGA(sqlitePath)
+	p.sfgaDB, err = openSFGA(sqlitePath)
 	if err != nil {
 		return SFGAReadError(sqlitePath, err)
 	}
-	defer sfgaDB.Close()
+	defer p.sfgaDB.Close()
 	gn.Message("<em>Prepared SFGA file for import</em>")
 
 	gn.Info("(2/6) Importing name-strings...")
-	var nameStrNum int
-	nameStrNum, err = processNameStrings(ctx, p, sfgaDB, source.ID)
+	err = p.processNameStrings(source.ID)
 	if err != nil {
 		return NamesError(source.ID, err)
 	}
-	gn.Message(
-		"<em>Imported %s name strings</em>",
-		humanize.Comma(int64(nameStrNum)))
 
-	gn.Info("(3/6) Importing vernacular names...")
-	err = processVernaculars(ctx, p, sfgaDB, source.ID)
-	if err != nil {
-		// Vernaculars are optional, report error and continue
-		slog.Error("Failed to import vernaculars",
-			"source_id", source.ID,
-			"error", err)
-	}
-
-	gn.Info("(4/6) Building classification hierarchy...")
-	hierarchy, err := buildHierarchy(ctx, sfgaDB, p.cfg.JobsNumber)
+	gn.Info("(3/6) Building classification hierarchy...")
+	hierarchy, err := p.buildHierarchy()
 	if err != nil {
 		// Hierarchy is optional, log warning and continue
 		slog.Warn("Failed to build hierarchy",
@@ -264,14 +248,23 @@ func (p *populator) processSource(
 			"error", err)
 	}
 
-	gn.Info("(5/6) Importing name-string indices...")
-	err = processNameIndices(ctx, p, sfgaDB, &source, hierarchy, p.cfg)
+	gn.Info("(4/6) Importing name-string indices...")
+	err = p.processNameIndices(&source, hierarchy)
 	if err != nil {
 		return NamesError(source.ID, err)
 	}
 
+	gn.Info("(5/6) Importing vernacular names...")
+	err = p.processVernaculars(source.ID)
+	if err != nil {
+		// Vernaculars are optional, report error and continue
+		slog.Error("Failed to import vernaculars",
+			"source_id", source.ID,
+			"error", err)
+	}
+
 	gn.Info("(6/6) Importing metadata...")
-	err = updateDataSourceMetadata(ctx, p, source, sfgaDB, metadata)
+	err = p.updateDataSourceMetadata(source, metadata)
 	if err != nil {
 		return MetadataError(source.ID, err)
 	}
