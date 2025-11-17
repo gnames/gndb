@@ -104,25 +104,24 @@ func (m *manager) setCollation(ctx context.Context) error {
 
 	type columnDef struct {
 		table, column string
-		varchar       int
 	}
 
 	columns := []columnDef{
-		{"name_strings", "name", 500},
-		{"canonicals", "name", 255},
-		{"canonical_fulls", "name", 255},
-		{"canonical_stems", "name", 255},
-		{"words", "normalized", 255},
-		{"words", "modified", 255},
-		{"vernacular_strings", "name", 255},
+		{"name_strings", "name"},
+		{"canonicals", "name"},
+		{"canonical_fulls", "name"},
+		{"canonical_stems", "name"},
+		{"words", "normalized"},
+		{"words", "modified"},
+		{"vernacular_strings", "name"},
 	}
 
 	qStr := `ALTER TABLE %s ALTER COLUMN %s ` +
-		`TYPE VARCHAR(%d) COLLATE "C"`
+		`TYPE TEXT COLLATE "C"`
 
 	for _, col := range columns {
 		q := formatCollationSQL(qStr, col.table,
-			col.column, col.varchar)
+			col.column)
 		if _, err := pool.Exec(ctx, q); err != nil {
 			return CollationError(col.table, col.column, err)
 		}

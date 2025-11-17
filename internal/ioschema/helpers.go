@@ -7,7 +7,6 @@ func formatCollationSQL(
 	template string,
 	table string,
 	column string,
-	varchar int,
 ) string {
-	return fmt.Sprintf(template, table, column, varchar)
+	return fmt.Sprintf(template, table, column)
 }

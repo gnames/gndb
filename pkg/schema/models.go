@@ -93,7 +93,7 @@ type NameString struct {
 	// Name-string with authorships and annotations as it is given by a dataset.
 	// Sometimes an authorship is concatenated with a name-string by our
 	// import scripts.
-	Name string `gorm:"type:varchar(255);not null"`
+	Name string `gorm:"type:text;not null"`
 
 	// Year is the year when a name was published
 	Year sql.NullInt16 `gorm:"type:int"`
@@ -134,7 +134,7 @@ type Canonical struct {
 	ID string `gorm:"type:uuid;primary_key;auto_increment:false"`
 
 	// Canonical name-string
-	Name string `gorm:"type:varchar(255);not null"`
+	Name string `gorm:"type:text;not null"`
 }
 
 // CanonicalFull ia a full canonical form.
@@ -144,7 +144,7 @@ type CanonicalFull struct {
 	ID string `gorm:"type:uuid;primary_key;auto_increment:false"`
 
 	// Canonical name-string
-	Name string `gorm:"type:varchar(255);not null"`
+	Name string `gorm:"type:text;not null"`
 }
 
 // CanonicalStem is a stemmed derivative of a simple canonical form.
@@ -153,7 +153,7 @@ type CanonicalStem struct {
 	ID string `gorm:"type:uuid;primary_key;auto_increment:false"`
 
 	// Stemmed canonical name-string
-	Name string `gorm:"type:varchar(255);not null"`
+	Name string `gorm:"type:text;not null"`
 }
 
 // NameStringIndex is a name-strings relations to datasets.
@@ -218,10 +218,10 @@ type Word struct {
 
 	// Normalized is the word normalized by GNparser. This field is used
 	// for sorting results.
-	Normalized string `gorm:"type:varchar(250);primary_key;auto_increment:false"`
+	Normalized string `gorm:"type:text;primary_key;auto_increment:false"`
 
 	// Modified is a heavy-normalized word. This field is used for matching.
-	Modified string `gorm:"type:varchar(250);not null;index:words_modified"`
+	Modified string `gorm:"type:text;not null;index:words_modified"`
 
 	// TypeID is the integer representation of parsed.WordType
 	// from GNparser.
@@ -247,7 +247,7 @@ type VernacularString struct {
 	ID string `gorm:"type:uuid;primary_key;auto_increment:false"`
 
 	// Name is a vernacular name as it is given by a dataset.
-	Name string `gorm:"type:varchar(500);index:vern_str_name_idx;not null"`
+	Name string `gorm:"type:text;index:vern_str_name_idx;not null"`
 }
 
 // VernacularStringIndex links vernacular strings to datasets.

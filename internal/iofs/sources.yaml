@@ -82,7 +82,7 @@ data_sources:
     parent: http://opendata.globalnames.org/sfga/
     title_short: "Catalogue of Life"
     home_url: "https://www.catalogueoflife.org/"
-    data_url: "http://www.catalogueoflife.org/DCA_Export/archive.php"
+    data_url: "https://www.catalogueoflife.org/data/download"
     is_curated: true
     has_classification: true
     is_outlink_ready: true
@@ -157,6 +157,19 @@ data_sources:
     is_outlink_ready: true
     outlink_url: "https://eol.org/pages/{}"
     outlink_id_column: "taxon.col__name_id" # Uses name ID (available for all record types including bare names)
+
+  # Catalogue of Life Extended Release
+  - id: 13
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "Catalogue of Life XR"
+    home_url: "https://www.catalogueoflife.org/"
+    data_url: "https://www.catalogueoflife.org/data/download"
+    is_curated: false
+    is_auto_curated: true
+    has_classification: true
+    is_outlink_ready: true
+    outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
+    outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
   # VASCAN
   - id: 147
