@@ -220,7 +220,7 @@ func TestPopulate_EndToEnd_VASCAN(t *testing.T) {
 
 	// Run populate
 	populator := iopopulate.New(testCfg, op)
-	err = populator.Populate(ctx)
+	err = populator.Populate()
 	require.NoError(t, err, "Populate should succeed")
 
 	// Verify data was imported

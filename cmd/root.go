@@ -30,8 +30,8 @@ import (
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/internal/iofs"
 	"github.com/gnames/gndb/internal/iologger"
-	"github.com/gnames/gndb/pkg/gndb"
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gndb/pkg/gndb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -127,6 +127,7 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 		"format", defaultLog.Format,
 		"level", defaultLog.Level,
 		"destination", defaultLog.Destination)
+	gn.Info("Logs are available at <em>%s</em>", config.LogDir(homeDir))
 
 	if err = iofs.EnsureConfigFile(homeDir); err != nil {
 		slog.Error("Failed to ensure config file", "error", err)

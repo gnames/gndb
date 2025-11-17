@@ -9,71 +9,60 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
-	"github.com/gnames/gndb/pkg/sources"
 	"github.com/gnames/gndb/pkg/schema"
+	"github.com/gnames/gndb/pkg/sources"
 	"github.com/google/uuid"
 )
 
-// updateDataSourceMetadata implements Phase 5: Data source metadata management.
-// This creates or updates the data_sources table record with metadata from
-// both SFGA and sources.yaml configuration.
+// updateDataSourceMetadata implements Phase 6: Data Source Metadata update.
+// Creates or updates the data_sources table record by merging metadata from
+// multiple sources.
 //
 // Metadata Sources:
-//  1. SFGA metadata table: title, description, doi
-//  2. Sources.yaml config: title_short, home_url, flags (is_curated, etc.)
-//  3. Database queries: record counts from name_string_indices and vernacular_string_indices
+//  1. SFGA metadata table (p.sfgaDB): title, description, doi, citation, authors
+//  2. sources.yaml config: title_short, home_url, outlink_url, curation flags
+//  3. Database counts: name_string_indices and vernacular_string_indices
 //  4. SFGA filename: version, revision_date
 //
-// The function follows a DELETE + INSERT pattern for idempotency.
+// Uses DELETE + INSERT pattern for idempotency.
 //
-// Parameters:
-//   - ctx: Context for cancellation
-//   - p: Populator instance with database connection
-//   - source: DataSourceConfig from sources.yaml with ID and metadata
-//   - sfgaDB: Open SQLite database handle for SFGA source
-//   - sfgaFileMeta: Metadata extracted from SFGA filename (version, date)
-//
-// Returns error if:
-//   - SFGA metadata query fails
-//   - Count queries fail
-//   - Database insert fails
-func updateDataSourceMetadata(
-	ctx context.Context,
-	p *populator,
+// Returns error if SFGA query, count query, or database insert fails.
+func (p *populator) updateDataSourceMetadata(
 	source sources.DataSourceConfig,
-	sfgaDB *sql.DB,
 	sfgaFileMeta SFGAMetadata,
 ) error {
 	slog.Info("Updating data source metadata", "data_source_id", source.ID)
 
 	// Step 1: Read metadata from SFGA
-	sfgaMetadata, err := readSFGAMetadata(sfgaDB)
+	sfgaMetadata, err := p.readSFGAMetadata()
 	if err != nil {
 		return fmt.Errorf("failed to read SFGA metadata: %w", err)
 	}
 
 	// Step 2: Query record counts from database
-	recordCount, err := queryNameStringIndicesCount(ctx, p, source.ID)
+	recordCount, err := p.queryNameStringIndicesCount(source.ID)
 	if err != nil {
 		return fmt.Errorf("failed to query name string indices count: %w", err)
 	}
 
-	vernRecordCount, err := queryVernacularIndicesCount(ctx, p, source.ID)
+	vernRecordCount, err := p.queryVernacularIndicesCount(source.ID)
 	if err != nil {
 		return fmt.Errorf("failed to query vernacular indices count: %w", err)
 	}
 
 	// Step 3: Build DataSource record merging SFGA + sources.yaml metadata
-	ds := buildDataSourceRecord(source, sfgaMetadata, sfgaFileMeta, recordCount, vernRecordCount)
+	ds := buildDataSourceRecord(
+		source, sfgaMetadata, sfgaFileMeta, recordCount, vernRecordCount,
+	)
 
 	// Step 4: Delete existing data source record (for idempotency)
-	err = deleteDataSource(ctx, p, source.ID)
+	err = deleteDataSource(p, source.ID)
 	if err != nil {
 		return fmt.Errorf("failed to delete existing data source: %w", err)
 	}
 
 	// Step 5: Insert new data source record
-	err = insertDataSource(ctx, p, ds)
+	err = insertDataSource(p, ds)
 	if err != nil {
 		return fmt.Errorf("failed to insert data source: %w", err)
 	}
@@ -104,7 +93,7 @@ type sfgaMetadata struct {
 
 // readSFGAMetadata reads metadata from SFGA metadata table.
 // Returns zero values for missing/empty fields (graceful handling).
-func readSFGAMetadata(sfgaDB *sql.DB) (*sfgaMetadata, error) {
+func (p *populator) readSFGAMetadata() (*sfgaMetadata, error) {
 	query := `
 		SELECT col__title, col__description, col__doi
 		FROM metadata
@@ -112,7 +101,7 @@ func readSFGAMetadata(sfgaDB *sql.DB) (*sfgaMetadata, error) {
 	`
 
 	var meta sfgaMetadata
-	err := sfgaDB.QueryRow(query).Scan(&meta.Title, &meta.Description, &meta.DOI)
+	err := p.sfgaDB.QueryRow(query).Scan(&meta.Title, &meta.Description, &meta.DOI)
 	if err != nil {
 		// If metadata table doesn't exist or is empty, return empty metadata
 		if err == sql.ErrNoRows {
@@ -127,11 +116,13 @@ func readSFGAMetadata(sfgaDB *sql.DB) (*sfgaMetadata, error) {
 
 // queryNameStringIndicesCount queries the count of name_string_indices
 // for a given data source.
-func queryNameStringIndicesCount(ctx context.Context, p *populator, sourceID int) (int, error) {
+func (p *populator) queryNameStringIndicesCount(
+	sourceID int,
+) (int, error) {
 	query := `SELECT COUNT(*) FROM name_string_indices WHERE data_source_id = $1`
 
 	var count int
-	err := p.operator.Pool().QueryRow(ctx, query, sourceID).Scan(&count)
+	err := p.operator.Pool().QueryRow(context.Background(), query, sourceID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count name string indices: %w", err)
 	}
@@ -141,11 +132,13 @@ func queryNameStringIndicesCount(ctx context.Context, p *populator, sourceID int
 
 // queryVernacularIndicesCount queries the count of vernacular_string_indices
 // for a given data source.
-func queryVernacularIndicesCount(ctx context.Context, p *populator, sourceID int) (int, error) {
+func (p *populator) queryVernacularIndicesCount(
+	sourceID int,
+) (int, error) {
 	query := `SELECT COUNT(*) FROM vernacular_string_indices WHERE data_source_id = $1`
 
 	var count int
-	err := p.operator.Pool().QueryRow(ctx, query, sourceID).Scan(&count)
+	err := p.operator.Pool().QueryRow(context.Background(), query, sourceID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count vernacular indices: %w", err)
 	}
@@ -219,10 +212,10 @@ func buildDataSourceRecord(
 // deleteDataSource deletes an existing data source record by ID.
 // This is part of the DELETE + INSERT pattern for idempotency.
 // Does not return an error if the record doesn't exist.
-func deleteDataSource(ctx context.Context, p *populator, sourceID int) error {
+func deleteDataSource(p *populator, sourceID int) error {
 	query := `DELETE FROM data_sources WHERE id = $1`
 
-	_, err := p.operator.Pool().Exec(ctx, query, sourceID)
+	_, err := p.operator.Pool().Exec(context.Background(), query, sourceID)
 	if err != nil {
 		return fmt.Errorf("failed to execute delete: %w", err)
 	}
@@ -231,7 +224,7 @@ func deleteDataSource(ctx context.Context, p *populator, sourceID int) error {
 }
 
 // insertDataSource inserts a new data source record.
-func insertDataSource(ctx context.Context, p *populator, ds schema.DataSource) error {
+func insertDataSource(p *populator, ds schema.DataSource) error {
 	query := `
 		INSERT INTO data_sources (
 			id, uuid, title, title_short, version, revision_date,
@@ -245,7 +238,7 @@ func insertDataSource(ctx context.Context, p *populator, ds schema.DataSource) e
 		)
 	`
 
-	_, err := p.operator.Pool().Exec(ctx, query,
+	_, err := p.operator.Pool().Exec(context.Background(), query,
 		ds.ID,
 		ds.UUID,
 		ds.Title,

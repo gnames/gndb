@@ -2,7 +2,6 @@ package iopopulate
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 
@@ -22,45 +21,30 @@ type vernIndex struct {
 	countryCode        string
 }
 
-// processVernaculars implements vernacular name import from SFGA.
-// This includes both vernacular strings and vernacular indices.
+// processVernaculars implements Phase 5: Vernacular Names import from SFGA.
+// Vernaculars are optional - errors are logged but don't stop processing.
 //
-// Phase 1: Vernacular Strings
-//   - Read unique vernacular names from SFGA vernacular table
-//   - Generate UUID v5 for each unique name
-//   - Insert into vernacular_strings with ON CONFLICT DO NOTHING
+// Two-phase approach:
+//   1. Vernacular Strings - unique names with UUID v5 identifiers
+//   2. Vernacular Indices - links to data source with language/locality metadata
 //
-// Phase 2: Vernacular Indices
-//   - Clean old vernacular indices for this data source
-//   - Read vernacular records with metadata (language, locality, country)
-//   - Link to vernacular strings via UUID v5
-//   - Bulk insert using pgx.CopyFrom
+// Uses p.sfgaDB for SQLite queries and p.operator.Pool() for PostgreSQL operations.
+// Employs batch inserts and pgx.CopyFrom for efficient bulk loading.
 //
-// Parameters:
-//   - ctx: Context for cancellation
-//   - p: Populator instance with database connection
-//   - sfgaDB: Open SQLite database handle for SFGA source
-//   - sourceID: Data source ID
-//
-// Returns error if:
-//   - SFGA query fails
-//   - Database insert fails
-func processVernaculars(
-	ctx context.Context,
-	p *populator,
-	sfgaDB *sql.DB,
+// Returns error if SFGA query or database insert fails.
+func (p *populator) processVernaculars(
 	sourceID int,
 ) error {
 	slog.Info("Processing vernacular names", "data_source_id", sourceID)
 
 	// Phase 1: Process vernacular strings (unique names)
-	vernStrNum, err := processVernacularStrings(ctx, p, sfgaDB)
+	vernStrNum, err := p.processVernacularStrings()
 	if err != nil {
 		return fmt.Errorf("failed to process vernacular strings: %w", err)
 	}
 
 	// Phase 2: Process vernacular indices (links to data source with metadata)
-	vernIdxNum, err := processVernacularIndices(ctx, p, sfgaDB, sourceID)
+	vernIdxNum, err := p.processVernacularIndices(sourceID)
 	if err != nil {
 		return fmt.Errorf("failed to process vernacular indices: %w", err)
 	}
@@ -85,13 +69,13 @@ func processVernaculars(
 // processVernacularStrings reads unique vernacular names from SFGA and
 // inserts them into vernacular_strings table with UUID v5 identifiers.
 // Uses ON CONFLICT DO NOTHING for deduplication across data sources.
-func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB) (int, error) {
+func (p *populator) processVernacularStrings() (int, error) {
 	slog.Info("Phase 1: Processing vernacular strings")
 
 	// Query unique vernacular names from SFGA
 	query := `SELECT DISTINCT col__name FROM vernacular`
 
-	rows, err := sfgaDB.Query(query)
+	rows, err := p.sfgaDB.Query(query)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query SFGA vernacular table: %w", err)
 	}
@@ -125,13 +109,6 @@ func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB)
 			id:   uuid,
 			name: nameFixed,
 		})
-
-		// Check for context cancellation
-		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
-		default:
-		}
 	}
 
 	if err = rows.Err(); err != nil {
@@ -151,13 +128,6 @@ func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB)
 
 	// Process in batches
 	for i := 0; i < len(vernStrings); i += batchSize {
-		// Check context cancellation
-		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
-		default:
-		}
-
 		end := i + batchSize
 		if end > len(vernStrings) {
 			end = len(vernStrings)
@@ -182,7 +152,7 @@ func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB)
 			joinStrings(valueStrings, ","),
 		)
 
-		_, err := p.operator.Pool().Exec(ctx, insertQuery, valueArgs...)
+		_, err := p.operator.Pool().Exec(context.Background(), insertQuery, valueArgs...)
 		if err != nil {
 			return 0, fmt.Errorf("failed to insert vernacular strings batch: %w", err)
 		}
@@ -194,16 +164,13 @@ func processVernacularStrings(ctx context.Context, p *populator, sfgaDB *sql.DB)
 
 // processVernacularIndices reads vernacular records from SFGA with metadata
 // and inserts them into vernacular_string_indices table, linking to data source.
-func processVernacularIndices(
-	ctx context.Context,
-	p *populator,
-	sfgaDB *sql.DB,
+func (p *populator) processVernacularIndices(
 	sourceID int,
 ) (int, error) {
 	slog.Info("Phase 2: Processing vernacular indices", "data_source_id", sourceID)
 
 	// Clean old vernacular indices for this data source
-	if err := cleanVernacularIndices(ctx, p, sourceID); err != nil {
+	if err := cleanVernacularIndices(p, sourceID); err != nil {
 		return 0, fmt.Errorf("failed to clean old vernacular indices: %w", err)
 	}
 
@@ -215,7 +182,7 @@ func processVernacularIndices(
 		FROM vernacular
 	`
 
-	rows, err := sfgaDB.Query(query)
+	rows, err := p.sfgaDB.Query(query)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query SFGA vernacular indices: %w", err)
 	}
@@ -262,13 +229,6 @@ func processVernacularIndices(
 			locality:           locality,
 			countryCode:        countryCode,
 		})
-
-		// Check for context cancellation
-		select {
-		case <-ctx.Done():
-			return 0, ctx.Err()
-		default:
-		}
 	}
 
 	if err = rows.Err(); err != nil {
@@ -282,7 +242,7 @@ func processVernacularIndices(
 	}
 
 	// Bulk insert using pgx.CopyFrom
-	err = bulkInsertVernacularIndices(ctx, p, sourceID, indices)
+	err = bulkInsertVernacularIndices(p, sourceID, indices)
 	if err != nil {
 		return 0, fmt.Errorf("failed to bulk insert vernacular indices: %w", err)
 	}
@@ -292,12 +252,12 @@ func processVernacularIndices(
 }
 
 // cleanVernacularIndices removes old vernacular indices for a data source.
-func cleanVernacularIndices(ctx context.Context, p *populator, sourceID int) error {
+func cleanVernacularIndices(p *populator, sourceID int) error {
 	slog.Info("Cleaning old vernacular indices", "data_source_id", sourceID)
 
 	query := `DELETE FROM vernacular_string_indices WHERE data_source_id = $1`
 
-	_, err := p.operator.Pool().Exec(ctx, query, sourceID)
+	_, err := p.operator.Pool().Exec(context.Background(), query, sourceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete old vernacular indices: %w", err)
 	}
@@ -308,7 +268,6 @@ func cleanVernacularIndices(ctx context.Context, p *populator, sourceID int) err
 // bulkInsertVernacularIndices performs efficient bulk insert of vernacular indices
 // using pgx.CopyFrom.
 func bulkInsertVernacularIndices(
-	ctx context.Context,
 	p *populator,
 	sourceID int,
 	indices []vernIndex,
@@ -331,7 +290,7 @@ func bulkInsertVernacularIndices(
 
 	// Use CopyFrom for efficient bulk insert
 	_, err := p.operator.Pool().CopyFrom(
-		ctx,
+		context.Background(),
 		pgx.Identifier{"vernacular_string_indices"},
 		[]string{
 			"data_source_id",

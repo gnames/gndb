@@ -174,7 +174,7 @@ func TestOptimize_EndToEnd_VASCAN(t *testing.T) {
 
 	// Populate database with VASCAN data
 	populator := iopopulate.New(testCfg, op)
-	err = populator.Populate(ctx)
+	err = populator.Populate()
 	require.NoError(t, err, "Populate should succeed")
 
 	// Verify pre-optimization state
@@ -464,7 +464,7 @@ func TestOptimize_Idempotent(t *testing.T) {
 
 	// Populate database
 	populator := iopopulate.New(testCfg, op)
-	err = populator.Populate(ctx)
+	err = populator.Populate()
 	require.NoError(t, err)
 
 	// Run optimize first time
