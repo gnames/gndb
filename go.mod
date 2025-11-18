@@ -7,7 +7,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gnames/gn v0.1.4
 	github.com/gnames/gnfmt v0.6.4
-	github.com/gnames/gnlib v0.61.0
+	github.com/gnames/gnlib v0.62.0
 	github.com/gnames/gnparser v1.11.8
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0

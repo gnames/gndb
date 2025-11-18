@@ -187,7 +187,6 @@ func runPopulate(
 	// Create database operator
 	op := iodb.NewPgxOperator()
 	if err := op.Connect(ctx, &cfg.Database); err != nil {
-		gn.PrintErrorMessage(err)
 		return err
 	}
 	defer op.Close()
@@ -218,7 +217,6 @@ func runPopulate(
 	// Run populate
 	gn.Info("Starting data population from SFGA sources...")
 	if err := populator.Populate(); err != nil {
-		gn.PrintErrorMessage(err)
 		return err
 	}
 

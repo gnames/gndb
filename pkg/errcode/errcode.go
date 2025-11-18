@@ -40,6 +40,8 @@ const (
 	PopulateSourcesConfigError
 	PopulateSFGAFileNotFoundError
 	PopulateSFGAReadError
+	PopulateSFGAVersionError
+	PopulateSFGAVersionTooOldError
 	PopulateMetadataError
 	PopulateNamesError
 	PopulateVernacularsError

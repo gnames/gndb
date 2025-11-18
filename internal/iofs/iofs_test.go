@@ -12,6 +12,10 @@ import (
 // TestEnsureDirs_CreatesDirectories verifies all required
 // directories are created.
 func TestEnsureDirs_CreatesDirectories(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	// Create temporary test directory
 	tmpDir := t.TempDir()
 
@@ -43,6 +47,10 @@ func TestEnsureDirs_CreatesDirectories(t *testing.T) {
 
 // TestEnsureDirs_Idempotent verifies multiple calls work.
 func TestEnsureDirs_Idempotent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	// First call
@@ -61,6 +69,10 @@ func TestEnsureDirs_Idempotent(t *testing.T) {
 // TestEnsureDirs_PermissionsCorrect verifies directory
 // permissions are set correctly.
 func TestEnsureDirs_PermissionsCorrect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	err := EnsureDirs(tmpDir)
@@ -79,6 +91,10 @@ func TestEnsureDirs_PermissionsCorrect(t *testing.T) {
 // TestTouchDir_CreatesNewDirectory verifies new directory
 // creation.
 func TestTouchDir_CreatesNewDirectory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 	newDir := filepath.Join(tmpDir, "test", "subdir")
 
@@ -93,6 +109,10 @@ func TestTouchDir_CreatesNewDirectory(t *testing.T) {
 // TestTouchDir_ExistingDirectory verifies existing directory
 // is not modified.
 func TestTouchDir_ExistingDirectory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 	existingDir := filepath.Join(tmpDir, "existing")
 
@@ -118,6 +138,10 @@ func TestTouchDir_ExistingDirectory(t *testing.T) {
 // TestEnsureConfigFile_CreatesFile verifies config file
 // is created.
 func TestEnsureConfigFile_CreatesFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	// First ensure directories exist
@@ -144,6 +168,10 @@ func TestEnsureConfigFile_CreatesFile(t *testing.T) {
 // TestEnsureConfigFile_ContentCorrect verifies config file
 // content matches embedded template.
 func TestEnsureConfigFile_ContentCorrect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	err := EnsureDirs(tmpDir)
@@ -165,6 +193,10 @@ func TestEnsureConfigFile_ContentCorrect(t *testing.T) {
 // TestEnsureConfigFile_Idempotent verifies existing file
 // is not overwritten.
 func TestEnsureConfigFile_Idempotent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	err := EnsureDirs(tmpDir)
@@ -197,6 +229,10 @@ func TestEnsureConfigFile_Idempotent(t *testing.T) {
 // TestEnsureConfigFile_PermissionsCorrect verifies file
 // permissions are set correctly.
 func TestEnsureConfigFile_PermissionsCorrect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	err := EnsureDirs(tmpDir)
@@ -230,6 +266,10 @@ func TestConfigYAML_Embedded(t *testing.T) {
 // TestEnsureSourcesFile_CreatesFile verifies sources file
 // is created.
 func TestEnsureSourcesFile_CreatesFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	// First ensure directories exist
@@ -256,6 +296,10 @@ func TestEnsureSourcesFile_CreatesFile(t *testing.T) {
 // TestEnsureSourcesFile_ContentCorrect verifies sources
 // file content matches embedded template.
 func TestEnsureSourcesFile_ContentCorrect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	err := EnsureDirs(tmpDir)
@@ -277,6 +321,10 @@ func TestEnsureSourcesFile_ContentCorrect(t *testing.T) {
 // TestEnsureSourcesFile_Idempotent verifies existing file
 // is not overwritten.
 func TestEnsureSourcesFile_Idempotent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	err := EnsureDirs(tmpDir)
@@ -309,6 +357,10 @@ func TestEnsureSourcesFile_Idempotent(t *testing.T) {
 // TestEnsureSourcesFile_PermissionsCorrect verifies file
 // permissions are set correctly.
 func TestEnsureSourcesFile_PermissionsCorrect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tmpDir := t.TempDir()
 
 	err := EnsureDirs(tmpDir)

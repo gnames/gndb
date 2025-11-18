@@ -11,6 +11,10 @@ import (
 )
 
 func TestDirs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	tempHome := t.TempDir()
 
 	tests := []struct {
