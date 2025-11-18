@@ -18,25 +18,25 @@ import (
 )
 
 type ComparisonResult struct {
-	SourceID                int
-	ToGnNameStrings         int
-	GndbNameStrings         int
-	ToGnNameIndices         int
-	GndbNameIndices         int
-	ToGnVernStrings         int
-	GndbVernStrings         int
-	ToGnVernIndices         int
-	GndbVernIndices         int
-	ToGnVerification        int
-	GndbVerification        int
-	MetadataMatch           bool
-	SampleRecordsMatch      bool
-	ClassificationMatch     bool
-	VernacularRecordsMatch  bool
+	SourceID                 int
+	ToGnNameStrings          int
+	GndbNameStrings          int
+	ToGnNameIndices          int
+	GndbNameIndices          int
+	ToGnVernStrings          int
+	GndbVernStrings          int
+	ToGnVernIndices          int
+	GndbVernIndices          int
+	ToGnVerification         int
+	GndbVerification         int
+	MetadataMatch            bool
+	SampleRecordsMatch       bool
+	ClassificationMatch      bool
+	VernacularRecordsMatch   bool
 	VerificationRecordsMatch bool
-	TaxonomicStatusesMatch  bool
-	ToGnStatusCounts        map[string]int
-	GndbStatusCounts        map[string]int
+	TaxonomicStatusesMatch   bool
+	ToGnStatusCounts         map[string]int
+	GndbStatusCounts         map[string]int
 }
 
 type SampleRecord struct {
@@ -59,14 +59,14 @@ type VernacularRecord struct {
 }
 
 type VerificationRecord struct {
-	DataSourceID   int
-	RecordID       string
-	NameStringID   string
-	Name           string
-	CanonicalID    sql.NullString
+	DataSourceID    int
+	RecordID        string
+	NameStringID    string
+	Name            string
+	CanonicalID     sql.NullString
 	TaxonomicStatus string
-	AcceptedNameID sql.NullString
-	AcceptedName   sql.NullString
+	AcceptedNameID  sql.NullString
+	AcceptedName    sql.NullString
 }
 
 func main() {
@@ -351,7 +351,7 @@ func compareSampleRecords(
 
 	mismatches := 0
 	classificationMismatches := 0
-	for i := 0; i < len(tognRecords); i++ {
+	for i := range len(tognRecords) {
 		togn := tognRecords[i]
 		gndb := gndbRecords[i]
 
@@ -515,7 +515,7 @@ func compareVernacularRecords(
 	}
 
 	mismatches := 0
-	for i := 0; i < len(tognRecords); i++ {
+	for i := range len(tognRecords) {
 		togn := tognRecords[i]
 		gndb := gndbRecords[i]
 
@@ -632,7 +632,7 @@ func compareVerificationView(
 	}
 
 	mismatches := 0
-	for i := 0; i < len(tognRecords); i++ {
+	for i := range len(tognRecords) {
 		togn := tognRecords[i]
 		gndb := gndbRecords[i]
 
@@ -843,10 +843,10 @@ func compareInts(a, b int) string {
 }
 
 func compareNullableStrings(a, b sql.NullString) bool {
-	if a.Valid == false && b.Valid == false {
+	if !a.Valid && !b.Valid {
 		return true
 	}
-	if a.Valid == false || b.Valid == false {
+	if !a.Valid || !b.Valid {
 		return false
 	}
 	return a.String == b.String

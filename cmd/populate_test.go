@@ -214,8 +214,8 @@ func TestPopulate_EndToEnd_VASCAN(t *testing.T) {
 	}
 
 	// Create fresh schema
-	mgr := ioschema.NewManager(op)
-	err = mgr.Create(ctx, testCfg)
+	mgr := ioschema.NewManager(op, testCfg)
+	err = mgr.Create(ctx)
 	require.NoError(t, err)
 
 	// Run populate

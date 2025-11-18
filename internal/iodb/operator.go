@@ -183,3 +183,108 @@ func (p *pgxOperator) DropAllTables(ctx context.Context) error {
 
 	return nil
 }
+
+// DropMaterializedViews drops all materialized views in the
+// public schema.
+func (p *pgxOperator) DropMaterializedViews(
+	ctx context.Context,
+) error {
+	if p.pool == nil {
+		return NotConnectedError()
+	}
+
+	// Get all materialized view names
+	query := `
+		SELECT matviewname
+		FROM pg_matviews
+		WHERE schemaname = 'public'
+	`
+
+	rows, err := p.pool.Query(ctx, query)
+	if err != nil {
+		return QueryViewsError(err)
+	}
+	defer rows.Close()
+
+	var views []string
+	for rows.Next() {
+		var viewName string
+		if err := rows.Scan(&viewName); err != nil {
+			return ScanViewError(err)
+		}
+		views = append(views, viewName)
+	}
+
+	if err := rows.Err(); err != nil {
+		return ScanViewError(err)
+	}
+
+	// Drop each materialized view
+	for _, view := range views {
+		dropSQL := fmt.Sprintf(
+			"DROP MATERIALIZED VIEW IF EXISTS %s CASCADE", view)
+		if _, err := p.pool.Exec(ctx, dropSQL); err != nil {
+			return DropViewError(view, err)
+		}
+	}
+
+	return nil
+}
+
+// CreateMaterializedViews creates all materialized views for
+// the database. Currently creates the verification view used
+// for fast name lookups.
+func (p *pgxOperator) CreateMaterializedViews(
+	ctx context.Context,
+) error {
+	if p.pool == nil {
+		return NotConnectedError()
+	}
+
+	// Create verification materialized view
+	viewSQL := `CREATE MATERIALIZED VIEW verification AS
+WITH taxon_names AS (
+	SELECT nsi.data_source_id, nsi.record_id,
+		nsi.name_string_id, ns.name
+	FROM name_string_indices nsi
+	JOIN name_strings ns
+		ON nsi.name_string_id = ns.id
+)
+SELECT nsi.data_source_id, nsi.record_id, nsi.name_string_id,
+	ns.name, nsi.name_id, nsi.code_id, ns.year, ns.cardinality,
+	ns.canonical_id, ns.virus, ns.bacteria, ns.parse_quality,
+	nsi.local_id, nsi.outlink_id, nsi.taxonomic_status,
+	nsi.accepted_record_id, tn.name_string_id as accepted_name_id,
+	tn.name as accepted_name, nsi.classification,
+	nsi.classification_ranks, nsi.classification_ids
+FROM name_string_indices nsi
+JOIN name_strings ns ON ns.id = nsi.name_string_id
+LEFT JOIN taxon_names tn
+	ON nsi.data_source_id = tn.data_source_id AND
+	   nsi.accepted_record_id = tn.record_id
+WHERE
+	(
+		ns.canonical_id is not NULL AND
+		surrogate != TRUE AND
+		(bacteria != TRUE OR parse_quality < 3)
+	) OR ns.virus = TRUE`
+
+	if _, err := p.pool.Exec(ctx, viewSQL); err != nil {
+		return CreateViewError("verification", err)
+	}
+
+	// Create indexes on verification view
+	indexes := []string{
+		"CREATE INDEX ON verification (canonical_id)",
+		"CREATE INDEX ON verification (name_string_id)",
+		"CREATE INDEX ON verification (year)",
+	}
+
+	for _, idx := range indexes {
+		if _, err := p.pool.Exec(ctx, idx); err != nil {
+			return CreateViewIndexError("verification", err)
+		}
+	}
+
+	return nil
+}

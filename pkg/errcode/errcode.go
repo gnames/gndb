@@ -24,6 +24,11 @@ const (
 	DBQueryTablesError
 	DBScanTableError
 	DBDropTableError
+	DBQueryViewsError
+	DBScanViewError
+	DBDropViewError
+	DBCreateViewError
+	DBCreateViewIndexError
 
 	// Schema errors
 	SchemaGORMConnectionError

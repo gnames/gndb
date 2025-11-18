@@ -38,4 +38,12 @@ type Operator interface {
 	// DropAllTables drops all tables in the public schema.
 	// Used during schema initialization when overwriting existing data.
 	DropAllTables(ctx context.Context) error
+
+	// DropMaterializedViews drops all materialized views in the public schema.
+	// Used during migration to allow ALTER TABLE operations on dependent tables.
+	DropMaterializedViews(ctx context.Context) error
+
+	// CreateMaterializedViews creates all materialized views for the database.
+	// Used after migration and during optimization.
+	CreateMaterializedViews(ctx context.Context) error
 }

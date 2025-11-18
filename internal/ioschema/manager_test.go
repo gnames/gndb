@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/gnames/gndb/internal/iodb"
+	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/gndb"
 	"github.com/stretchr/testify/require"
 )
@@ -12,13 +13,15 @@ import (
 // implements gndb.SchemaManager interface.
 func TestManager_ImplementsInterface(t *testing.T) {
 	op := iodb.NewPgxOperator()
-	var _ gndb.SchemaManager = NewManager(op)
+	cfg := config.New()
+	var _ gndb.SchemaManager = NewManager(op, cfg)
 }
 
 // TestNewManager_CreatesManager verifies manager creation.
 func TestNewManager_CreatesManager(t *testing.T) {
 	op := iodb.NewPgxOperator()
-	mgr := NewManager(op)
+	cfg := config.New()
+	mgr := NewManager(op, cfg)
 	require.NotNil(t, mgr)
 }
 
@@ -28,7 +31,8 @@ func TestManager_PrivateStruct(t *testing.T) {
 	// is not exported. If this compiles, the pattern
 	// is correct.
 	op := iodb.NewPgxOperator()
-	var _ gndb.SchemaManager = NewManager(op)
+	cfg := config.New()
+	var _ gndb.SchemaManager = NewManager(op, cfg)
 
 	// Cannot create: var m *manager  (would fail to compile)
 	// Can only use: NewManager() returns interface

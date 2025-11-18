@@ -154,3 +154,71 @@ func DropTableError(tableName string, err error) error {
 		Err:  fmt.Errorf("failed to drop table %s: %w", tableName, err),
 	}
 }
+
+// QueryViewsError creates an error for when querying
+// materialized view list fails.
+func QueryViewsError(err error) error {
+	msg := "Cannot query materialized views"
+
+	return &gn.Error{
+		Code: errcode.DBQueryViewsError,
+		Msg:  msg,
+		Vars: nil,
+		Err:  fmt.Errorf("failed to query views: %w", err),
+	}
+}
+
+// ScanViewError creates an error for when scanning
+// view name fails.
+func ScanViewError(err error) error {
+	msg := "Cannot read view information"
+
+	return &gn.Error{
+		Code: errcode.DBScanViewError,
+		Msg:  msg,
+		Vars: nil,
+		Err:  fmt.Errorf("failed to scan view: %w", err),
+	}
+}
+
+// DropViewError creates an error for when dropping
+// materialized view fails.
+func DropViewError(viewName string, err error) error {
+	msg := "Cannot drop materialized view <em>%s</em>"
+	vars := []any{viewName}
+
+	return &gn.Error{
+		Code: errcode.DBDropViewError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("failed to drop view %s: %w", viewName, err),
+	}
+}
+
+// CreateViewError creates an error for when creating
+// materialized view fails.
+func CreateViewError(viewName string, err error) error {
+	msg := "Cannot create materialized view <em>%s</em>"
+	vars := []any{viewName}
+
+	return &gn.Error{
+		Code: errcode.DBCreateViewError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("failed to create view %s: %w", viewName, err),
+	}
+}
+
+// CreateViewIndexError creates an error for when creating
+// index on materialized view fails.
+func CreateViewIndexError(viewName string, err error) error {
+	msg := "Cannot create index on view <em>%s</em>"
+	vars := []any{viewName}
+
+	return &gn.Error{
+		Code: errcode.DBCreateViewIndexError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("failed to create index on %s: %w", viewName, err),
+	}
+}

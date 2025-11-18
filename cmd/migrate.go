@@ -34,6 +34,8 @@ import (
 // Extracted as a function to facilitate testing and dynamic
 // command registration.
 func getMigrateCmd() *cobra.Command {
+	var recreateViews bool
+
 	migrateCmd := &cobra.Command{
 		Use:   "migrate",
 		Short: "Migrate database schema to latest version",
@@ -42,8 +44,9 @@ func getMigrateCmd() *cobra.Command {
 This command:
   1. Connects to PostgreSQL using configuration settings
   2. Checks if database schema exists
-  3. Runs GORM AutoMigrate to update schema
-  4. Preserves existing data (non-destructive)
+  3. Drops materialized views (required for ALTER TABLE)
+  4. Runs GORM AutoMigrate to update schema
+  5. Optionally recreates materialized views
 
 GORM AutoMigrate:
   - Adds new tables if they don't exist
@@ -52,18 +55,29 @@ GORM AutoMigrate:
   - Does NOT delete columns or tables (safe)
 
 Use this command after updating gndb to get schema changes.
+After migration, run 'gndb populate' then 'gndb optimize' to
+rebuild views with fresh data.
 
 Examples:
-  gndb migrate`,
+  gndb migrate
+  gndb migrate --recreate-views
+  gndb migrate -v`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMigrate(cmd, args)
+			return runMigrate(cmd, args, recreateViews)
 		},
 	}
+
+	migrateCmd.Flags().BoolVarP(&recreateViews, "recreate-views", "v",
+		false, "recreate materialized views after migration")
 
 	return migrateCmd
 }
 
-func runMigrate(_ *cobra.Command, _ []string) error {
+func runMigrate(
+	_ *cobra.Command,
+	_ []string,
+	recreateViews bool,
+) error {
 	ctx := context.Background()
 
 	// Create database operator
@@ -91,17 +105,23 @@ func runMigrate(_ *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// Create schema manager
-	sm := ioschema.NewManager(op)
+	// Create schema manager and run migration
+	sm := ioschema.NewManager(op, cfg)
 
-	// Run GORM AutoMigrate to update schema
 	gn.Info("Migrating schema to latest version...")
-	if err := sm.Migrate(ctx, cfg); err != nil {
+	if err := sm.Migrate(ctx, recreateViews); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}
 
-	gn.Info("Schema is now up to date.")
+	// Report result
+	if recreateViews {
+		gn.Info("Schema migration complete. Materialized views recreated.")
+	} else {
+		gn.Info(`Schema migration complete.
+   Materialized views were dropped.
+   Run '<em>gndb optimize</em>' to recreate them after populating data.`)
+	}
 
 	return nil
 }

@@ -168,8 +168,8 @@ func TestOptimize_EndToEnd_VASCAN(t *testing.T) {
 	}
 
 	// Create fresh schema
-	mgr := ioschema.NewManager(op)
-	err = mgr.Create(ctx, testCfg)
+	mgr := ioschema.NewManager(op, testCfg)
+	err = mgr.Create(ctx)
 	require.NoError(t, err)
 
 	// Populate database with VASCAN data
@@ -355,8 +355,8 @@ func TestOptimize_EmptyDatabase(t *testing.T) {
 	}
 
 	// Create empty schema
-	mgr := ioschema.NewManager(op)
-	err = mgr.Create(ctx, testCfg)
+	mgr := ioschema.NewManager(op, testCfg)
+	err = mgr.Create(ctx)
 	require.NoError(t, err)
 
 	// Run optimize on empty database
@@ -458,8 +458,8 @@ func TestOptimize_Idempotent(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	mgr := ioschema.NewManager(op)
-	err = mgr.Create(ctx, testCfg)
+	mgr := ioschema.NewManager(op, testCfg)
+	err = mgr.Create(ctx)
 	require.NoError(t, err)
 
 	// Populate database

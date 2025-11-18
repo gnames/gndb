@@ -134,10 +134,10 @@ func runCreate(
 	}
 
 	// Create schema manager
-	sm := ioschema.NewManager(op)
+	sm := ioschema.NewManager(op, cfg)
 
 	// Run GORM AutoMigrate to create schema
-	if err := sm.Create(ctx, cfg); err != nil {
+	if err := sm.Create(ctx); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}

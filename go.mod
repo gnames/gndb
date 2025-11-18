@@ -5,7 +5,7 @@ go 1.25.1
 require (
 	github.com/cheggaaa/pb/v3 v3.1.7
 	github.com/dustin/go-humanize v1.0.1
-	github.com/gnames/gn v0.1.3
+	github.com/gnames/gn v0.1.4
 	github.com/gnames/gnfmt v0.6.4
 	github.com/gnames/gnlib v0.61.0
 	github.com/gnames/gnparser v1.11.8

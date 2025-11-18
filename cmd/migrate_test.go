@@ -37,10 +37,10 @@ func TestGetMigrateCmd_LongDescription(t *testing.T) {
 		"Long description should not be empty")
 	assert.Contains(t, cmd.Long, "GORM AutoMigrate",
 		"Long description should mention GORM")
-	assert.Contains(t, cmd.Long, "non-destructive",
-		"Long description should mention safety")
-	assert.Contains(t, cmd.Long, "Preserves existing data",
-		"Long description should mention data preservation")
+	assert.Contains(t, cmd.Long, "Drops materialized views",
+		"Long description should mention view handling")
+	assert.Contains(t, cmd.Long, "gndb optimize",
+		"Long description should mention optimize step")
 }
 
 // TestGetMigrateCmd_HasRunE verifies run function is set.
@@ -51,14 +51,19 @@ func TestGetMigrateCmd_HasRunE(t *testing.T) {
 		"RunE should be set")
 }
 
-// TestGetMigrateCmd_NoFlags verifies no flags defined.
-func TestGetMigrateCmd_NoFlags(t *testing.T) {
+// TestGetMigrateCmd_HasRecreateViewsFlag verifies the
+// --recreate-views flag exists.
+func TestGetMigrateCmd_HasRecreateViewsFlag(t *testing.T) {
 	cmd := getMigrateCmd()
 
-	// Migrate should not have any custom flags
-	// (it's a simple, safe operation)
-	assert.False(t, cmd.Flags().HasFlags(),
-		"Migrate should not have custom flags")
+	// Check for recreate-views flag
+	flag := cmd.Flags().Lookup("recreate-views")
+	require.NotNil(t, flag,
+		"Should have recreate-views flag")
+	assert.Equal(t, "v", flag.Shorthand,
+		"Short flag should be -v")
+	assert.Equal(t, "false", flag.DefValue,
+		"Default should be false")
 }
 
 // TestGetMigrateCmd_HelpText verifies help text content.

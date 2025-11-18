@@ -19,20 +19,24 @@ import (
 // using GORM AutoMigrate.
 type manager struct {
 	operator db.Operator
+	cfg      *config.Config
 }
 
 // NewManager creates a new SchemaManager.
-func NewManager(op db.Operator) gndb.SchemaManager {
-	return &manager{operator: op}
+func NewManager(
+	op db.Operator,
+	cfg *config.Config,
+) gndb.SchemaManager {
+	return &manager{
+		operator: op,
+		cfg:      cfg,
+	}
 }
 
 // Create creates the initial database schema using
 // GORM AutoMigrate. Also applies collation settings for
 // correct scientific name sorting.
-func (m *manager) Create(
-	ctx context.Context,
-	cfg *config.Config,
-) error {
+func (m *manager) Create(ctx context.Context) error {
 	pool := m.operator.Pool()
 	if pool == nil {
 		return NotConnectedError()
@@ -63,15 +67,23 @@ func (m *manager) Create(
 	return nil
 }
 
-// Migrate updates the database schema to the latest version
-// using GORM AutoMigrate.
+// Migrate updates the database schema to the latest version.
+// Drops materialized views before migration (required for
+// ALTER TABLE), runs GORM AutoMigrate with collation settings,
+// and optionally recreates views.
 func (m *manager) Migrate(
 	ctx context.Context,
-	cfg *config.Config,
+	recreateViews bool,
 ) error {
 	pool := m.operator.Pool()
 	if pool == nil {
 		return NotConnectedError()
+	}
+
+	// Drop materialized views before migration
+	// (required for ALTER TABLE operations)
+	if err := m.operator.DropMaterializedViews(ctx); err != nil {
+		return err
 	}
 
 	db := stdlib.OpenDBFromPool(pool)
@@ -88,6 +100,19 @@ func (m *manager) Migrate(
 	// Run GORM AutoMigrate
 	if err := schema.Migrate(gormDB); err != nil {
 		return MigrateSchemaError(err)
+	}
+
+	// Set collation for string columns
+	// (critical for correct sorting)
+	if err := m.setCollation(ctx); err != nil {
+		return err
+	}
+
+	// Optionally recreate materialized views
+	if recreateViews {
+		if err := m.operator.CreateMaterializedViews(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
