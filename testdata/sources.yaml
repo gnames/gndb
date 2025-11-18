@@ -17,4 +17,10 @@ data_sources:
     title_short: "VASCAN"
     is_curated: true
     has_classification: true
+  # Old DataSource
+  - id: 1003
+    parent: "./"
+    title_short: "Oldie"
+    is_curated: true
+    has_classification: false
 

@@ -234,6 +234,12 @@ func (p *populator) processSource(
 	gn.Message("<em>Prepared SFGA file for import</em>")
 
 	gn.Info("(2/6) Importing name-strings...")
+
+	err = p.checkSfgaVersion(source.ID)
+	if err != nil {
+		return err
+	}
+
 	err = p.processNameStrings(source.ID)
 	if err != nil {
 		return NamesError(source.ID, err)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gnames/gn"
+	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/errcode"
 )
 
@@ -106,23 +107,59 @@ func SFGAReadError(path string, err error) error {
 // AllSourcesFailedError creates an error for when all
 // sources fail to process.
 func AllSourcesFailedError(count int) error {
-	msg := `All data sources failed to process
-
-<em>Failed sources:</em> %d
-
-<em>How to fix:</em>
-  1. Check database connection
-  2. Review error logs for details
-  3. Verify SFGA files are valid
-  4. Check disk space and permissions`
+	msg := `Failed number of sources: <em>%d</em>`
 
 	vars := []any{count}
+
+	plural := "s"
+	if count == 1 {
+		plural = ""
+	}
 
 	return &gn.Error{
 		Code: errcode.PopulateAllSourcesFailedError,
 		Msg:  msg,
 		Vars: vars,
-		Err:  fmt.Errorf("all %d sources failed to process", count),
+		Err:  fmt.Errorf("%d source%s failed to process", count, plural),
+	}
+}
+
+// SfgaGetVersionError creates an error for SFGA version reading error.
+func SfgaGetVersionError(sourceID int, err error) error {
+	msg := `Failed to get version of SFGA data source <em>%d</em>`
+	vars := []any{sourceID}
+
+	return &gn.Error{
+		Code: errcode.PopulateSFGAVersionError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("failed to get SFGA version: %w", err),
+	}
+}
+
+func NotSfgaVersion(sourceID int, version string) error {
+	msg := `Cannot parse SFGA version <em>%s</em> for data source <em>%d</em>`
+	vars := []any{version, sourceID}
+
+	return &gn.Error{
+		Code: errcode.PopulateSFGAVersionError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("string '%s' is not a semantic version", version),
+	}
+}
+
+func SFGAVersionTooOld(sourceID int, version string) error {
+	msg :=
+		`The SFGA <em>%s</em> is not supported (data source <em>#%d</em>).
+Supported SFGA versions are equal or greater than <em>%s</em>`
+	vars := []any{version, sourceID, config.MinVersionSFGA}
+
+	return &gn.Error{
+		Code: errcode.PopulateSFGAVersionTooOldError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("too old SFGA version '%s'", version),
 	}
 }
 

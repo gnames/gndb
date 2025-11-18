@@ -10,6 +10,10 @@ import (
 )
 
 func TestLoadSourcesConfig_Minimal(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	// Create a temporary test directory
 	tmpDir, err := os.MkdirTemp("", "sources-test-*")
 	require.NoError(t, err)
@@ -42,12 +46,20 @@ data_sources:
 }
 
 func TestLoadSourcesConfig_FileNotFound(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	_, err := loadSourcesConfig("nonexistent.yaml")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to read sources config file")
 }
 
 func TestLoadSourcesConfig_DirectoryNotFound(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	// Create a temporary test directory
 	tmpDir, err := os.MkdirTemp("", "sources-test-*")
 	require.NoError(t, err)
@@ -71,6 +83,10 @@ data_sources:
 }
 
 func TestLoadSourcesConfig_URLsSkipFileSystemCheck(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
 	// Create a temporary test directory
 	tmpDir, err := os.MkdirTemp("", "sources-test-*")
 	require.NoError(t, err)
