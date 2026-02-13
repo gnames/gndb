@@ -161,6 +161,7 @@ data_sources:
   # Catalogue of Life Extended Release
   - id: 13
     parent: http://opendata.globalnames.org/sfga/
+    title: "Catalogue of Life XR"
     title_short: "Catalogue of Life XR"
     home_url: "https://www.catalogueoflife.org/"
     data_url: "https://www.catalogueoflife.org/data/download"
