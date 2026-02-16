@@ -41,9 +41,9 @@ type wordResult struct {
 //  1. Truncate words and word_name_strings tables
 //  2. Stream name_strings with canonical_id from database
 //  3. Parse names and extract words (concurrent processing)
-//  4. Deduplicate words and word-name linkages inline
-//  5. Bulk insert words
-//  6. Bulk insert word-name-string linkages
+//  4. Deduplicate words globally, save word-name links
+//     in batches during streaming
+//  5. Bulk insert words after pipeline completes
 //
 // Reference: gnidump createWords() in words.go
 func extractWords(
@@ -63,17 +63,16 @@ func extractWords(
 
 	msg = "Creating words for fuzzy matching"
 	slog.Info(msg)
-	gn.Info(msg)
 
 	// Step 1: Truncate words tables.
-	gn.Info("Step 1/6: Truncating words tables")
 	if err := truncateWordsTables(ctx, pool); err != nil {
 		return err
 	}
 
-	// Steps 2-4: Stream, parse, and deduplicate words.
-	slog.Info("Steps 2-4/6: Streaming names and extracting words")
-	wordsMap, wnsMap, err := parseNamesForWords(
+	// Steps 2-4: Stream, parse, deduplicate words, and save
+	// word-name linkages in batches during streaming.
+	slog.Info("Streaming names and extracting words")
+	wordsMap, totalLinks, err := parseNamesForWords(
 		ctx, pool, cfg,
 	)
 	if err != nil {
@@ -88,7 +87,7 @@ func extractWords(
 		return nil
 	}
 
-	// Convert maps to slices for saving.
+	// Convert words map to slice for saving.
 	uniqueWords := make(
 		[]schema.Word, 0, len(wordsMap),
 	)
@@ -96,41 +95,25 @@ func extractWords(
 		uniqueWords = append(uniqueWords, w)
 	}
 
-	uniqueWordNames := make(
-		[]schema.WordNameString, 0, len(wnsMap),
-	)
-	for _, wn := range wnsMap {
-		uniqueWordNames = append(uniqueWordNames, wn)
-	}
-
 	// Step 5: Bulk insert words.
-	slog.Info("Step 5/6: Saving words to database")
+	slog.Info("Saving words to database")
 	if err := saveWords(
 		ctx, pool, uniqueWords, cfg,
 	); err != nil {
 		return err
 	}
 
-	// Step 6: Bulk insert word-name linkages.
-	slog.Info("Step 6/6: Saving word-name linkages to database")
-	err = saveWordNameStrings(
-		ctx, pool, uniqueWordNames, cfg,
-	)
-	if err != nil {
-		return err
-	}
-
 	slog.Info(
 		"Completed words creation",
 		"totalWords", len(uniqueWords),
-		"totalLinks", len(uniqueWordNames),
+		"totalLinks", totalLinks,
 	)
 
 	// Report stats.
 	msg = fmt.Sprintf(
 		"<em>Created %s words and %s word linkages</em>",
 		humanize.Comma(int64(len(uniqueWords))),
-		humanize.Comma(int64(len(uniqueWordNames))),
+		humanize.Comma(int64(totalLinks)),
 	)
 	gn.Info(msg)
 
@@ -158,7 +141,6 @@ func truncateWordsTables(
 			}
 		}
 		slog.Info("Truncated table", "table", table)
-
 	}
 
 	return nil
@@ -205,7 +187,7 @@ WHERE canonical_id IS NOT NULL`
 	}
 	defer rows.Close()
 
-	bar := newProgressBar(totalCount, "Loading names: ")
+	bar := newProgressBar(totalCount, "Extracting names' words: ")
 	defer bar.Finish()
 
 	count := 0
@@ -252,23 +234,29 @@ WHERE canonical_id IS NOT NULL`
 }
 
 // parseNamesForWords streams names from the database, parses
-// them with concurrent workers, and deduplicates results
-// directly into maps. Returns deduplicated words and
-// word-name-string maps.
+// them with concurrent workers, deduplicates words globally,
+// and saves word-name linkages in batches during streaming.
+// Returns deduplicated words map and total linkages saved.
 //
 // Pipeline:
 //
 //	Stage 1: loadNamesForWords streams rows → chIn
 //	Stage 2: Workers parse and extract words → chOut
-//	Stage 3: Collector deduplicates into maps
+//	Stage 3: Collector deduplicates words into map, saves
+//	         word-name linkages in batches to database
 func parseNamesForWords(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	cfg *config.Config,
-) (map[string]schema.Word, map[string]schema.WordNameString, error) {
+) (map[string]schema.Word, int, error) {
 	jobsNum := cfg.JobsNumber
 	if jobsNum == 0 {
 		jobsNum = 20
+	}
+
+	batchSize := cfg.Database.BatchSize
+	if batchSize == 0 {
+		batchSize = 50000
 	}
 
 	// Create channels.
@@ -294,36 +282,60 @@ func parseNamesForWords(
 		})
 	}
 
-	// Stage 3: Collect and deduplicate results into maps.
-	wordsMap := make(map[string]schema.Word)
-	wnsMap := make(map[string]schema.WordNameString)
-	collectDone := make(chan struct{})
-	go func() {
-		for r := range chOut {
-			for _, w := range r.words {
-				key := w.ID + "|" + w.Normalized
-				wordsMap[key] = w
-			}
-			for _, wn := range r.wordNames {
-				key := wn.WordID + "|" + wn.NameStringID
-				wnsMap[key] = wn
-			}
-		}
-		close(collectDone)
-	}()
-
 	// Close chOut when workers done.
 	go func() {
 		wg.Wait()
 		close(chOut)
 	}()
 
+	// Stage 3: Collect words into map, save word-name
+	// linkages in batches.
+	wordsMap := make(map[string]schema.Word)
+	totalLinks := 0
+	var wnsBatch []schema.WordNameString
+
+	g.Go(func() error {
+		for r := range chOut {
+			for _, w := range r.words {
+				key := w.ID + "|" + w.Normalized
+				wordsMap[key] = w
+			}
+
+			wnsBatch = append(wnsBatch, r.wordNames...)
+
+			if len(wnsBatch) >= batchSize {
+				deduped := deduplicateWordNames(wnsBatch)
+				err := saveWordNameStrings(
+					gCtx, pool, deduped, cfg,
+				)
+				if err != nil {
+					return err
+				}
+				totalLinks += len(deduped)
+				wnsBatch = wnsBatch[:0]
+			}
+		}
+
+		// Flush remaining word-name linkages.
+		if len(wnsBatch) > 0 {
+			deduped := deduplicateWordNames(wnsBatch)
+			err := saveWordNameStrings(
+				gCtx, pool, deduped, cfg,
+			)
+			if err != nil {
+				return err
+			}
+			totalLinks += len(deduped)
+		}
+
+		return nil
+	})
+
 	// Wait for pipeline.
 	err := g.Wait()
-	<-collectDone
 
 	if err != nil && !errors.Is(err, context.Canceled) {
-		return nil, nil, &gn.Error{
+		return nil, 0, &gn.Error{
 			Code: errcode.OptimizerWordExtractionError,
 			Msg:  "Failed to parse names for words",
 			Err:  fmt.Errorf("pipeline: %w", err),
@@ -333,9 +345,27 @@ func parseNamesForWords(
 	slog.Info(
 		"Completed parsing names for words",
 		"uniqueWords", len(wordsMap),
-		"uniqueLinks", len(wnsMap),
+		"totalLinks", totalLinks,
 	)
-	return wordsMap, wnsMap, nil
+	return wordsMap, totalLinks, nil
+}
+
+// deduplicateWordNames removes duplicate word-name linkages
+// within a batch. Deduplication key is WordID|NameStringID.
+func deduplicateWordNames(
+	wns []schema.WordNameString,
+) []schema.WordNameString {
+	seen := make(map[string]struct{}, len(wns))
+	res := make([]schema.WordNameString, 0, len(wns))
+	for _, wn := range wns {
+		key := wn.WordID + "|" + wn.NameStringID
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		res = append(res, wn)
+	}
+	return res
 }
 
 // workerExtractWords processes names and extracts words
@@ -517,10 +547,7 @@ func saveWordNameStrings(
 	defer bar.Finish()
 
 	for i := 0; i < len(wordNames); i += batchSize {
-		end := i + batchSize
-		if end > len(wordNames) {
-			end = len(wordNames)
-		}
+		end := min(i+batchSize, len(wordNames))
 		batch := wordNames[i:end]
 
 		// Prepare rows for CopyFrom.

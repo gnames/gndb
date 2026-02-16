@@ -44,6 +44,7 @@ func (o *optimizer) Optimize(
 	ctx context.Context,
 	cfg *config.Config,
 ) error {
+	var msg string
 	pool := o.operator.Pool()
 	if pool == nil {
 		return &gn.Error{
@@ -61,14 +62,18 @@ func (o *optimizer) Optimize(
 
 	// Step 1: Reparse all name_strings with latest gnparser
 	// algorithms
-	slog.Info("Step 1/6: Reparsing name strings")
+	msg = "Step 1/6: Reparsing name strings"
+	gn.Info(msg)
+	slog.Info(msg)
 	if err := reparseNames(ctx, o); err != nil {
 		return err
 	}
 	slog.Info("Step 1/6: Complete - Name strings reparsed")
 
 	// Step 2: Normalize vernacular language codes
-	slog.Info("Step 2/6: Normalizing vernacular languages")
+	msg = "Step 2/6: Normalizing vernacular languages"
+	gn.Info(msg)
+	slog.Info(msg)
 	if err := normalizeVernaculars(ctx, o, cfg); err != nil {
 		return err
 	}
@@ -78,33 +83,39 @@ func (o *optimizer) Optimize(
 	)
 
 	// Step 3: Remove orphaned records
-	slog.Info("Step 3/6: Removing orphaned records")
+	msg = "Step 3/6: Removing orphaned records"
+	gn.Info(msg)
+	slog.Info(msg)
 	if err := removeOrphans(ctx, o, cfg); err != nil {
 		return err
 	}
 	slog.Info("Step 3/6: Complete - Orphaned records removed")
 
-	// Step 4: Extract and link words for fuzzy matching
-	slog.Info("Step 4/6: Extracting words for fuzzy matching")
+	// Step 4: Extract and link words for advanced matching
+	msg = "Step 4/6: Extracting words for advanced matching"
+	gn.Info(msg)
+	slog.Info(msg)
 	if err := extractWords(ctx, o, cfg); err != nil {
 		return err
 	}
 	slog.Info("Step 4/6: Complete - Words extracted and linked")
 
 	// Step 5: Create verification materialized view
-	slog.Info("Step 5/6: Creating verification view")
+	msg = "Step 5/6: Creating verification view"
+	gn.Info(msg)
+	slog.Info(msg)
 	if err := createVerificationView(ctx, o, cfg); err != nil {
 		return err
 	}
 	slog.Info("Step 5/6: Complete - Verification view created")
 
 	// Step 6: Run VACUUM ANALYZE
-	slog.Info("Step 6/6: Running VACUUM ANALYZE")
+	msg = "Step 6/6: Running VACUUM ANALYZE"
+	gn.Info(msg)
+	slog.Info(msg)
 	if err := vacuumAnalyze(ctx, o, cfg); err != nil {
 		return err
 	}
 	slog.Info("Step 6/6: Complete - VACUUM ANALYZE finished")
-
-	slog.Info("Database optimization completed successfully")
 	return nil
 }
