@@ -273,7 +273,7 @@ func (p *populator) processSource(
 			humanize.Comma(int64(len(hierarchy))),
 		)
 	}
-	gn.Info(
+	gn.Message(
 		"%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()),
 	)
 
@@ -284,7 +284,7 @@ func (p *populator) processSource(
 	if err != nil {
 		return NamesError(source.ID, err)
 	}
-	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
 
 	// Stage 5: Import vernacular names
 	t = time.Now()
@@ -296,7 +296,7 @@ func (p *populator) processSource(
 			"source_id", source.ID,
 			"error", err)
 	}
-	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
 
 	// Stage 6: Update data source metadata
 	t = time.Now()
@@ -305,7 +305,7 @@ func (p *populator) processSource(
 	if err != nil {
 		return MetadataError(source.ID, err)
 	}
-	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
 
 	slog.Info("Source processing complete",
 		"source_id", source.ID)

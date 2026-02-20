@@ -83,8 +83,7 @@ Run 'gndb create' first to initialize the schema.`)
 		gn.PrintErrorMessage(err)
 		return err
 	}
-	gn.Info(`Database optimization is complete!
-
+	gn.Info(`
 Your database is now ready for gnverifier.
 You can re-run 'gndb optimize' anytime to apply the latest algorithm updates.`)
 

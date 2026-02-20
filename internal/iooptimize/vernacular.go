@@ -47,10 +47,10 @@ func normalizeVernaculars(
 	ctx context.Context,
 	opt *optimizer,
 	cfg *config.Config,
-) error {
+) (string, error) {
 	pool := opt.operator.Pool()
 	if pool == nil {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerVernacularNormalizeError,
 			Msg:  "Database connection lost",
 			Err:  fmt.Errorf("pool is nil"),
@@ -60,7 +60,7 @@ func normalizeVernaculars(
 	slog.Info("Moving language data to language_orig")
 	err := moveLanguageToOrig(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	slog.Info("Normalizing vernacular languages")
@@ -68,7 +68,7 @@ func normalizeVernaculars(
 	// Create temporary table for batch updates
 	err = createVernacularTempTable(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		dropCtx := context.Background()
@@ -79,7 +79,7 @@ func normalizeVernaculars(
 	// Load and normalize all records
 	records, err := loadAndNormalizeVernaculars(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Batch insert to temp table
@@ -90,22 +90,23 @@ func normalizeVernaculars(
 		cfg,
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
+	var msg string
 	// Single UPDATE FROM temp table
-	err = applyVernacularBatchUpdate(ctx, pool)
+	msg, err = applyVernacularBatchUpdate(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	slog.Info("Making sure all language codes are lowercase")
 	err = langCodeToLowercase(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return msg, nil
 }
 
 // moveLanguageToOrig copies language field to language_orig for
@@ -410,7 +411,7 @@ VALUES %s
 func applyVernacularBatchUpdate(
 	ctx context.Context,
 	pool *pgxpool.Pool,
-) error {
+) (string, error) {
 	q := `
 UPDATE vernacular_string_indices v
 SET
@@ -421,7 +422,7 @@ WHERE v.ctid = t.row_ctid`
 
 	result, err := pool.Exec(ctx, q)
 	if err != nil {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerVernacularNormalizeError,
 			Msg:  "Failed to apply batch updates",
 			Err:  fmt.Errorf("batch update: %w", err),
@@ -436,8 +437,7 @@ WHERE v.ctid = t.row_ctid`
 			humanize.Comma(rowsUpdated),
 		)
 	}
-	gn.Info(msg)
-	return nil
+	return msg, nil
 }
 
 // langCodeToLowercase ensures all lang_code values are lowercase.

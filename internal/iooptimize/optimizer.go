@@ -75,7 +75,7 @@ func (o *optimizer) Optimize(
 	if msg, err = reparseNames(ctx, o); err != nil {
 		return err
 	}
-	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
 	slog.Info("Step 1/6: Complete - Name strings reparsed")
 
 	// Step 2: Normalize vernacular language codes
@@ -83,11 +83,11 @@ func (o *optimizer) Optimize(
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
-	if err := normalizeVernaculars(ctx, o, cfg); err != nil {
+	if msg, err = normalizeVernaculars(ctx, o, cfg); err != nil {
 		return err
 	}
-	gn.Info(
-		"<em>Normalized vernacular langages</em> %s",
+	gn.Message(
+		"%s %s",
 		gnfmt.TimeString(time.Since(stepStart).Seconds()),
 	)
 	slog.Info(
@@ -103,7 +103,7 @@ func (o *optimizer) Optimize(
 	if msg, err = removeOrphans(ctx, o, cfg); err != nil {
 		return err
 	}
-	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
 	slog.Info("Step 3/6: Complete - Orphaned records removed")
 
 	// Step 4: Extract and link words for advanced matching
@@ -114,7 +114,7 @@ func (o *optimizer) Optimize(
 	if msg, err = extractWords(ctx, o, cfg); err != nil {
 		return err
 	}
-	gn.Info("%s %s", gnfmt.TimeString(time.Since(stepStart).Seconds()))
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
 	slog.Info("Step 4/6: Complete - Words extracted and linked")
 
 	// Step 5: Create verification materialized view
@@ -125,7 +125,7 @@ func (o *optimizer) Optimize(
 	if msg, err = createVerificationView(ctx, o, cfg); err != nil {
 		return err
 	}
-	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
 	slog.Info("Step 5/6: Complete - Verification view created")
 
 	// Step 6: Run VACUUM ANALYZE
@@ -136,7 +136,7 @@ func (o *optimizer) Optimize(
 	if err := vacuumAnalyze(ctx, o, cfg); err != nil {
 		return err
 	}
-	gn.Info(
+	gn.Message(
 		"<em>VACUUM ANALYZE completed</em> %s",
 		gnfmt.TimeString(time.Since(stepStart).Seconds()),
 	)
