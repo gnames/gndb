@@ -240,6 +240,21 @@ data_sources:
     outlink_url: "https://list.worldfloraonline.org/{}"
     outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
 
+  # World Checklist of Vasular Plants
+  - id: 197
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "WCVP"
+    home_url: "https://wcvp.science.kew.org"
+    is_curated: true
+
+  # ICTV Virus Taxonomy
+  - id: 201
+    parent: http://opendata.globalnames.org/sfga/
+    title: "ICTV Virus Taxonomy"
+    title_short: "ICTV"
+    home_url: "https://ictv.global/taxonomy"
+    is_curated: true
+
   # MycoBank
   - id: 203
     parent: http://opendata.globalnames.org/sfga/
