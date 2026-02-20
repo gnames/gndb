@@ -220,6 +220,14 @@ data_sources:
     outlink_url: "https://www.inaturalist.org/taxa/{}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
+  # Plazi
+  - id: 194
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "Plazi"
+    home_url: "https://www.plazi.org"
+    description: "Plazi is an association supporting and promoting the development of persistent and openly accessible digital taxonomic literature."
+    is_curated: true
+
   # World Flora Online
   - id: 196
     parent: http://opendata.globalnames.org/sfga/

@@ -87,8 +87,7 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message(
-		"%s %s",
-		gnfmt.TimeString(time.Since(stepStart).Seconds()),
+		"%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()),
 	)
 	slog.Info(
 		"Step 2/6: Complete - " +
