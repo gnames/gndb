@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gnames/gn"
 	"github.com/gnames/gnlib"
 	"github.com/gnames/gnuuid"
 	"github.com/jackc/pgx/v5"
@@ -25,8 +25,8 @@ type vernIndex struct {
 // Vernaculars are optional - errors are logged but don't stop processing.
 //
 // Two-phase approach:
-//   1. Vernacular Strings - unique names with UUID v5 identifiers
-//   2. Vernacular Indices - links to data source with language/locality metadata
+//  1. Vernacular Strings - unique names with UUID v5 identifiers
+//  2. Vernacular Indices - links to data source with language/locality metadata
 //
 // Uses p.sfgaDB for SQLite queries and p.operator.Pool() for PostgreSQL operations.
 // Employs batch inserts and pgx.CopyFrom for efficient bulk loading.
@@ -34,19 +34,19 @@ type vernIndex struct {
 // Returns error if SFGA query or database insert fails.
 func (p *populator) processVernaculars(
 	sourceID int,
-) error {
+) (string, error) {
 	slog.Info("Processing vernacular names", "data_source_id", sourceID)
 
 	// Phase 1: Process vernacular strings (unique names)
 	vernStrNum, err := p.processVernacularStrings()
 	if err != nil {
-		return fmt.Errorf("failed to process vernacular strings: %w", err)
+		return "", fmt.Errorf("failed to process vernacular strings: %w", err)
 	}
 
 	// Phase 2: Process vernacular indices (links to data source with metadata)
 	vernIdxNum, err := p.processVernacularIndices(sourceID)
 	if err != nil {
-		return fmt.Errorf("failed to process vernacular indices: %w", err)
+		return "", fmt.Errorf("failed to process vernacular indices: %w", err)
 	}
 
 	slog.Info("Vernacular processing complete",
@@ -54,16 +54,15 @@ func (p *populator) processVernaculars(
 		"strings", vernStrNum,
 		"indices", vernIdxNum)
 
+	msg := fmt.Sprintf(
+		"<em>Imported %s vernacular strings and %s vernacular indices</em>",
+		humanize.Comma(int64(vernStrNum)),
+		humanize.Comma(int64(vernIdxNum)),
+	)
 	if vernStrNum == 0 && vernIdxNum == 0 {
-		gn.Message("<em>No vernacular names found</em>")
-	} else {
-		gn.Message(
-			"<em>Imported %s vernacular strings and %s vernacular indices</em>",
-			humanize.Comma(int64(vernStrNum)),
-			humanize.Comma(int64(vernIdxNum)),
-		)
+		msg = "<em>No vernacular names found</em>"
 	}
-	return nil
+	return msg, nil
 }
 
 // processVernacularStrings reads unique vernacular names from SFGA and
@@ -128,10 +127,7 @@ func (p *populator) processVernacularStrings() (int, error) {
 
 	// Process in batches
 	for i := 0; i < len(vernStrings); i += batchSize {
-		end := i + batchSize
-		if end > len(vernStrings) {
-			end = len(vernStrings)
-		}
+		end := min(i+batchSize, len(vernStrings))
 
 		batch := vernStrings[i:end]
 
@@ -141,7 +137,10 @@ func (p *populator) processVernacularStrings() (int, error) {
 		argIdx := 1
 
 		for _, vs := range batch {
-			valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d)", argIdx, argIdx+1))
+			valueStrings = append(
+				valueStrings,
+				fmt.Sprintf("($%d, $%d)", argIdx, argIdx+1),
+			)
 			valueArgs = append(valueArgs, vs.id, vs.name)
 			argIdx += 2
 		}
@@ -318,9 +317,11 @@ func joinStrings(strs []string, sep string) string {
 	if len(strs) == 0 {
 		return ""
 	}
-	result := strs[0]
-	for i := 1; i < len(strs); i++ {
-		result += sep + strs[i]
+	var b strings.Builder
+	b.WriteString(strs[0])
+	for _, s := range strs[1:] {
+		b.WriteString(sep)
+		b.WriteString(s)
 	}
-	return result
+	return b.String()
 }

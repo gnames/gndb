@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/schema"
 	"github.com/gnames/gndb/pkg/sources"
 	"github.com/google/uuid"
@@ -30,24 +29,24 @@ import (
 func (p *populator) updateDataSourceMetadata(
 	source sources.DataSourceConfig,
 	sfgaFileMeta SFGAMetadata,
-) error {
+) (string, error) {
 	slog.Info("Updating data source metadata", "data_source_id", source.ID)
 
 	// Step 1: Read metadata from SFGA
 	sfgaMetadata, err := p.readSFGAMetadata()
 	if err != nil {
-		return fmt.Errorf("failed to read SFGA metadata: %w", err)
+		return "", fmt.Errorf("failed to read SFGA metadata: %w", err)
 	}
 
 	// Step 2: Query record counts from database
 	recordCount, err := p.queryNameStringIndicesCount(source.ID)
 	if err != nil {
-		return fmt.Errorf("failed to query name string indices count: %w", err)
+		return "", fmt.Errorf("failed to query name string indices count: %w", err)
 	}
 
 	vernRecordCount, err := p.queryVernacularIndicesCount(source.ID)
 	if err != nil {
-		return fmt.Errorf("failed to query vernacular indices count: %w", err)
+		return "", fmt.Errorf("failed to query vernacular indices count: %w", err)
 	}
 
 	// Step 3: Build DataSource record merging SFGA + sources.yaml metadata
@@ -58,13 +57,13 @@ func (p *populator) updateDataSourceMetadata(
 	// Step 4: Delete existing data source record (for idempotency)
 	err = deleteDataSource(p, source.ID)
 	if err != nil {
-		return fmt.Errorf("failed to delete existing data source: %w", err)
+		return "", fmt.Errorf("failed to delete existing data source: %w", err)
 	}
 
 	// Step 5: Insert new data source record
 	err = insertDataSource(p, ds)
 	if err != nil {
-		return fmt.Errorf("failed to insert data source: %w", err)
+		return "", fmt.Errorf("failed to insert data source: %w", err)
 	}
 
 	slog.Info("Data source metadata updated",
@@ -76,12 +75,12 @@ func (p *populator) updateDataSourceMetadata(
 
 	// Print stats
 	totalRecords := ds.RecordCount + ds.VernRecordCount
-	gn.Message(
+	msg := fmt.Sprintf(
 		"<em>Imported metadata and found %s total records</em>",
 		humanize.Comma(int64(totalRecords)),
 	)
 
-	return nil
+	return msg, nil
 }
 
 // sfgaMetadata holds metadata read from SFGA metadata table.

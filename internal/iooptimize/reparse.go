@@ -348,10 +348,10 @@ func saveBatchedNames(
 func reparseNames(
 	ctx context.Context,
 	opt *optimizer,
-) error {
+) (string, error) {
 	pool := opt.operator.Pool()
 	if pool == nil {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerReparseError,
 			Msg:  "Database connection lost",
 			Err:  fmt.Errorf("pool is nil"),
@@ -362,7 +362,7 @@ func reparseNames(
 	slog.Info("Creating temporary table for name processing")
 	err := createReparseTempTable(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	defer func() {
@@ -411,7 +411,7 @@ func reparseNames(
 	// Wait for pipeline
 	if err := g.Wait(); err != nil &&
 		!errors.Is(err, context.Canceled) {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerReparseError,
 			Msg:  "Failed to reparse name strings",
 			Err:  fmt.Errorf("pipeline: %w", err),
@@ -422,7 +422,7 @@ func reparseNames(
 	slog.Info("Executing batch UPDATE on name_strings")
 	rowsUpdated, err := batchUpdateNameStrings(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	msg := "<em>Parsing was identical to the previous one</em>"
@@ -432,13 +432,11 @@ func reparseNames(
 			humanize.Comma(rowsUpdated),
 		)
 	}
-	gn.Info(msg)
-
 	slog.Info("Inserting unique canonicals")
 	err = batchInsertCanonicals(ctx, pool)
 	if err != nil {
-		return err
+		return msg, err
 	}
 
-	return nil
+	return msg, nil
 }

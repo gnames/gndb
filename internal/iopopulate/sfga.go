@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/gnames/gndb/pkg/sources"
-	"github.com/gnames/gnlib"
 	"github.com/sfborg/sflib"
 	_ "modernc.org/sqlite" // Pure Go SQLite driver (no CGo)
 )
@@ -400,43 +399,4 @@ func openSFGA(sqlitePath string) (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-// getSFGAVersion retrieves the version string from the SFGA database.
-// Returns the version string from the version table, or an error if not found.
-//
-//nolint:unused // Will be used in Phase 3
-func getSFGAVersion(db *sql.DB) (string, error) {
-	var version string
-	query := "SELECT id FROM version LIMIT 1"
-	err := db.QueryRow(query).Scan(&version)
-	if err != nil {
-		return "", fmt.Errorf("failed to query SFGA version: %w", err)
-	}
-	return version, nil
-}
-
-// checkSFGAVersion verifies that the SFGA database version meets the minimum requirement.
-// Returns the version string and an error if the version is less than the required minimum from config.
-// Uses gnlib.CmpVersion for semantic version comparison.
-//
-//nolint:unused // Will be used in Phase 3
-func checkSFGAVersion(db *sql.DB, minVersion string) (string, error) {
-	version, err := getSFGAVersion(db)
-	if err != nil {
-		return "", fmt.Errorf("cannot verify SFGA version: %w", err)
-	}
-
-	// Compare versions using gnlib.CmpVersion
-	// Returns: -1 if version < minVersion, 0 if equal, 1 if version > minVersion
-	cmp := gnlib.CmpVersion(version, minVersion)
-	if cmp < 0 {
-		return version, fmt.Errorf(
-			"SFGA version %s is too old (minimum required: %s). Please upgrade the SFGA file",
-			version,
-			minVersion,
-		)
-	}
-
-	return version, nil
 }

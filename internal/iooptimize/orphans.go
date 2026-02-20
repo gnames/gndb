@@ -27,10 +27,10 @@ func removeOrphans(
 	ctx context.Context,
 	opt *optimizer,
 	_ *config.Config,
-) error {
+) (string, error) {
 	pool := opt.operator.Pool()
 	if pool == nil {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerOrphanRemovalError,
 			Msg:  "Database connection lost",
 			Err:  fmt.Errorf("pool is nil"),
@@ -43,28 +43,28 @@ func removeOrphans(
 	// Step 1: Remove orphan name_strings
 	count, err := removeOrphanNameStrings(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 	totalDeleted += count
 
 	// Step 2: Remove orphan canonicals
 	count, err = removeOrphanCanonicals(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 	totalDeleted += count
 
 	// Step 3: Remove orphan canonical_fulls
 	count, err = removeOrphanCanonicalFulls(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 	totalDeleted += count
 
 	// Step 4: Remove orphan canonical_stems
 	count, err = removeOrphanCanonicalStems(ctx, pool)
 	if err != nil {
-		return err
+		return "", err
 	}
 	totalDeleted += count
 
@@ -76,9 +76,8 @@ func removeOrphans(
 			humanize.Comma(totalDeleted),
 		)
 	}
-	gn.Info(msg)
 
-	return nil
+	return msg, nil
 }
 
 // removeOrphanNameStrings deletes name_strings not referenced

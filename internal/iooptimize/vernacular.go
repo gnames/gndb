@@ -361,10 +361,7 @@ func batchInsertVernacularUpdates(
 	defer bar.Finish()
 
 	for i := 0; i < len(records); i += batchSize {
-		end := i + batchSize
-		if end > len(records) {
-			end = len(records)
-		}
+		end := min(i+batchSize, len(records))
 		batch := records[i:end]
 
 		// Build batch insert

@@ -25,10 +25,10 @@ func createVerificationView(
 	ctx context.Context,
 	opt *optimizer,
 	_ *config.Config,
-) error {
+) (string, error) {
 	pool := opt.operator.Pool()
 	if pool == nil {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerViewCreationError,
 			Msg:  "Database connection lost",
 			Err:  fmt.Errorf("pool is nil"),
@@ -38,11 +38,11 @@ func createVerificationView(
 	// Drop existing views and create new ones using operator
 	slog.Info("Building verification view")
 	if err := opt.operator.DropMaterializedViews(ctx); err != nil {
-		return err
+		return "", err
 	}
 
 	if err := opt.operator.CreateMaterializedViews(ctx); err != nil {
-		return err
+		return "", err
 	}
 
 	slog.Info("Verification view created successfully")
@@ -52,7 +52,7 @@ func createVerificationView(
 	q := "SELECT COUNT(*) FROM verification"
 	err := pool.QueryRow(ctx, q).Scan(&count)
 	if err != nil {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerViewCreationError,
 			Msg:  "Failed to count verification records",
 			Err:  fmt.Errorf("count query: %w", err),
@@ -63,7 +63,6 @@ func createVerificationView(
 		"<em>Created verification view with %s records</em>",
 		humanize.Comma(count),
 	)
-	gn.Info(msg)
 
-	return nil
+	return msg, nil
 }

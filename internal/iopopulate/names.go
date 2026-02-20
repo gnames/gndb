@@ -34,23 +34,23 @@ type nameRecord struct {
 //   - Database insert fails
 func (p *populator) processNameStrings(
 	sourceID int,
-) error {
+) (string, error) {
 	slog.Info("Step 2/6: Processing name strings", "data_source_id", sourceID)
 
 	names, emptyGNameStr, err := p.getNames()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = handleEmptyGNameStr(emptyGNameStr, sourceID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var totalInserted int
 	totalInserted, err = p.insertNames(names)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Final log with total count
@@ -60,13 +60,12 @@ func (p *populator) processNameStrings(
 		"total_records", len(names),
 	)
 
+	msg := "<em>All names strings are in the database already</em>"
 	if totalInserted > 0 {
-		gn.Message("<em>Inserted %d name strings</em>", totalInserted)
-	} else {
-		gn.Message("<em>All names strings are in the database already</em>")
+		msg = fmt.Sprintf("<em>Inserted %d name strings</em>", totalInserted)
 	}
 
-	return nil
+	return msg, nil
 }
 
 func (p *populator) insertNames(

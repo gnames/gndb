@@ -56,11 +56,5 @@ func vacuumAnalyze(
 		"duration", elapsed.String(),
 	)
 
-	msg := fmt.Sprintf(
-		"<em>VACUUM ANALYZE completed in %s</em>",
-		elapsed.Round(time.Millisecond).String(),
-	)
-	gn.Info(msg)
-
 	return nil
 }

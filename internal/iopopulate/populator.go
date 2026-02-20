@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/internal/iosources"
 	"github.com/gnames/gndb/pkg/config"
@@ -196,7 +197,11 @@ Sources succeded: %d, failed %d, total %d.
 func (p *populator) processSource(
 	source sources.DataSourceConfig,
 ) error {
-	// Resolve SFGA file location
+	var t time.Time
+	var msg string
+
+	// Stage 1: Resolve and fetch SFGA file
+	t = time.Now()
 	sfgaPath, metadata, warning, err := resolveSFGAPath(source)
 	if err != nil {
 		return SFGAFileNotFoundError(source.ID, source.Parent, err)
@@ -231,8 +236,13 @@ func (p *populator) processSource(
 		return SFGAReadError(sqlitePath, err)
 	}
 	defer p.sfgaDB.Close()
-	gn.Message("<em>Prepared SFGA file for import</em>")
+	gn.Message(
+		"<em>Prepared SFGA file for import</em> %s",
+		gnfmt.TimeString(time.Since(t).Seconds()),
+	)
 
+	// Stage 2: Import name-strings
+	t = time.Now()
 	gn.Info("(2/6) Importing name-strings...")
 
 	err = p.checkSfgaVersion(source.ID)
@@ -240,11 +250,14 @@ func (p *populator) processSource(
 		return err
 	}
 
-	err = p.processNameStrings(source.ID)
+	msg, err = p.processNameStrings(source.ID)
 	if err != nil {
 		return NamesError(source.ID, err)
 	}
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
 
+	// Stage 3: Build classification hierarchy
+	t = time.Now()
 	gn.Info("(3/6) Building classification hierarchy...")
 	hierarchy, err := p.buildHierarchy()
 	if err != nil {
@@ -253,27 +266,46 @@ func (p *populator) processSource(
 			"source_id", source.ID,
 			"error", err)
 	}
+	msg = "<em>Did not detect hierarchy existance</em>"
+	if len(hierarchy) > 0 {
+		msg = fmt.Sprintf(
+			"<em>Finished building hierarchy with %s nodes</em>",
+			humanize.Comma(int64(len(hierarchy))),
+		)
+	}
+	gn.Info(
+		"%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()),
+	)
 
+	// Stage 4: Import name-string indices
+	t = time.Now()
 	gn.Info("(4/6) Importing name-string indices...")
-	err = p.processNameIndices(&source, hierarchy)
+	msg, err = p.processNameIndices(&source, hierarchy)
 	if err != nil {
 		return NamesError(source.ID, err)
 	}
+	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
 
+	// Stage 5: Import vernacular names
+	t = time.Now()
 	gn.Info("(5/6) Importing vernacular names...")
-	err = p.processVernaculars(source.ID)
+	msg, err = p.processVernaculars(source.ID)
 	if err != nil {
 		// Vernaculars are optional, report error and continue
 		slog.Error("Failed to import vernaculars",
 			"source_id", source.ID,
 			"error", err)
 	}
+	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
 
+	// Stage 6: Update data source metadata
+	t = time.Now()
 	gn.Info("(6/6) Importing metadata...")
-	err = p.updateDataSourceMetadata(source, metadata)
+	msg, err = p.updateDataSourceMetadata(source, metadata)
 	if err != nil {
 		return MetadataError(source.ID, err)
 	}
+	gn.Info("%s %s", msg, gnfmt.TimeString(time.Since(t).Seconds()))
 
 	slog.Info("Source processing complete",
 		"source_id", source.ID)

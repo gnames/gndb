@@ -50,23 +50,23 @@ func extractWords(
 	ctx context.Context,
 	opt *optimizer,
 	cfg *config.Config,
-) error {
+) (string, error) {
 	var msg string
 	pool := opt.operator.Pool()
 	if pool == nil {
-		return &gn.Error{
+		return "", &gn.Error{
 			Code: errcode.OptimizerWordExtractionError,
 			Msg:  "Database connection lost",
 			Err:  fmt.Errorf("pool is nil"),
 		}
 	}
 
-	msg = "Creating words for fuzzy matching"
+	msg = "Creating words for faceted matching"
 	slog.Info(msg)
 
 	// Step 1: Truncate words tables.
 	if err := truncateWordsTables(ctx, pool); err != nil {
-		return err
+		return "", err
 	}
 
 	// Steps 2-4: Stream, parse, deduplicate words, and save
@@ -76,15 +76,13 @@ func extractWords(
 		ctx, pool, cfg,
 	)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if len(wordsMap) == 0 {
 		slog.Info("No names to process for word extraction")
-		gn.Info(
-			"<em>No names found for word extraction</em>",
-		)
-		return nil
+		msg = "<em>No names found for word extraction</em>"
+		return msg, nil
 	}
 
 	// Convert words map to slice for saving.
@@ -100,7 +98,7 @@ func extractWords(
 	if err := saveWords(
 		ctx, pool, uniqueWords, cfg,
 	); err != nil {
-		return err
+		return "", err
 	}
 
 	slog.Info(
@@ -115,9 +113,8 @@ func extractWords(
 		humanize.Comma(int64(len(uniqueWords))),
 		humanize.Comma(int64(totalLinks)),
 	)
-	gn.Info(msg)
 
-	return nil
+	return msg, nil
 }
 
 // truncateWordsTables clears the words and word_name_strings

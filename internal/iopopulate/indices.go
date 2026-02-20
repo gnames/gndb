@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/sources"
 )
 
@@ -21,39 +20,38 @@ import (
 func (p *populator) processNameIndices(
 	source *sources.DataSourceConfig,
 	hierarchy map[string]*hNode,
-) error {
+) (string, error) {
 	slog.Info("Processing name indices", "data_source_id", source.ID)
 
 	// Clean old data for this source
 	err := p.cleanNameIndices(source.ID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Process taxa (accepted names with classification)
 	taxaCount, err := p.processTaxa(source, hierarchy)
 	if err != nil {
-		return fmt.Errorf("failed to process taxa: %w", err)
+		return "", fmt.Errorf("failed to process taxa: %w", err)
 	}
 
 	// Process synonyms (linked to accepted taxa)
 	synonymCount, err := p.processSynonyms(source, hierarchy)
 	if err != nil {
-		return fmt.Errorf("failed to process synonyms: %w", err)
+		return "", fmt.Errorf("failed to process synonyms: %w", err)
 	}
 
 	// Process bare names (orphans not in taxon/synonym)
 	bareCount, err := p.processBareNames(source)
 	if err != nil {
-		return fmt.Errorf("failed to process bare names: %w", err)
+		return "", fmt.Errorf("failed to process bare names: %w", err)
 	}
 
 	totalCount := taxaCount + synonymCount + bareCount
 	slog.Info("Name indices processing complete",
 		"data_source_id", source.ID, "total", totalCount)
 
-	// Print stats
-	gn.Message(
+	msg := fmt.Sprintf(
 		"<em>Imported %s name indices (%s taxa, %s synonyms, %s bare names)</em>",
 		humanize.Comma(int64(totalCount)),
 		humanize.Comma(int64(taxaCount)),
@@ -61,7 +59,7 @@ func (p *populator) processNameIndices(
 		humanize.Comma(int64(bareCount)),
 	)
 
-	return nil
+	return msg, nil
 }
 
 // cleanNameIndices deletes existing name indices for the given data source.
