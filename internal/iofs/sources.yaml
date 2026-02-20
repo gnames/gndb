@@ -290,3 +290,16 @@ data_sources:
   - id: 212
     parent: http://opendata.globalnames.org/sfga/
     title_short: "World Ferns"
+
+  # Flora of Brazil
+  - id: 213
+    parent: http://opendata.globalnames.org/sfga/
+    title: "Flora e Funga do Brasil - Lista Oficial"
+    title_short: "Flora of Brazil"
+
+  # Fauna of Brazil
+  - id: 214
+    parent: http://opendata.globalnames.org/sfga/
+    title: "Catálogo Taxonômico da Fauna do Brasil"
+    title_short: "Fauna of Brazil"
+
