@@ -2,7 +2,20 @@
 
 ## Unreleased
 
-- Add [#8] improve README.md documentation.
+- Add [#8]: Improve README.md documentation (installation, quick start,
+  commands, configuration, data sources with file formats and naming
+  conventions).
+
+## [v0.1.0] - 2026-02-20 Fri
+
+- Add: ICTV viruses to sources.yaml
+- Add: Plazi source to sources.yaml
+- Add: Fauna and flora of Brazil to sources.yaml
+- Add: Timespan reports for populate and optimize stages
+- Fix: Memory usage during word parsing
+- Perf: Stream word parsing for lower memory footprint
+- Update: Go module dependencies
+- Update: CoL XR title in sources.yaml
 
 ## [v0.0.3] - 2025-11-18 Tue
 
@@ -29,9 +42,11 @@
 
 This document follows [changelog guidelines]
 
+[v0.1.0]: https://github.com/gnames/gndb/tree/v0.1.0
 [v0.0.3]: https://github.com/gnames/gndb/tree/v0.0.3
 [v0.0.2]: https://github.com/gnames/gndb/tree/v0.0.2
 [v0.0.1]: https://github.com/gnames/gndb/tree/v0.0.1
+[#8]: https://github.com/gnames/gndb/issues/8
 [#7]: https://github.com/gnames/gndb/issues/7
 [#6]: https://github.com/gnames/gndb/issues/6
 [#5]: https://github.com/gnames/gndb/issues/5
