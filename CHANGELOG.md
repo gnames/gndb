@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add [#8] improve README.md documentation.
+
 ## [v0.0.3] - 2025-11-18 Tue
 
 - Add [#5]: Database optimization (word extraction, verification views,
