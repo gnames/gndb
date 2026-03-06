@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## [v0.1.1] - 2026-03-06 Fri
+
+- Add: .zenodo.json to integrate the repo with Zenodo.
+- Add: update modules
 - Add [#8]: Improve README.md documentation (installation, quick start,
   commands, configuration, data sources with file formats and naming
   conventions).
@@ -42,6 +46,7 @@
 
 This document follows [changelog guidelines]
 
+[v0.1.1]: https://github.com/gnames/gndb/tree/v0.1.1
 [v0.1.0]: https://github.com/gnames/gndb/tree/v0.1.0
 [v0.0.3]: https://github.com/gnames/gndb/tree/v0.0.3
 [v0.0.2]: https://github.com/gnames/gndb/tree/v0.0.2
