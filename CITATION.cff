@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "GNdb: A CLI tool for managing a PostgreSQL database for local GNverifier instances"
+version: 0.1.1
+date-released: "2026-03-06"
+doi: 10.5281/zenodo.18895372
+license: MIT
+repository-code: https://github.com/gnames/gndb
+authors:
+  - family-names: Mozzherin
+    given-names: Dmitry
+    orcid: https://orcid.org/0000-0003-1593-1417
+    affiliation: Species File Group
+keywords:
+  - biodiversity
+  - taxonomy
+  - scientific names
+  - name verification
+  - GNverifier
+  - SFGA
+  - PostgreSQL
+  - Go

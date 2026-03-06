@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add: Zenodo button in README.md, CITATION.cff
+
 ## [v0.1.1] - 2026-03-06 Fri
 
 - Add: .zenodo.json to integrate the repo with Zenodo.

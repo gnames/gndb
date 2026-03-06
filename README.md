@@ -1,5 +1,7 @@
 # GNdb
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18895372.svg)](https://doi.org/10.5281/zenodo.18895372)
+
 GNdb is a command-line tool for creating and managing a PostgreSQL database
 for a local [GNverifier] instance.
 
