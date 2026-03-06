@@ -9,12 +9,12 @@ for a local [GNverifier] instance.
 
 * [Introduction](#introduction)
 * [Prerequisites](#prerequisites)
-  * [PostgreSQL](#postgresql)
-  * [SQLite](#sqlite)
 * [Installation](#installation)
+  * [Download binary](#download-binary)
   * [Install with Go](#install-with-go)
   * [Build from source](#build-from-source)
 * [Quick Start](#quick-start)
+* [Next Steps: Running GNverifier](#next-steps-running-gnverifier)
 * [Commands](#commands)
   * [create](#create)
   * [populate](#populate)
@@ -25,7 +25,11 @@ for a local [GNverifier] instance.
   * [Environment variables](#environment-variables)
   * [CLI flags](#cli-flags)
 * [Data Sources](#data-sources)
-* [Architecture](#architecture)
+  * [Standard sources](#standard-sources)
+  * [Custom sources](#custom-sources)
+  * [SFGA file formats](#sfga-file-formats)
+  * [File naming convention](#file-naming-convention)
+  * [Remote sources](#remote-sources)
 * [Artificial Intelligence Policy](#artificial-intelligence-policy)
 * [Authors](#authors)
 * [License](#license)
@@ -35,24 +39,25 @@ for a local [GNverifier] instance.
 ## Introduction
 
 [GNverifier] is a scientific name verification service that reconciles
-taxonomic names against multiple biodiversity data sources. It detects
+scientific names against multiple biodiversity data sources. It detects
 misspellings via fuzzy matching, identifies accepted names for taxa, and
-retrieves vernacular/common names.
+retrieves vernacular/common names. GNdb is the tool that builds and
+maintains the PostgreSQL database that a GNverifier server runs against.
 
-GNverifier is available as a centralized service, but it may lack a
-particular data source or do not have the most recent version of a data source.
-GNdb makes it possible to set up a local GNverifier instance and populate
-it with whatever data sources a researcher needs.
+GNverifier is available as a centralized service, but it does not always
+have a particular data source or the most recent version of one. A local
+instance gives you full control over which sources are included and when
+they are updated.
 
-Biodiversity data comes in many formats: Darwin Core Archives (DwCA),
-Catalogue of Life Data Package (CoLDP), Excel spreadsheets, plain name
-lists, etc. GNdb uses [SFGA] (Species File Group Archive), a normalized
-SQLite-based format, as its input. The [SF] tool converts the most common
-biodiversity formats into SFGA.
+**When to use a local instance:**
+
+- You need a data source not available in the central service
+- You have private or institutional data not suitable for a public service
+- You need a specific version or snapshot of a data source
+- You are deploying GNverifier in an offline or air-gapped environment
+- You need a dedicated high-throughput server for your organization
 
 ## Prerequisites
-
-### PostgreSQL
 
 GNdb stores data in a `gnames` PostgreSQL database. Install PostgreSQL for
 your operating system, create the database, and make sure your user has
@@ -64,18 +69,18 @@ and optimize it according to CPU and memory available on the computer.
 createdb gnames
 ```
 
-Edit `~/.config/gndb/config.yaml` to provide `gndb` information how to connect
-to the database. This file will be created after installing `gndb` and
-running it for the first time without any subcommands for example as
+Edit `~/.config/gndb/config.yaml` to provide `gndb` information how to
+connect to the database. This file will be created after installing `gndb`
+and running it for the first time without any subcommands, for example as
 `gndb` or `gndb -V`.
 
-### SQLite
-
-SQLite is not required by `GNdb` itself, but it is very useful for
-examining and querying SFGA archives directly. We recommend the
-[SQLite DB viewer] and the [Datasette] tool for this purpose.
-
 ## Installation
+
+### Download binary
+
+Download the latest pre-built binary for your platform from the [releases
+page], unpack the archive, and place the `gndb` binary somewhere in your `PATH`
+(e.g. `/usr/local/bin`).
 
 ### Install with Go
 
@@ -95,31 +100,50 @@ cd gndb
 just install
 ```
 
-This builds the binary and installs it to `~/go/bin/gndb`.
+This builds the binary and installs it to `$HOME/go/bin/gndb`.
 
 ## Quick Start
 
 The typical workflow to set up a local GNverifier database:
 
 ```bash
-# 1. Create the database schema
+# 1. Create the PostgreSQL database (run once)
+createdb gnames
+# or connect to PostgreSQL and run:
+#   CREATE DATABASE gnames;
+
+# 2. Create the GNverifier schema inside the database
 gndb create
 
-# 2. Edit sources.yaml to point to your SFGA files
-#    (created automatically at ~/.config/gndb/sources.yaml)
-
-# 3. Populate the database from your SFGA sources
-gndb populate
-# most likely you would run this command several times providing
-# specific data-sources IDs. The IDs must be present in
-# ~/.config/gndb/sources.yaml file.
-gndb populate -s 1,13,4,1001
+# 3. Populate the database with the data sources you need.
+#    Standard sources (IDs < 1000) are pre-configured in sources.yaml
+#    and downloaded automatically from opendata.globalnames.org/sfga.
+gndb populate -s 1,11,4
 
 # 4. Optimize the database for fast name verification
+#    This step runs several optimization steps and denormalizes data to
+#    a materialized view to speedup queries.
 gndb optimize
 ```
 
-After step 4 the database is ready to be used with GNverifier.
+Standard source IDs and their names are listed in
+`~/.config/gndb/sources.yaml`, which is created automatically on the
+first run. Run `gndb populate` without flags to import all configured
+sources at once (it will take a long time).
+
+`gndb populate` can be run multiple times to add sources incrementally,
+including after a previous `gndb optimize`. Always run `gndb optimize`
+once at the end, after all desired sources have been imported.
+
+After step 4 the database is ready for GNverifier.
+
+## Next Steps: Running GNverifier
+
+Once the database is ready, install and configure the [GNverifier] server
+to connect to your `gnames` database. See the [GNverifier] README for
+installation and configuration instructions. GNverifier has a
+server/client architecture: most users only need to run the server and
+access verification results through its REST API or command-line client.
 
 ## Commands
 
@@ -193,7 +217,7 @@ gndb optimize
 
 1. Reparses all name-strings using the latest [GNparser]
 2. Builds canonical forms (simple, full, stemmed)
-3. Creates word indexes for fuzzy matching
+3. Creates word indexes for advanced name search
 4. Builds materialized views and runs VACUUM ANALYZE
 
 Optimization may take 20–90 minutes depending on the dataset size.
@@ -215,8 +239,8 @@ gndb migrate --recreate-views
 gndb migrate -v
 ```
 
-Most of the time there migration would run before populating new data.
-In such cases there is no need to recreated materialized views, they
+Most of the time the migration would run before populating new data.
+In such cases there is no need to recreate materialized views, they
 will be restored after all data is imported during the `optimize` step.
 GORM AutoMigrate adds new tables and columns but never removes existing
 ones, making migrations safe. After migrating, run `gndb populate` and
@@ -255,7 +279,7 @@ jobs_number: 8
 
 GNdb also creates `~/.config/gndb/sources.yaml` on first run. Edit it to
 configure your SFGA data sources (see [Data Sources](#data-sources)).
-If you import you own data sources, make sure they have IDs from 1001 and
+If you import your own data sources, make sure they have IDs from 1001 and
 higher.
 
 Log files are written to `~/.local/share/gndb/logs/gndb.log`.
@@ -290,15 +314,34 @@ gndb -V   # print version and build timestamp
 
 ## Data Sources
 
-SFGA data sources are configured in `~/.config/gndb/sources.yaml`. Each
-entry points to an SFGA file and provides optional metadata overrides:
+GNdb supports two kinds of sources: **standard** sources maintained by the
+Global Names project, and **custom** sources you provide yourself.
+
+### Standard sources
+
+Standard sources have IDs below 1000. They are pre-configured in
+`~/.config/gndb/sources.yaml` and their SFGA files are hosted on
+`opendata.globalnames.org/sfga`. Running `gndb populate -s <id>` is all
+that is needed — GNdb downloads the latest file for that source
+automatically.
+
+To see which standard sources are available, open
+`~/.config/gndb/sources.yaml` after the first run of `gndb`.
+
+### Custom sources
+
+Custom sources have IDs of 1000 or higher. Use the [SF] tool to convert
+your data (Darwin Core Archive, CoLDP, Excel spreadsheet, plain name
+list, etc.) into an SFGA file. Place the resulting file on your local
+computer or on a web server, then register it in
+`~/.config/gndb/sources.yaml`:
 
 ```yaml
 data_sources:
   - id: 1001
     parent: "/path/to/sfga/files/"
-    title_short: "Catalogue of Life"
-    home_url: "https://catalogueoflife.org"
+    title_short: "My Custom Source"
+    home_url: "https://example.org/my-source"
     is_curated: true
     has_classification: true
 
@@ -309,10 +352,15 @@ data_sources:
     has_classification: true
 ```
 
+The `parent` field must point to the **immediate parent directory** (or
+URL) of the SFGA file — GNdb searches only that location, not
+subdirectories. Without the correct parent path the file will not be
+found.
+
 | Field | Description |
 | ----- | ----------- |
 | `id` | Unique integer ID. Use `< 1000` for standard sources, `>= 1000` for custom |
-| `parent` | Directory containing the SFGA file (local path or URL) |
+| `parent` | Immediate parent directory of the SFGA file (local path or URL) |
 | `title_short` | Short display name for the data source |
 | `home_url` | URL of the source's home page |
 | `is_curated` | Whether the source is expert-curated |
@@ -362,13 +410,6 @@ imports it from there.
 Use the [SF] tool to convert Darwin Core Archives, CoLDP packages, and
 other biodiversity formats into SFGA.
 
-## Architecture
-
-GNdb follows Clean Architecture principles, with business logic separated
-from framework and I/O concerns. See [ARCHITECTURE.md] for a detailed
-description of the package structure, dependency graph, and design
-patterns.
-
 ## Artificial Intelligence Policy
 
 We use artificial intelligence to help find algorithms, decide on
@@ -386,8 +427,6 @@ primarily use Claude Code, with limited use of Gemini CLI.
 
 Released under [MIT License]
 
-[ARCHITECTURE.md]: ARCHITECTURE.md
-[Claude Code]: https://claude.ai/code
 [Datasette]: https://datasette.io
 [Dmitry Mozzherin]: https://github.com/dimus
 [GNparser]: https://github.com/gnames/gnparser
@@ -396,3 +435,4 @@ Released under [MIT License]
 [SF]: https://github.com/sfborg/sf
 [SFGA]: https://github.com/sfborg/sfga
 [SQLite DB viewer]: https://sqlitebrowser.org/
+[releases page]: https://github.com/gnames/gndb/releases/latest
