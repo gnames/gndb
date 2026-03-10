@@ -83,6 +83,7 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 					"name": {
 						"col__id",
 						"col__alternative_id",
+						"col__link",
 					},
 					"taxon": {
 						"col__id",

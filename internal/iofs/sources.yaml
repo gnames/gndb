@@ -22,6 +22,7 @@
 #       - "name.col__id"          : Name record identifier
 #       - "taxon.col__name_id"     : Nomenclatural name identifier
 #       - "name.col__local_id"    : Local name identifier
+#       - "name.col__link"        : Direct URL stored in name record (e.g. LPSN)
 #       - "synonym.col__id"       : Synonym identifier
 #
 #     Alternative ID columns (auto-extracts "gnoutlink:" namespace):
@@ -282,7 +283,7 @@ data_sources:
     has_classification: true
     is_outlink_ready: true
     outlink_url: "{}"
-    outlink_id_column: "taxon.gn__local_id" # Uses local_id which is the full URL
+    outlink_id_column: "name.col__link" # Uses local_id which is the full URL
 
   # NZOR
   - id: 209
