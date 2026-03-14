@@ -247,6 +247,8 @@ data_sources:
     title_short: "WCVP"
     home_url: "https://wcvp.science.kew.org"
     is_curated: true
+    outlink_url: "https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:{}"
+    outlink_id_column: "name.col__alternative_id"
 
   # ICTV Virus Taxonomy
   - id: 201
