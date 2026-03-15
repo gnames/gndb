@@ -39,15 +39,6 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 		return nil, fmt.Errorf("parent directory or URL is required")
 	}
 
-	// Validate data source type if provided
-	if d.DataSourceType != "" {
-		if d.DataSourceType != "taxonomic" && d.DataSourceType != "nomenclatural" {
-			return nil, fmt.Errorf(
-				"invalid data_source_type: must be 'taxonomic' or 'nomenclatural'",
-			)
-		}
-	}
-
 	// Validate outlink configuration (generate warnings, not errors)
 	if d.IsOutlinkReady {
 		outlinkValid := true

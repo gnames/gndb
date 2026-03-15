@@ -46,6 +46,42 @@ func loadSourcesConfig(path string) (*sources.SourcesConfig, error) {
 	return &config, nil
 }
 
+// loadCustomSourcesConfig loads and validates custom_sources.yaml.
+// Unlike loadSourcesConfig, an empty data_sources list is not an error.
+func loadCustomSourcesConfig(path string) (*sources.SourcesConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read sources config file: %w", err)
+	}
+
+	var config sources.SourcesConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse sources config: %w", err)
+	}
+
+	if len(config.DataSources) == 0 {
+		return &config, nil
+	}
+
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+
+	if err := validateSourcesFileSystem(&config); err != nil {
+		return nil, err
+	}
+
+	for _, w := range config.Warnings {
+		slog.Warn("Source configuration warning",
+			"source_id", w.DataSourceID,
+			"field", w.Field,
+			"message", w.Message,
+			"suggestion", w.Suggestion)
+	}
+
+	return &config, nil
+}
+
 // validateSourcesFileSystem checks that parent directories exist for local paths.
 func validateSourcesFileSystem(config *sources.SourcesConfig) error {
 	for i, ds := range config.DataSources {

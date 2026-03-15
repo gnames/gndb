@@ -318,9 +318,9 @@ func TestEnsureSourcesFile_ContentCorrect(t *testing.T) {
 		"Sources file content should match embedded template")
 }
 
-// TestEnsureSourcesFile_Idempotent verifies existing file
-// is not overwritten.
-func TestEnsureSourcesFile_Idempotent(t *testing.T) {
+// TestEnsureSourcesFile_AlwaysOverwrites verifies sources.yaml
+// is always regenerated from the embedded template.
+func TestEnsureSourcesFile_AlwaysOverwrites(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test that uses file system in short mode")
 	}
@@ -330,28 +330,22 @@ func TestEnsureSourcesFile_Idempotent(t *testing.T) {
 	err := EnsureDirs(tmpDir)
 	require.NoError(t, err)
 
-	// Create sources file
-	err = EnsureSourcesFile(tmpDir)
-	require.NoError(t, err)
-
 	sourcesPath := filepath.Join(tmpDir, ".config", "gndb",
 		"sources.yaml")
 
-	// Modify the file
-	customContent := "# Custom sources\ndata_sources:\n  - id: 999"
-	err = os.WriteFile(sourcesPath, []byte(customContent),
-		0644)
+	// Write some arbitrary content
+	err = os.WriteFile(sourcesPath, []byte("# old content"), 0644)
 	require.NoError(t, err)
 
-	// Call EnsureSourcesFile again
+	// Call EnsureSourcesFile
 	err = EnsureSourcesFile(tmpDir)
 	require.NoError(t, err)
 
-	// Verify file still has custom content
+	// Verify file was overwritten with embedded content
 	content, err := os.ReadFile(sourcesPath)
 	require.NoError(t, err)
-	assert.Equal(t, customContent, string(content),
-		"Existing sources file should not be overwritten")
+	assert.Equal(t, SourcesYAML, string(content),
+		"sources.yaml should always be overwritten with embedded template")
 }
 
 // TestEnsureSourcesFile_PermissionsCorrect verifies file
@@ -391,4 +385,101 @@ func TestSourcesYAML_Embedded(t *testing.T) {
 		"SourcesYAML should contain example sources")
 	assert.Contains(t, SourcesYAML, "outlink_url",
 		"SourcesYAML should document outlink configuration")
+	assert.Contains(t, SourcesYAML, "automatically regenerated",
+		"SourcesYAML should warn that it is auto-generated")
+}
+
+// TestEnsureCustomSourcesFile_CreatesFile verifies custom sources
+// file is created on first run.
+func TestEnsureCustomSourcesFile_CreatesFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
+	tmpDir := t.TempDir()
+
+	err := EnsureDirs(tmpDir)
+	require.NoError(t, err)
+
+	err = EnsureCustomSourcesFile(tmpDir)
+	require.NoError(t, err)
+
+	customPath := filepath.Join(tmpDir, ".config", "gndb",
+		"custom_sources.yaml")
+	info, err := os.Stat(customPath)
+	require.NoError(t, err)
+	assert.False(t, info.IsDir(),
+		"Custom sources file should be a file, not directory")
+	assert.Greater(t, info.Size(), int64(0),
+		"Custom sources file should not be empty")
+}
+
+// TestEnsureCustomSourcesFile_ContentCorrect verifies custom sources
+// file content matches embedded template.
+func TestEnsureCustomSourcesFile_ContentCorrect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
+	tmpDir := t.TempDir()
+
+	err := EnsureDirs(tmpDir)
+	require.NoError(t, err)
+
+	err = EnsureCustomSourcesFile(tmpDir)
+	require.NoError(t, err)
+
+	customPath := filepath.Join(tmpDir, ".config", "gndb",
+		"custom_sources.yaml")
+	content, err := os.ReadFile(customPath)
+	require.NoError(t, err)
+
+	assert.Equal(t, CustomSourcesYAML, string(content),
+		"Custom sources file content should match embedded template")
+}
+
+// TestEnsureCustomSourcesFile_Idempotent verifies existing custom
+// sources file is never overwritten.
+func TestEnsureCustomSourcesFile_Idempotent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
+	tmpDir := t.TempDir()
+
+	err := EnsureDirs(tmpDir)
+	require.NoError(t, err)
+
+	err = EnsureCustomSourcesFile(tmpDir)
+	require.NoError(t, err)
+
+	customPath := filepath.Join(tmpDir, ".config", "gndb",
+		"custom_sources.yaml")
+
+	// Simulate user adding their own source
+	userContent := "# My sources\ndata_sources:\n  - id: 1000\n    parent: https://example.org/sfga/\n"
+	err = os.WriteFile(customPath, []byte(userContent), 0644)
+	require.NoError(t, err)
+
+	// Call again — must not overwrite
+	err = EnsureCustomSourcesFile(tmpDir)
+	require.NoError(t, err)
+
+	content, err := os.ReadFile(customPath)
+	require.NoError(t, err)
+	assert.Equal(t, userContent, string(content),
+		"Existing custom sources file should never be overwritten")
+}
+
+// TestCustomSourcesYAML_Embedded verifies embedded custom sources
+// template is valid.
+func TestCustomSourcesYAML_Embedded(t *testing.T) {
+	assert.NotEmpty(t, CustomSourcesYAML,
+		"Embedded CustomSourcesYAML should not be empty")
+	assert.Contains(t, CustomSourcesYAML, "data_sources",
+		"CustomSourcesYAML should contain data_sources section")
+	assert.Contains(t, CustomSourcesYAML, "1000",
+		"CustomSourcesYAML should contain example ID >= 1000")
+	assert.Contains(t, CustomSourcesYAML, "ID < 1000",
+		"CustomSourcesYAML should warn about reserved IDs")
 }

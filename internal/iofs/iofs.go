@@ -13,6 +13,9 @@ var ConfigYAML string
 //go:embed sources.yaml
 var SourcesYAML string
 
+//go:embed custom_sources.yaml
+var CustomSourcesYAML string
+
 func EnsureDirs(homeDir string) error {
 	dirs := []string{
 		config.ConfigDir(homeDir),
@@ -56,17 +59,31 @@ func EnsureConfigFile(homeDir string) error {
 	return nil
 }
 
+// EnsureSourcesFile always overwrites sources.yaml with the embedded version.
+// Users should not edit this file; use custom_sources.yaml for custom sources.
+// This file is overwritten at every run to ensure users have the latest
+// modifications for 'official' GNverifier datasets.
 func EnsureSourcesFile(homeDir string) error {
 	sourcesPath := config.SourcesFilePath(homeDir)
 
-	// Check if sources file already exists
-	if _, err := os.Stat(sourcesPath); err == nil {
+	if err := os.WriteFile(sourcesPath, []byte(SourcesYAML), 0644); err != nil {
+		return CopyFileError(sourcesPath, err)
+	}
+
+	return nil
+}
+
+// EnsureCustomSourcesFile writes custom_sources.yaml only on first run.
+// This file is owned by the user and will never be overwritten.
+func EnsureCustomSourcesFile(homeDir string) error {
+	customPath := config.CustomSourcesFilePath(homeDir)
+
+	if _, err := os.Stat(customPath); err == nil {
 		return nil
 	}
 
-	// Write embedded sources.yaml to the config directory
-	if err := os.WriteFile(sourcesPath, []byte(SourcesYAML), 0644); err != nil {
-		return CopyFileError(sourcesPath, err)
+	if err := os.WriteFile(customPath, []byte(CustomSourcesYAML), 0644); err != nil {
+		return CopyFileError(customPath, err)
 	}
 
 	return nil

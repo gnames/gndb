@@ -43,7 +43,6 @@ type ValidationWarning struct {
 // NOT in SFGA (can be provided here):
 //   - title_short (optional, falls back to col__alias or truncated col__title)
 //   - data_url (optional download link)
-//   - data_source_type (optional, can be inferred from data structure)
 //   - is_curated, is_auto_curated, has_classification (optional quality flags)
 //   - outlink configuration (optional)
 type DataSourceConfig struct {
@@ -68,10 +67,6 @@ type DataSourceConfig struct {
 	// URLs (override SFGA if needed)
 	HomeURL string `yaml:"home_url,omitempty"` // Override SFGA col__url
 	DataURL string `yaml:"data_url,omitempty"` // Download URL (not in SFGA)
-
-	// Type classification (can be inferred)
-	// Inferred: no classification & no accepted_record → nomenclatural
-	DataSourceType string `yaml:"data_source_type,omitempty"` // "taxonomic" or "nomenclatural"
 
 	// Curation level (quality indicators)
 	IsCurated         bool `yaml:"is_curated,omitempty"`         // Manually curated by experts

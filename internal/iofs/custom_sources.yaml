@@ -1,0 +1,64 @@
+# custom_sources.yaml - User-defined Data Source Configuration
+#
+# Add your own SFGA data sources here (ID >= 1000).
+# This file is yours — gndb will never overwrite it.
+#
+# WARNING: Entries with ID < 1000 are reserved for official sources
+# and will be silently ignored. Use ID >= 1000 for all custom sources.
+#
+# For other examples see sources.yaml in the same directory.
+#
+# Examples:
+#
+# A remote taxonomic database:
+# - id: 1000
+#   parent: "https://example.org/sfga/"
+#   title: "My Custom Taxonomy"
+#   title_short: "MyTax"
+#   description: "Custom taxonomy for internal use"
+#   home_url: "https://example.org"
+#   is_curated: true
+#   has_classification: true
+#   is_outlink_ready: true
+#   outlink_url: "https://example.org/taxon/{}"
+#   outlink_id_column: "taxon.col__id"
+#
+# A local database:
+# - id: 1002
+#   parent: "~/data/sfga/"
+#   title_short: "MyNomDB"
+#   is_curated: true
+#   is_outlink_ready: true
+#   outlink_url: "https://example.org/name/{}"
+#   outlink_id_column: "taxon.col__name_id"
+#
+# A source that prefers flat classification:
+# - id: 1003
+#   parent: "~/data/sfga/"
+#   title_short: "MyFlatDB"
+#   has_classification: true
+#   prefer_flat_classification: true
+
+# Outlink Configuration allows to set a likt to original dataset record:
+#   outlink_url: URL template with {} placeholder for the ID
+#   outlink_id_column: SFGA table.column (format: "table.column")
+#
+#   Allowed Columns:
+#     Direct columns (used as-is):
+#       - "taxon.col__id"         : Taxon identifier
+#       - "taxon.col__name_id"    : Name identifier in taxon context
+#       - "taxon.col__local_id"   : Local/source-specific identifier
+#       - "name.col__id"          : Name record identifier
+#       - "name.col__local_id"    : Local name identifier
+#       - "name.col__link"        : Direct URL stored in name record (e.g. LPSN)
+#       - "synonym.col__id"       : Synonym identifier
+#
+#     Alternative ID columns (auto-extracts "gnoutlink:" namespace):
+#       - "taxon.col__alternative_id"  : Extracts gnoutlink:value from comma-separated list
+#                                        (synonyms get accepted taxon's value - points to accepted page)
+#       - "name.col__alternative_id"   : Extracts gnoutlink:value from comma-separated list
+#                                        (synonyms get their own name's value - preserved resolution)
+#
+#       Example: "wikidata:Q123,gnoutlink:Homo_sapiens" → extracts "Homo_sapiens"
+#
+# data_sources:

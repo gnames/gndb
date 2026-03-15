@@ -208,7 +208,7 @@ func (p *populator) processSource(
 		p.cfg.Update([]config.Option{
 			config.OptPopulateWithFlatClassification(&flat),
 		})
-		gn.Message("<em>Flat classification enabled.</em>")
+		gn.Message("<em>Flat classification enabled</em>")
 		defer func() {
 			p.cfg.Update([]config.Option{
 				config.OptPopulateWithFlatClassification(globalFlat),

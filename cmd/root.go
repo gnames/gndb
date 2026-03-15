@@ -141,6 +141,12 @@ func bootstrap(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if err = iofs.EnsureCustomSourcesFile(homeDir); err != nil {
+		slog.Error("Failed to ensure custom sources file", "error", err)
+		gn.PrintErrorMessage(err)
+		return err
+	}
+
 	gn.Info(
 		"Configuration files are available at <em>%s</em>\n",
 		config.ConfigDir(homeDir),
