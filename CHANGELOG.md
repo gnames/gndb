@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Add: prefer_flat_classification settiing in sources.yaml.
+- Add [#11]: automatic update of 'official' datasets configuration by
+  always copying sources.yaml file to configuration directory.
+- Add [#9]: prefer_flat_classification settiing in sources.yaml.
 - Add: allow name.col__link to cary outlink information.
 - Add: Zenodo button in README.md, CITATION.cff.
 
