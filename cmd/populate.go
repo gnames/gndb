@@ -28,11 +28,12 @@ import (
 	"log/slog"
 
 	"github.com/gnames/gn"
+	"github.com/spf13/cobra"
+
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/errcode"
-	"github.com/spf13/cobra"
 )
 
 // getPopulateCmd returns the populate command.
@@ -170,12 +171,17 @@ func runPopulate(
 		)
 	}
 
+	// if changed, it means it is true, because default is false
 	if cmd.Flags().Changed("flat-classification") {
 		populateOpts = append(
 			populateOpts,
 			config.OptPopulateWithFlatClassification(
 				&flatClassification,
 			),
+		)
+		gn.Info(
+			"Flat classification enabled globally via" +
+				" <em>--flat-classification</em>.",
 		)
 	}
 

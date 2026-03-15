@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/internal/ioschema"
 	"github.com/gnames/gndb/pkg/config"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestGetPopulateCmd_Exists verifies getPopulateCmd returns

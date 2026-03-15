@@ -200,6 +200,22 @@ func (p *populator) processSource(
 	var t time.Time
 	var msg string
 
+	// Temporarily enable flat classification for this source if preferred.
+	// Restores the global setting when this function returns.
+	globalFlat := p.cfg.Populate.WithFlatClassification
+	if source.PreferFlatClassification {
+		flat := true
+		p.cfg.Update([]config.Option{
+			config.OptPopulateWithFlatClassification(&flat),
+		})
+		gn.Message("<em>Flat classification enabled.</em>")
+		defer func() {
+			p.cfg.Update([]config.Option{
+				config.OptPopulateWithFlatClassification(globalFlat),
+			})
+		}()
+	}
+
 	// Stage 1: Resolve and fetch SFGA file
 	t = time.Now()
 	sfgaPath, metadata, warning, err := resolveSFGAPath(source)

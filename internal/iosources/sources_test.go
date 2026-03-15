@@ -45,6 +45,39 @@ data_sources:
 	assert.Equal(t, 1001, ds.ID)
 }
 
+func TestLoadSourcesConfig_PreferFlatClassification(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that uses file system in short mode")
+	}
+
+	tmpDir, err := os.MkdirTemp("", "sources-test-*")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	parentDir := filepath.Join(tmpDir, "sfga")
+	err = os.MkdirAll(parentDir, 0755)
+	require.NoError(t, err)
+
+	yamlContent := `
+data_sources:
+  - id: 1001
+    parent: ` + parentDir + `
+    prefer_flat_classification: true
+`
+	configPath := filepath.Join(tmpDir, "sources.yaml")
+	err = os.WriteFile(configPath, []byte(yamlContent), 0644)
+	require.NoError(t, err)
+
+	config, err := loadSourcesConfig(configPath)
+	require.NoError(t, err)
+	require.Len(t, config.DataSources, 1)
+	assert.True(
+		t,
+		config.DataSources[0].PreferFlatClassification,
+		"prefer_flat_classification should be parsed from YAML",
+	)
+}
+
 func TestLoadSourcesConfig_FileNotFound(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test that uses file system in short mode")

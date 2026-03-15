@@ -82,6 +82,10 @@ type DataSourceConfig struct {
 	IsOutlinkReady  bool   `yaml:"is_outlink_ready,omitempty"`  // Can generate outlinks
 	OutlinkURL      string `yaml:"outlink_url,omitempty"`       // URL template with {} placeholder
 	OutlinkIDColumn string `yaml:"outlink_id_column,omitempty"` // table.column format (e.g., "taxon.col__id", "name.col__alternative_id")
+
+	// PreferFlatClassification indicates that this source should use
+	// flat classification (no hierarchy) when imported.
+	PreferFlatClassification bool `yaml:"prefer_flat_classification"`
 }
 
 // FileMetadata contains metadata extracted from SFGA filename.
