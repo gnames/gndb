@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add: prefer_flat_hierarchy settiing in sources.yaml.
+- Add: prefer_flat_classification settiing in sources.yaml.
 - Add: allow name.col__link to cary outlink information.
 - Add: Zenodo button in README.md, CITATION.cff.
 
