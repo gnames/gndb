@@ -188,9 +188,12 @@ internal/ioexport/
 ├── taxa.go                       - Batch read accepted name_string_indices → coldp.Taxon
 ├── synonyms.go                   - Batch read synonym rows → coldp.Synonym
 ├── vernaculars.go                - Batch read vernacular_string_indices → coldp.Vernacular
+├── rankguess.go                  - Rank inference: suffix rules + dictionary lookup
+├── data/rankdict.yaml            - Comprehensive ~1500 entry rank dictionary (go:embed)
 └── errors.go                     - Typed errors
 
 cmd/export.go                     - Cobra command
+cmd/gen_rankdict.go               - Hidden maintenance command (gndb gen-rankdict)
 ```
 
 ## Files to Modify
@@ -590,21 +593,24 @@ across the entire source.
 
 ### Case 3: ranks empty (with or without IDs)
 
-**Drop classification entirely.** Without ranks we cannot map names to
-the correct flat fields, and IDs alone — detached from rank context —
-cannot be used reliably as `ParentID`. Leave all flat fields and
-`ParentID` empty rather than emit incorrect data.
+`classification_ranks` is empty but `classification` names are present.
+Rather than dropping the entire breadcrumb, attempt rank inference using
+two complementary strategies:
 
-Decision rule in code:
+- **Strategy A — Suffix rules** (family and below): ICN/ICZN mandate
+  specific suffixes for formal ranks; `-inae` ambiguity is resolved via
+  `nsi.CodeID` or a breadcrumb-wide majority-code vote.
+- **Strategy B — Higher-taxon dictionary** (order and above): a YAML
+  file embedded at build time (`internal/ioexport/data/rankdict.yaml`)
+  maps ~1,500 Animalia and Plantae taxa to rank + nomenclatural code.
+  Generated from the gnames database via `gndb gen-rankdict`.
 
-```go
-if nsi.ClassificationRanks == "" {
-    // skip — no ranks means no usable classification
-    return
-}
-applyClassification(&t, nsi.Classification,
-    nsi.ClassificationRanks, nsi.ClassificationIDs)
-```
+If a name's rank cannot be inferred by either strategy, that node is
+silently skipped — a partial breadcrumb is better than none.
+
+See **`UNRANKED_BREADCRUMBS_PLAN.md`** for the full inference pipeline,
+suffix table, dictionary structure, SQL query, and `gen-rankdict` command
+design.
 
 ---
 
@@ -770,11 +776,13 @@ from `arch/interface.go`).
 5. `internal/ioexport/errors.go` — typed error constructors
 6. `internal/ioexport/sfga.go` — `initSfga`, filename builder, work-dir
 7. `internal/ioexport/metadata.go` — `DataSource → coldp.Meta` mapping
-8. `internal/ioexport/names.go` — names paginated reader + mapper
-9. `internal/ioexport/taxa.go` — taxa paginated reader + mapper
-10. `internal/ioexport/synonyms.go` — synonyms paginated reader + mapper
-11. `internal/ioexport/vernaculars.go` — vernaculars paginated reader +
+8. `internal/ioexport/rankguess.go` — `inferRank`, suffix rules, dictionary
+9. `internal/ioexport/names.go` — names paginated reader + mapper
+10. `internal/ioexport/taxa.go` — taxa paginated reader + mapper
+11. `internal/ioexport/synonyms.go` — synonyms paginated reader + mapper
+12. `internal/ioexport/vernaculars.go` — vernaculars paginated reader +
     mapper
-12. `internal/ioexport/exporter.go` — orchestrator
-13. `cmd/export.go` — Cobra command
-14. `cmd/root.go` — register `getExportCmd()`
+13. `internal/ioexport/exporter.go` — orchestrator
+14. `cmd/export.go` — Cobra command
+15. `cmd/gen_rankdict.go` — hidden `gen-rankdict` command
+16. `cmd/root.go` — register `getExportCmd()` and `getGenRankDictCmd()`
