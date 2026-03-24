@@ -51,6 +51,9 @@ type Config struct {
 	// Populate contains settings specific to the populate command.
 	Populate PopulateConfig `mapstructure:"populate" yaml:"populate"`
 
+	// Export contains settings specific to the export command.
+	Export ExportConfig `mapstructure:"export" yaml:"export"`
+
 	Log LogConfig `mapstructure:"log" yaml:"log"`
 
 	// JobsNumber is the number of concurrent workers for parallel operations.
@@ -114,6 +117,26 @@ type PopulateConfig struct {
 	// will stay empty even if parent/child hierarchy exists.
 	// Default: false (hierarchical parent/child classification is preferred)
 	WithFlatClassification *bool `mapstructure:"with_flat_classification" yaml:"with_flat_classification"`
+}
+
+// ExportConfig contains settings specific to the export command.
+// All fields are runtime-only (CLI flags only, not persisted in config.yaml).
+type ExportConfig struct {
+	// SourceIDs is the list of data source IDs to export.
+	// Empty slice means export all sources from the data_sources table.
+	SourceIDs []int
+
+	// OutputDir is the directory where exported files are written.
+	// Defaults to the current working directory.
+	OutputDir string
+
+	// ParentDir is written to the `parent` field in companion YAML files.
+	// Defaults to OutputDir. Set to the URL or path from which exported
+	// files will actually be served, e.g. "http://myserver.org/sfga/".
+	ParentDir string
+
+	// WithZip produces .zip compressed variants alongside .sqlite/.sql.
+	WithZip bool
 }
 
 // LogConfig provides typical settings for application logs.

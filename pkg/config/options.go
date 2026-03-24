@@ -126,6 +126,49 @@ func OptPopulateWithFlatClassification(b *bool) Option {
 	}
 }
 
+// OptExportSourceIDs sets the list of data source IDs to export.
+// Empty slice means export all sources from the data_sources table.
+// Runtime-only field - not in ToOptions().
+func OptExportSourceIDs(ii []int) Option {
+	return func(c *Config) {
+		if len(ii) > 0 {
+			c.Export.SourceIDs = ii
+		}
+	}
+}
+
+// OptExportOutputDir sets the directory where exported files are written.
+// Runtime-only field - not in ToOptions().
+func OptExportOutputDir(s string) Option {
+	s = strings.TrimSpace(s)
+	return func(c *Config) {
+		if isValidString("Export Output Directory", s) {
+			c.Export.OutputDir = s
+		}
+	}
+}
+
+// OptExportParentDir sets the value written to the `parent` field in
+// companion YAML files. Defaults to OutputDir if not set.
+// Runtime-only field - not in ToOptions().
+func OptExportParentDir(s string) Option {
+	s = strings.TrimSpace(s)
+	return func(c *Config) {
+		if isValidString("Export Parent Directory", s) {
+			c.Export.ParentDir = s
+		}
+	}
+}
+
+// OptExportWithZip sets whether to produce .zip compressed variants
+// alongside .sqlite/.sql output files.
+// Runtime-only field - not in ToOptions().
+func OptExportWithZip(b bool) Option {
+	return func(c *Config) {
+		c.Export.WithZip = b
+	}
+}
+
 // OptLogLevel sets the logging level.
 // Valid values: "debug", "info", "warn", "error".
 func OptLogLevel(s string) Option {

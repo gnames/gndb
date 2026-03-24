@@ -50,6 +50,13 @@ const (
 	PopulateCacheError
 	PopulateAllSourcesFailedError
 
+	// Export errors
+	ExportNoSourcesError
+	ExportOutputDirError
+	ExportSFGACreateError
+	ExportSFGAWriteError
+	ExportAllSourcesFailedError
+
 	// Optimizer errors
 	OptimizerReparseError
 	OptimizerTempTableError

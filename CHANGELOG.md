@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add [#10]: export subcommand to convert dataset from gnames database to
+  SFGA format. So far it does work, however some of the datasets have duplicated
+  record_id values and this problem will need to be resolved. Also we do
+  not have a composite primary key for name_string_indices table, this needs
+  to be fixed as well.
+
 ## [v0.1.2] - 2026-03-26 Thu
 
 - Add: Calculate IsOutlinkReady accoring to validation of outlink data.
