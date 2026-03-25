@@ -95,6 +95,36 @@ func SFGAWriteError(sourceID int, stage string, err error) error {
 	}
 }
 
+// WorkDirError creates an error for when the temporary work directory
+// for a source cannot be created or cleared.
+func WorkDirError(sourceID int, err error) error {
+	msg := `Cannot prepare work directory for data source <em>%d</em>`
+
+	vars := []any{sourceID}
+
+	return &gn.Error{
+		Code: errcode.CreateDirError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("work directory error for source %d: %w", sourceID, err),
+	}
+}
+
+// CompanionYAMLError creates an error for when the companion .yaml file
+// cannot be written alongside the exported SFGA archive.
+func CompanionYAMLError(path string, err error) error {
+	msg := `Cannot write companion YAML file <em>%s</em>`
+
+	vars := []any{path}
+
+	return &gn.Error{
+		Code: errcode.CopyFileError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("cannot write companion YAML %s: %w", path, err),
+	}
+}
+
 // AllSourcesFailedError creates an error for when all
 // sources fail to export.
 func AllSourcesFailedError(count int) error {
