@@ -276,4 +276,6 @@ data_sources:
     title_short: "WSC"
     is_curated: true
     has_classification: true
+    outlink_url:     "{}"
+    outlink_id_column: "taxon.col__link
 
