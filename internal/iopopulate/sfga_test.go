@@ -270,7 +270,7 @@ func TestParseSFGAFilename(t *testing.T) {
 		{
 			name:         "full metadata with version",
 			filename:     "1000_ruhoff_2023-08-22_v1.0.0.sqlite.zip",
-			wantVersion:  "1.0.0",
+			wantVersion:  "v1.0.0",
 			wantRevDate:  "2023-08-22",
 		},
 		{
@@ -288,7 +288,7 @@ func TestParseSFGAFilename(t *testing.T) {
 		{
 			name:         "version with two parts",
 			filename:     "0001_test_2024-01-01_v2.3.sqlite",
-			wantVersion:  "2.3",
+			wantVersion:  "v2.3",
 			wantRevDate:  "2024-01-01",
 		},
 		{

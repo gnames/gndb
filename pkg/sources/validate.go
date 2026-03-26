@@ -39,23 +39,25 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 		return nil, fmt.Errorf("parent directory or URL is required")
 	}
 
-	// Validate outlink configuration (generate warnings, not errors)
-	if d.IsOutlinkReady {
+	// is_outlink_ready is computed purely from outlink_url and outlink_id_column
+	// validity — any value set in the YAML is ignored.
+	d.IsOutlinkReady = false
+	if d.OutlinkURL != "" || d.OutlinkIDColumn != "" {
 		outlinkValid := true
 		var outlinkIssue string
 		var outlinkSuggestion string
 
 		if d.OutlinkURL == "" {
 			outlinkValid = false
-			outlinkIssue = "outlink_url is required when is_outlink_ready is true"
-			outlinkSuggestion = "Set 'outlink_url' with a URL template containing {} placeholder, or set 'is_outlink_ready: false'"
+			outlinkIssue = "outlink_url is required for outlink configuration"
+			outlinkSuggestion = "Set 'outlink_url' with a URL template containing {} placeholder"
 		} else if !strings.Contains(d.OutlinkURL, "{}") {
 			outlinkValid = false
 			outlinkIssue = "outlink_url must contain {} placeholder for ID substitution"
 			outlinkSuggestion = fmt.Sprintf("Update 'outlink_url: %s' to include {} where the ID should be inserted", d.OutlinkURL)
 		} else if d.OutlinkIDColumn == "" {
 			outlinkValid = false
-			outlinkIssue = "outlink_id_column is required when is_outlink_ready is true"
+			outlinkIssue = "outlink_id_column is required for outlink configuration"
 			outlinkSuggestion = "Set 'outlink_id_column' to a valid table.column (e.g., 'taxon.col__id', 'name.col__alternative_id')"
 		} else {
 			// Validate outlink_id_column format: "table.column"
@@ -117,8 +119,10 @@ func (d *DataSourceConfig) Validate(index int) ([]ValidationWarning, error) {
 			}
 		}
 
-		// If outlink configuration is invalid, disable it and generate warning
-		if !outlinkValid {
+		// Auto-set or clear is_outlink_ready based on validation result
+		if outlinkValid {
+			d.IsOutlinkReady = true
+		} else {
 			d.IsOutlinkReady = false
 			warnings = append(warnings, ValidationWarning{
 				DataSourceID: d.ID,

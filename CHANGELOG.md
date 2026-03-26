@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## [v0.1.2] - 2026-03-26 Thu
+
+- Add: Calculate IsOutlinkReady accoring to validation of outlink data.
 - Add: World Spider Catalogue with ID 215
 - Add [#11]: automatic update of 'official' datasets configuration by
   always copying sources.yaml file to configuration directory.

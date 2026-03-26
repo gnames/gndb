@@ -263,6 +263,135 @@ func TestParseFilename(t *testing.T) {
 	}
 }
 
+func TestValidateOutlink(t *testing.T) {
+	tests := []struct {
+		name            string
+		source          DataSourceConfig
+		wantOutlinkReady bool
+		wantWarning     bool
+	}{
+		{
+			name: "auto-enables when url and column are valid",
+			source: DataSourceConfig{
+				ID:              1,
+				Parent:          "https://example.com/sfga/",
+				OutlinkURL:      "https://example.com/taxon/{}",
+				OutlinkIDColumn: "taxon.col__id",
+			},
+			wantOutlinkReady: true,
+			wantWarning:     false,
+		},
+		{
+			name: "auto-enables with name.col__link",
+			source: DataSourceConfig{
+				ID:              1,
+				Parent:          "https://example.com/sfga/",
+				OutlinkURL:      "{}",
+				OutlinkIDColumn: "name.col__link",
+			},
+			wantOutlinkReady: true,
+			wantWarning:     false,
+		},
+		{
+			name: "is_outlink_ready in yaml is ignored when url and column are valid",
+			source: DataSourceConfig{
+				ID:              1,
+				Parent:          "https://example.com/sfga/",
+				IsOutlinkReady:  true, // ignored — computed from url+column
+				OutlinkURL:      "https://example.com/name/{}",
+				OutlinkIDColumn: "name.col__id",
+			},
+			wantOutlinkReady: true,
+			wantWarning:     false,
+		},
+		{
+			name: "is_outlink_ready in yaml is ignored when no url or column",
+			source: DataSourceConfig{
+				ID:             1,
+				Parent:         "https://example.com/sfga/",
+				IsOutlinkReady: true, // ignored — no url/column means false
+			},
+			wantOutlinkReady: false,
+			wantWarning:     false,
+		},
+		{
+			name: "missing outlink_url warns and disables",
+			source: DataSourceConfig{
+				ID:              1,
+				Parent:          "https://example.com/sfga/",
+				OutlinkIDColumn: "taxon.col__id",
+			},
+			wantOutlinkReady: false,
+			wantWarning:     true,
+		},
+		{
+			name: "outlink_url missing {} warns and disables",
+			source: DataSourceConfig{
+				ID:              1,
+				Parent:          "https://example.com/sfga/",
+				OutlinkURL:      "https://example.com/taxon/123",
+				OutlinkIDColumn: "taxon.col__id",
+			},
+			wantOutlinkReady: false,
+			wantWarning:     true,
+		},
+		{
+			name: "missing outlink_id_column warns and disables",
+			source: DataSourceConfig{
+				ID:         1,
+				Parent:     "https://example.com/sfga/",
+				OutlinkURL: "https://example.com/taxon/{}",
+			},
+			wantOutlinkReady: false,
+			wantWarning:     true,
+		},
+		{
+			name: "invalid outlink_id_column format warns and disables",
+			source: DataSourceConfig{
+				ID:              1,
+				Parent:          "https://example.com/sfga/",
+				OutlinkURL:      "https://example.com/taxon/{}",
+				OutlinkIDColumn: "nodotshere",
+			},
+			wantOutlinkReady: false,
+			wantWarning:     true,
+		},
+		{
+			name: "invalid table in outlink_id_column warns and disables",
+			source: DataSourceConfig{
+				ID:              1,
+				Parent:          "https://example.com/sfga/",
+				OutlinkURL:      "https://example.com/taxon/{}",
+				OutlinkIDColumn: "bogus.col__id",
+			},
+			wantOutlinkReady: false,
+			wantWarning:     true,
+		},
+		{
+			name: "no outlink config leaves is_outlink_ready false",
+			source: DataSourceConfig{
+				ID:     1,
+				Parent: "https://example.com/sfga/",
+			},
+			wantOutlinkReady: false,
+			wantWarning:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings, err := tt.source.Validate(1)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantOutlinkReady, tt.source.IsOutlinkReady)
+			if tt.wantWarning {
+				assert.NotEmpty(t, warnings)
+			} else {
+				assert.Empty(t, warnings)
+			}
+		})
+	}
+}
+
 func TestExtractOutlinkID(t *testing.T) {
 	tests := []struct {
 		name     string

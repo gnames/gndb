@@ -19,7 +19,6 @@
 #   home_url: "https://example.org"
 #   is_curated: true
 #   has_classification: true
-#   is_outlink_ready: true
 #   outlink_url: "https://example.org/taxon/{}"
 #   outlink_id_column: "taxon.col__id"
 #
@@ -28,7 +27,6 @@
 #   parent: "~/data/sfga/"
 #   title_short: "MyNomDB"
 #   is_curated: true
-#   is_outlink_ready: true
 #   outlink_url: "https://example.org/name/{}"
 #   outlink_id_column: "taxon.col__name_id"
 #

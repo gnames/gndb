@@ -66,7 +66,6 @@ home_url: "https://www.catalogueoflife.org/"
 data_url: "https://www.catalogueoflife.org/data/download"
 is_curated: true
 has_classification: true
-is_outlink_ready: true
 outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
 outlink_id_column: "name.col__alternative_id"  # outlink IDs saved as gnoutlink: in AlternativeID
 ```
@@ -96,8 +95,6 @@ Others are gndb-operational and belong only in the YAML.
 | `IsCurated` | `is_curated` | omit if false |
 | `IsAutoCurated` | `is_auto_curated` | omit if false |
 | `HasTaxonData` | `has_classification` | best proxy available |
-| `IsOutlinkReady` | `is_outlink_ready` | omit if false |
-| `OutlinkURL` | `outlink_url` | omit if empty |
 | auto (see outlink section) | `outlink_id_column` | omit if no outlink |
 
 ### Outlink ID preservation
@@ -365,7 +362,7 @@ repo. Requires internet access. Wrap with clear error if fetch fails.
 ```sql
 SELECT id, title, title_short, version, revision_date, doi, citation,
        authors, description, website_url, data_url, outlink_url,
-       is_outlink_ready, is_curated, is_auto_curated, has_taxon_data,
+       is_curated, is_auto_curated, has_taxon_data,
        record_count, vern_record_count
 FROM data_sources
 ORDER BY id

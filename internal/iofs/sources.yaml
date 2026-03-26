@@ -16,7 +16,6 @@ data_sources:
     data_url: "https://www.catalogueoflife.org/data/download"
     is_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
@@ -27,7 +26,6 @@ data_sources:
     home_url: "https://species.wikimedia.org/wiki/Main_Page"
     data_url: "http://dumps.wikimedia.org/specieswiki/latest/specieswiki-latest-pages-articles.xml.bz2"
     is_curated: true
-    is_outlink_ready: true
     outlink_url: "http://species.wikimedia.org/wiki/{}"
     outlink_id_column: "name.col__alternative_id" # Custom: canonical_full with spaces→underscores (prepared in SFGA)
 
@@ -40,7 +38,6 @@ data_sources:
     data_url: "https://www.itis.gov/downloads/itisMySQLTables.tar.gz"
     is_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value={}#null"
     outlink_id_column: "taxon.col__id" # Taxonomic database: TSN (taxon serial number)
 
@@ -51,7 +48,6 @@ data_sources:
     title_short: "NCBI"
     home_url: "https://www.ncbi.nlm.nih.gov/"
     data_url: "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"
-    is_outlink_ready: true
     outlink_url: "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name={}&lvl=0&srchmode=1&keep=1&unlock"
     outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical (prepared in SFGA)
 
@@ -63,7 +59,6 @@ data_sources:
     home_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/abouttaxonomy"
     is_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/taxonomydetail?id={}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
@@ -74,7 +69,6 @@ data_sources:
     home_url: "https://marinespecies.org"
     is_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://www.marinespecies.org/aphia.php?p=taxdetails&id={}"
     outlink_id_column: "taxon.col__alternative_id" # Custom: last part of col__id after ':' split (prepared in SFGA)
 
@@ -85,7 +79,6 @@ data_sources:
     home_url: "https://eol.org"
     data_url: "https://eol.org/data/provider_ids.csv.gz"
     is_auto_curated: true
-    is_outlink_ready: true
     outlink_url: "https://eol.org/pages/{}"
     outlink_id_column: "taxon.col__name_id" # Uses name ID (available for all record types including bare names)
 
@@ -99,7 +92,6 @@ data_sources:
     is_curated: false
     is_auto_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
@@ -116,7 +108,6 @@ data_sources:
     title_short: "IPNI"
     home_url: "https://www.ipni.org/"
     is_curated: true
-    is_outlink_ready: true
     outlink_url: "https://www.ipni.org/n/{}"
     outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
 
@@ -127,7 +118,6 @@ data_sources:
     home_url: "https://arctosdb.org/"
     is_auto_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://arctos.database.museum/name/{}"
     outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical_full (prepared in SFGA)
 
@@ -148,7 +138,6 @@ data_sources:
     data_url: "https://www.inaturalist.org/taxa/inaturalist-taxonomy.dwca.zip"
     is_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://www.inaturalist.org/taxa/{}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
@@ -168,7 +157,6 @@ data_sources:
     description: "An Online Flora of All Known Plants"
     is_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "https://list.worldfloraonline.org/{}"
     outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
 
@@ -196,7 +184,6 @@ data_sources:
     title_short: "MycoBank"
     home_url: "https://www.mycobank.org"
     is_curated: true
-    is_outlink_ready: true
     outlink_url: "https://www.mycobank.org/page/Name details page/{}"
     outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
 
@@ -215,7 +202,6 @@ data_sources:
     data_url: "https://lpsn.dsmz.de/downloads"
     is_curated: true
     has_classification: true
-    is_outlink_ready: true
     outlink_url: "{}"
     outlink_id_column: "name.col__link" # Uses local_id which is the full URL
 
@@ -226,7 +212,6 @@ data_sources:
     home_url:        https://www.nzor.org.nz/
     data_url:        https://www.nzor.org.nz/downloads
     is_curated: true
-    is_outlink_ready: true
     outlink_url:     "https://www.nzor.org.nz/names/{}"
     outlink_id_column: "taxon.col__id"
 
@@ -277,5 +262,5 @@ data_sources:
     is_curated: true
     has_classification: true
     outlink_url:     "{}"
-    outlink_id_column: "taxon.col__link
+    outlink_id_column: "name.col__link"
 

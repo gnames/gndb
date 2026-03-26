@@ -74,7 +74,7 @@ type DataSourceConfig struct {
 	HasClassification bool `yaml:"has_classification,omitempty"` // Has hierarchical taxonomy
 
 	// Outlink configuration (for generating links to original records)
-	IsOutlinkReady  bool   `yaml:"is_outlink_ready,omitempty"`  // Can generate outlinks
+	IsOutlinkReady  bool   `yaml:"-"`                           // Can generate outlinks
 	OutlinkURL      string `yaml:"outlink_url,omitempty"`       // URL template with {} placeholder
 	OutlinkIDColumn string `yaml:"outlink_id_column,omitempty"` // table.column format (e.g., "taxon.col__id", "name.col__alternative_id")
 

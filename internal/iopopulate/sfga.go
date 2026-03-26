@@ -282,11 +282,12 @@ type SFGAMetadata struct {
 
 // parseSFGAFilename extracts version and revision date from SFGA filename.
 // Expected patterns:
-//   - {ID}_{name}_{date}_v{version}.{ext}  (e.g., "1000_ruhoff_2023-08-22_v1.0.0.sqlite.zip")
-//   - {ID}-{name}-{date}.{ext}              (e.g., "0147-vascan-2025-08-25.sqlite.zip")
-//   - {ID}.{ext}                             (e.g., "1000.sql" - no metadata)
-//   - {ID}_{name}.{ext}                      (e.g., "1000_ruhoff.sqlite")
+//   - {ID}_{name}_{date}_{version}.{ext}  (e.g., "1000_ruhoff_2023-08-22_v1.0.0.sqlite.zip")
+//   - {ID}-{name}-{date}.{ext}            (e.g., "0147-vascan-2025-08-25.sqlite.zip")
+//   - {ID}.{ext}                           (e.g., "1000.sql" - no metadata)
+//   - {ID}_{name}.{ext}                    (e.g., "1000_ruhoff.sqlite")
 //
+// Version is everything after yyyy-mm-dd_ and before .sql/.sqlite extension.
 // Returns SFGAMetadata with filename, version (if found), and revision date (if found).
 // Empty strings are returned for missing fields - this is graceful and allows for minimal filenames.
 func parseSFGAFilename(filename string) SFGAMetadata {
@@ -294,19 +295,26 @@ func parseSFGAFilename(filename string) SFGAMetadata {
 		Filename: filename,
 	}
 
+	// Strip .zip extension if present
+	cleanFilename := strings.TrimSuffix(filename, ".zip")
+
 	// Extract date: YYYY-MM-DD format
 	// Only matches valid calendar dates (not IDs like 1000-2000-3000)
 	datePattern := regexp.MustCompile(`(\d{4}-\d{2}-\d{2})`)
-	if dateMatch := datePattern.FindStringSubmatch(filename); len(dateMatch) > 1 {
+	if dateMatch := datePattern.FindStringSubmatch(cleanFilename); len(dateMatch) > 1 {
 		metadata.RevisionDate = dateMatch[1]
 	}
 
-	// Extract version: v1.0.0 or v1.0 or 1.0.0 format
-	// Must be preceded by underscore, dash, or 'v' to avoid matching IDs
-	// Examples: _v1.0.0, -v2.3, _1.5.2, v3.0
-	versionPattern := regexp.MustCompile(`[_-]v?(\d+\.\d+(?:\.\d+)?)`)
-	if versionMatch := versionPattern.FindStringSubmatch(filename); len(versionMatch) > 1 {
-		metadata.Version = versionMatch[1]
+	// Extract version: everything after date + underscore and before .sql/.sqlite
+	if metadata.RevisionDate != "" {
+		dateIdx := strings.Index(cleanFilename, metadata.RevisionDate)
+		if dateIdx != -1 {
+			afterDate := cleanFilename[dateIdx+len(metadata.RevisionDate):]
+			versionPattern := regexp.MustCompile(`^_(.+)\.(?:sql|sqlite)$`)
+			if versionMatch := versionPattern.FindStringSubmatch(afterDate); len(versionMatch) > 1 {
+				metadata.Version = versionMatch[1]
+			}
+		}
 	}
 
 	return metadata
