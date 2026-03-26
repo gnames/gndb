@@ -56,11 +56,14 @@
 
 This document follows [changelog guidelines]
 
+[v0.1.2]: https://github.com/gnames/gndb/tree/v0.1.2
 [v0.1.1]: https://github.com/gnames/gndb/tree/v0.1.1
 [v0.1.0]: https://github.com/gnames/gndb/tree/v0.1.0
 [v0.0.3]: https://github.com/gnames/gndb/tree/v0.0.3
 [v0.0.2]: https://github.com/gnames/gndb/tree/v0.0.2
 [v0.0.1]: https://github.com/gnames/gndb/tree/v0.0.1
+[#11]: https://github.com/gnames/gndb/issues/11
+[#9]: https://github.com/gnames/gndb/issues/9
 [#8]: https://github.com/gnames/gndb/issues/8
 [#7]: https://github.com/gnames/gndb/issues/7
 [#6]: https://github.com/gnames/gndb/issues/6
