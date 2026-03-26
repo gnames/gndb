@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add: World Spider Catalogue with ID 215
 - Add [#11]: automatic update of 'official' datasets configuration by
   always copying sources.yaml file to configuration directory.
 - Add [#9]: prefer_flat_classification settiing in sources.yaml.

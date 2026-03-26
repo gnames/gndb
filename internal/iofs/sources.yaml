@@ -269,3 +269,11 @@ data_sources:
     is_curated: true
     has_classification: true
 
+  # World Spider Catalog
+  - id: 215
+    parent: http://opendata.globalnames.org/sfga/
+    title: "World Spider Catalogue"
+    title_short: "WSC"
+    is_curated: true
+    has_classification: true
+
