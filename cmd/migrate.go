@@ -22,11 +22,16 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"os"
+	"strings"
 
 	"github.com/gnames/gn"
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/ioschema"
+	"github.com/gnames/gndb/pkg/gndb"
 	"github.com/spf13/cobra"
 )
 
@@ -35,40 +40,44 @@ import (
 // command registration.
 func getMigrateCmd() *cobra.Command {
 	var recreateViews bool
+	var dryRun bool
 
 	migrateCmd := &cobra.Command{
 		Use:   "migrate",
 		Short: "Migrate database schema to latest version",
-		Long: `Migrate updates the database schema to the latest version.
+		Long: `Migrate updates the database schema to match the current model state.
 
-This command:
-  1. Connects to PostgreSQL using configuration settings
-  2. Checks if database schema exists
-  3. Drops materialized views (required for ALTER TABLE)
-  4. Runs GORM AutoMigrate to update schema
-  5. Optionally recreates materialized views
+This command uses Atlas declarative migrations:
+  1. Creates a temporary dev schema and applies the desired model state
+  2. Inspects both the dev schema (desired) and the live database (current)
+  3. Computes the diff and shows the planned SQL changes
+  4. Prompts for confirmation before applying (use --dry-run to skip)
+  5. Applies approved changes and optionally recreates materialized views
 
-GORM AutoMigrate:
-  - Adds new tables if they don't exist
-  - Adds new columns to existing tables
-  - Adds missing indexes
-  - Does NOT delete columns or tables (safe)
+Atlas computes the exact diff regardless of how many versions behind the
+database is — no migration files required.
 
-Use this command after updating gndb to get schema changes.
-After migration, run 'gndb populate' then 'gndb optimize' to
-rebuild views with fresh data.
+This command is safe: it only applies changes you explicitly approve.
+Does NOT delete tables or columns unless they appear in the diff and
+you confirm the plan.
+
+After migration, run 'gndb optimize' to recreate materialized views,
+or use --recreate-views to do it in the same step.
 
 Examples:
   gndb migrate
+  gndb migrate --dry-run
   gndb migrate --recreate-views
   gndb migrate -v`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMigrate(cmd, args, recreateViews)
+			return runMigrate(cmd, args, recreateViews, dryRun)
 		},
 	}
 
 	migrateCmd.Flags().BoolVarP(&recreateViews, "recreate-views", "v",
 		false, "recreate materialized views after migration")
+	migrateCmd.Flags().BoolVarP(&dryRun, "dry-run", "n",
+		false, "show planned changes without applying them")
 
 	return migrateCmd
 }
@@ -77,6 +86,7 @@ func runMigrate(
 	_ *cobra.Command,
 	_ []string,
 	recreateViews bool,
+	dryRun bool,
 ) error {
 	ctx := context.Background()
 
@@ -108,20 +118,47 @@ func runMigrate(
 	// Create schema manager and run migration
 	sm := ioschema.NewManager(op, cfg)
 
-	gn.Info("Migrating schema to latest version...")
-	if err := sm.Migrate(ctx, recreateViews); err != nil {
+	gn.Info("Computing schema diff...")
+
+	opts := gndb.MigrateOptions{
+		RecreateViews: recreateViews,
+		DryRun:        dryRun,
+		Confirm:       confirmMigrate(dryRun),
+	}
+
+	if err := sm.Migrate(ctx, opts); err != nil {
 		gn.PrintErrorMessage(err)
 		return err
 	}
 
-	// Report result
-	if recreateViews {
-		gn.Info("Schema migration complete. Materialized views recreated.")
-	} else {
-		gn.Info(`Schema migration complete.
-   Materialized views were dropped.
-   Run '<em>gndb optimize</em>' to recreate them after populating data.`)
-	}
-
 	return nil
+}
+
+// confirmMigrate returns a Confirm callback that displays planned SQL
+// and prompts the user for approval (or just prints for dry-run).
+func confirmMigrate(dryRun bool) func([]string) bool {
+	return func(stmts []string) bool {
+		gn.Info("Planned changes:")
+		fmt.Println()
+		for _, stmt := range stmts {
+			fmt.Println(stmt)
+		}
+
+		if dryRun {
+			gn.Info("Dry-run mode: no changes applied.")
+			return false
+		}
+
+		fmt.Print("\nApply changes? [y/N]: ")
+		scanner := bufio.NewScanner(os.Stdin)
+		if scanner.Scan() {
+			response := strings.TrimSpace(scanner.Text())
+			if strings.ToLower(response) == "y" {
+				return true
+			}
+		}
+
+		gn.Info("Migration cancelled. No changes applied.")
+		return false
+	}
 }

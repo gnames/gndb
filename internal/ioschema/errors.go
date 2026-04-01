@@ -89,6 +89,82 @@ func MigrateSchemaError(err error) error {
 	}
 }
 
+// AtlasDevSchemaError creates an error for dev schema operations.
+func AtlasDevSchemaError(err error) error {
+	msg := `Cannot create or use temporary dev schema for migration planning
+
+<em>Possible causes:</em>
+  - Insufficient database permissions to create schemas
+  - Schema name conflict
+
+<em>How to fix:</em>
+  1. Ensure database user has CREATE SCHEMA permissions
+  2. Retry the migration`
+
+	return &gn.Error{
+		Code: errcode.SchemaAtlasDevSchemaError,
+		Msg:  msg,
+		Vars: nil,
+		Err:  fmt.Errorf("atlas dev schema error: %w", err),
+	}
+}
+
+// AtlasDriverError creates an error for Atlas driver initialization.
+func AtlasDriverError(err error) error {
+	msg := `Cannot initialize Atlas database driver`
+
+	return &gn.Error{
+		Code: errcode.SchemaAtlasDriverError,
+		Msg:  msg,
+		Vars: nil,
+		Err:  fmt.Errorf("atlas driver error: %w", err),
+	}
+}
+
+// AtlasInspectError creates an error for schema inspection failures.
+func AtlasInspectError(schemaName string, err error) error {
+	msg := `Cannot inspect schema <em>%s</em>
+
+<em>Possible causes:</em>
+  - Schema does not exist
+  - Insufficient permissions
+
+<em>How to fix:</em>
+  1. Ensure the schema exists and is accessible
+  2. Check database user permissions`
+
+	return &gn.Error{
+		Code: errcode.SchemaAtlasInspectError,
+		Msg:  msg,
+		Vars: []any{schemaName},
+		Err:  fmt.Errorf("atlas inspect schema %s: %w", schemaName, err),
+	}
+}
+
+// AtlasDiffError creates an error for schema diff computation failures.
+func AtlasDiffError(err error) error {
+	msg := `Cannot compute schema diff`
+
+	return &gn.Error{
+		Code: errcode.SchemaAtlasDiffError,
+		Msg:  msg,
+		Vars: nil,
+		Err:  fmt.Errorf("atlas diff error: %w", err),
+	}
+}
+
+// AtlasPlanError creates an error for migration plan generation failures.
+func AtlasPlanError(err error) error {
+	msg := `Cannot generate migration plan from schema diff`
+
+	return &gn.Error{
+		Code: errcode.SchemaAtlasPlanError,
+		Msg:  msg,
+		Vars: nil,
+		Err:  fmt.Errorf("atlas plan error: %w", err),
+	}
+}
+
 // CollationError creates an error for collation
 // setting failures.
 func CollationError(table, column string, err error) error {

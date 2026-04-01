@@ -48,7 +48,7 @@ func getCreateCmd() *cobra.Command {
 This command:
   1. Connects to PostgreSQL using configuration settings
   2. Checks for existing tables and prompts for confirmation
-  3. Creates all base tables using GORM AutoMigrate
+  3. Creates all base tables from the GORM models
   4. Sets collation for scientific name sorting
 
 Note: Fuzzy matching is handled by gnmatcher (external).
@@ -136,7 +136,7 @@ func runCreate(
 	// Create schema manager
 	sm := ioschema.NewManager(op, cfg)
 
-	// Run GORM AutoMigrate to create schema
+	// Create schema from GORM models
 	if err := sm.Create(ctx); err != nil {
 		gn.PrintErrorMessage(err)
 		return err

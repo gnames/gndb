@@ -35,10 +35,10 @@ func TestGetMigrateCmd_LongDescription(t *testing.T) {
 
 	assert.NotEmpty(t, cmd.Long,
 		"Long description should not be empty")
-	assert.Contains(t, cmd.Long, "GORM AutoMigrate",
-		"Long description should mention GORM")
-	assert.Contains(t, cmd.Long, "Drops materialized views",
-		"Long description should mention view handling")
+	assert.Contains(t, cmd.Long, "Atlas",
+		"Long description should mention Atlas")
+	assert.Contains(t, cmd.Long, "diff",
+		"Long description should mention diff")
 	assert.Contains(t, cmd.Long, "gndb optimize",
 		"Long description should mention optimize step")
 }

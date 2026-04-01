@@ -33,7 +33,7 @@ func exportNames(
 
 	total := 0
 	for offset := 0; ; offset += batchSize {
-		batch, err := queryNamesBatch(ctx, pool, parsers, ds.ID, batchSize, offset)
+		batch, err := queryNamesBatch(ctx, pool, parsers, int(ds.ID), batchSize, offset)
 		if err != nil {
 			return total, fmt.Errorf("names batch at offset %d: %w", offset, err)
 		}

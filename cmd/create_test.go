@@ -37,8 +37,8 @@ func TestGetCreateCmd_LongDescription(t *testing.T) {
 		"Long description should not be empty")
 	assert.Contains(t, cmd.Long, "PostgreSQL",
 		"Long description should mention PostgreSQL")
-	assert.Contains(t, cmd.Long, "GORM AutoMigrate",
-		"Long description should mention GORM")
+	assert.Contains(t, cmd.Long, "GORM models",
+		"Long description should mention GORM models")
 	assert.Contains(t, cmd.Long, "collation",
 		"Long description should mention collation")
 }

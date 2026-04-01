@@ -140,7 +140,7 @@ func (e *exporter) exportSource(ctx context.Context, ds schema.DataSource) error
 	batchSize := e.cfg.Database.BatchSize
 
 	// Prepare temp work directory.
-	workDir, err := prepareWorkDir(e.cfg.HomeDir, ds.ID)
+	workDir, err := prepareWorkDir(e.cfg.HomeDir, int(ds.ID))
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (e *exporter) exportSource(ctx context.Context, ds schema.DataSource) error
 	// Initialise SFGA archive in work directory.
 	arc, err := initSfga(workDir)
 	if err != nil {
-		return SFGACreateError(ds.ID, err)
+		return SFGACreateError(int(ds.ID), err)
 	}
 	defer arc.Close()
 
@@ -162,7 +162,7 @@ func (e *exporter) exportSource(ctx context.Context, ds schema.DataSource) error
 	t := time.Now()
 	gn.Info("(1/5) writing metadata...")
 	if err := arc.InsertMeta(dataSourceToMeta(ds)); err != nil {
-		return SFGAWriteError(ds.ID, "metadata", err)
+		return SFGAWriteError(int(ds.ID), "metadata", err)
 	}
 	gn.Message("<em>Metadata written</em> %s",
 		gnfmt.TimeString(time.Since(t).Seconds()))
@@ -196,7 +196,7 @@ func (e *exporter) exportSource(ctx context.Context, ds schema.DataSource) error
 
 	gn.Info("Writing SFGA files to %s...", basePath)
 	if err := arc.Export(basePath, e.cfg.Export.WithZip); err != nil {
-		return SFGAWriteError(ds.ID, "export", err)
+		return SFGAWriteError(int(ds.ID), "export", err)
 	}
 
 	// Write companion .yaml
@@ -270,7 +270,7 @@ func (e *exporter) loadSources(ctx context.Context) ([]schema.DataSource, error)
 
 	var filtered []schema.DataSource
 	for _, ds := range all {
-		if wanted[ds.ID] {
+		if wanted[int(ds.ID)] {
 			filtered = append(filtered, ds)
 		}
 	}

@@ -35,6 +35,11 @@ const (
 	SchemaCreateError
 	SchemaMigrateError
 	SchemaCollationError
+	SchemaAtlasDevSchemaError
+	SchemaAtlasDriverError
+	SchemaAtlasInspectError
+	SchemaAtlasDiffError
+	SchemaAtlasPlanError
 
 	// Populate errors
 	PopulateSourcesConfigError

@@ -15,7 +15,7 @@ import (
 // Design rationale:
 // - Keeps interface minimal to avoid bloat with mixed semantics
 // - Pool() enables components to use performance-critical features (CopyFrom for bulk inserts)
-// - Schema creation and migration are handled by GORM AutoMigrate via SchemaManager
+// - Schema creation uses schema.Migrate; schema updates use Atlas via SchemaManager
 type Operator interface {
 	// Connect establishes a connection pool to the database.
 	Connect(context.Context, *config.DatabaseConfig) error

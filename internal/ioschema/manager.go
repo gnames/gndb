@@ -1,22 +1,28 @@
 // Package ioschema implements SchemaManager interface for
 // database schema management. This is an impure I/O package
-// that wraps GORM AutoMigrate functionality.
+// that uses schema.Migrate for initial creation and Atlas
+// declarative migrations for updates.
 package ioschema
 
 import (
 	"context"
+	"fmt"
+	"time"
 
+	atlasPG "ariga.io/atlas/sql/postgres"
+	"ariga.io/atlas/sql/migrate"
+	atlasschema "ariga.io/atlas/sql/schema"
+	"github.com/gnames/gn"
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
 	"github.com/gnames/gndb/pkg/gndb"
-	"github.com/gnames/gndb/pkg/schema"
+	gndbschema "github.com/gnames/gndb/pkg/schema"
 	"github.com/jackc/pgx/v5/stdlib"
-	"gorm.io/driver/postgres"
+	gormpg "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// manager implements the gndb.SchemaManager interface
-// using GORM AutoMigrate.
+// manager implements the gndb.SchemaManager interface.
 type manager struct {
 	operator db.Operator
 	cfg      *config.Config
@@ -34,7 +40,7 @@ func NewManager(
 }
 
 // Create creates the initial database schema using
-// GORM AutoMigrate. Also applies collation settings for
+// schema.Migrate. Also applies collation settings for
 // correct scientific name sorting.
 func (m *manager) Create(ctx context.Context) error {
 	pool := m.operator.Pool()
@@ -46,15 +52,15 @@ func (m *manager) Create(ctx context.Context) error {
 
 	// Connect with GORM
 	gormDB, err := gorm.Open(
-		postgres.New(postgres.Config{Conn: db}),
+		gormpg.New(gormpg.Config{Conn: db}),
 		&gorm.Config{},
 	)
 	if err != nil {
 		return GORMConnectionError(err)
 	}
 
-	// Run GORM AutoMigrate to create schema
-	if err := schema.Migrate(gormDB); err != nil {
+	// Create schema from GORM models
+	if err := gndbschema.Migrate(gormDB); err != nil {
 		return CreateSchemaError(err)
 	}
 
@@ -67,13 +73,17 @@ func (m *manager) Create(ctx context.Context) error {
 	return nil
 }
 
-// Migrate updates the database schema to the latest version.
-// Drops materialized views before migration (required for
-// ALTER TABLE), runs GORM AutoMigrate with collation settings,
-// and optionally recreates views.
+// Migrate updates the database schema to match the current model state
+// using Atlas declarative migrations. It:
+//  1. Creates a temporary dev schema and applies the GORM models there
+//     to represent the desired schema state.
+//  2. Inspects both the dev schema (desired) and the public schema (current).
+//  3. Computes the diff and generates SQL statements.
+//  4. Calls opts.Confirm with the SQL — proceeds only if it returns true.
+//  5. Applies the changes and optionally recreates materialized views.
 func (m *manager) Migrate(
 	ctx context.Context,
-	recreateViews bool,
+	opts gndb.MigrateOptions,
 ) error {
 	pool := m.operator.Pool()
 	if pool == nil {
@@ -86,42 +96,153 @@ func (m *manager) Migrate(
 		return err
 	}
 
-	db := stdlib.OpenDBFromPool(pool)
-
-	// Connect with GORM
-	gormDB, err := gorm.Open(
-		postgres.New(postgres.Config{Conn: db}),
-		&gorm.Config{},
-	)
+	// Open the Atlas Postgres driver on the shared connection pool.
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	drv, err := atlasPG.Open(sqlDB)
 	if err != nil {
-		return GORMConnectionError(err)
+		return AtlasDriverError(err)
 	}
 
-	// Run GORM AutoMigrate
-	if err := schema.Migrate(gormDB); err != nil {
+	// Inspect desired state by applying the GORM models to a
+	// temporary dev schema, then reading it back via Atlas.
+	desired, err := m.inspectDesiredSchema(ctx, drv)
+	if err != nil {
+		return err
+	}
+
+	// Inspect current state from the public schema.
+	current, err := drv.InspectSchema(ctx, "public", nil)
+	if err != nil {
+		return AtlasInspectError("public", err)
+	}
+
+	// Compute the diff.
+	changes, err := drv.SchemaDiff(current, desired)
+	if err != nil {
+		return AtlasDiffError(err)
+	}
+
+	if len(changes) == 0 {
+		gn.Info("Schema is already up to date.")
+		if opts.RecreateViews {
+			return m.operator.CreateMaterializedViews(ctx)
+		}
+		return nil
+	}
+
+	// Translate changes to SQL statements for review.
+	inPlace := migrate.PlanOption(func(o *migrate.PlanOptions) {
+		o.Mode = migrate.PlanModeInPlace
+	})
+	plan, err := drv.PlanChanges(ctx, "", changes, inPlace)
+	if err != nil {
+		return AtlasPlanError(err)
+	}
+
+	stmts := make([]string, len(plan.Changes))
+	for i, c := range plan.Changes {
+		stmts[i] = c.Cmd
+	}
+
+	// Show the plan to the user and ask for confirmation.
+	if !opts.Confirm(stmts) {
+		return nil
+	}
+
+	// Apply changes.
+	if err := drv.ApplyChanges(ctx, changes, inPlace); err != nil {
 		return MigrateSchemaError(err)
 	}
 
-	// Set collation for string columns
-	// (critical for correct sorting)
+	// Re-apply collation on the public schema after structural changes.
 	if err := m.setCollation(ctx); err != nil {
 		return err
 	}
 
-	// Optionally recreate materialized views
-	if recreateViews {
-		if err := m.operator.CreateMaterializedViews(ctx); err != nil {
-			return err
-		}
+	if opts.RecreateViews {
+		return m.operator.CreateMaterializedViews(ctx)
 	}
 
 	return nil
 }
 
-// setCollation sets "C" collation on specified varchar
-// columns. This is critical for correct sorting and
-// comparison of scientific names.
+// inspectDesiredSchema returns the Atlas schema representation of what
+// the database should look like according to the current GORM models.
+//
+// It works by:
+//  1. Creating a temporary dev schema
+//  2. Applying the GORM models there to build the desired table structure
+//  3. Applying collation so it matches production expectations
+//  4. Inspecting it with Atlas and normalising the schema name to "public"
+//  5. Dropping the dev schema on return
+func (m *manager) inspectDesiredSchema(
+	ctx context.Context,
+	drv migrate.Driver,
+) (*atlasschema.Schema, error) {
+	pool := m.operator.Pool()
+
+	devSchema := fmt.Sprintf("gndb_dev_%d", time.Now().UnixNano())
+	if _, err := pool.Exec(ctx,
+		"CREATE SCHEMA "+devSchema); err != nil {
+		return nil, AtlasDevSchemaError(err)
+	}
+	defer pool.Exec(ctx, //nolint:errcheck
+		"DROP SCHEMA IF EXISTS "+devSchema+" CASCADE")
+
+	devDSN := fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s&search_path=%s",
+		m.cfg.Database.User,
+		m.cfg.Database.Password,
+		m.cfg.Database.Host,
+		m.cfg.Database.Port,
+		m.cfg.Database.Database,
+		m.cfg.Database.SSLMode,
+		devSchema,
+	)
+	devGormDB, err := gorm.Open(gormpg.Open(devDSN), &gorm.Config{})
+	if err != nil {
+		return nil, GORMConnectionError(err)
+	}
+	devSQLDB, err := devGormDB.DB()
+	if err != nil {
+		return nil, GORMConnectionError(err)
+	}
+	defer devSQLDB.Close()
+
+	if err := gndbschema.Migrate(devGormDB); err != nil {
+		return nil, CreateSchemaError(err)
+	}
+
+	if err := m.setCollationOnSchema(ctx, devSchema); err != nil {
+		return nil, err
+	}
+
+	result, err := drv.InspectSchema(ctx, devSchema, nil)
+	if err != nil {
+		return nil, AtlasInspectError(devSchema, err)
+	}
+	result.Name = "public"
+	for _, t := range result.Tables {
+		if t.Schema != nil {
+			t.Schema = result
+		}
+	}
+
+	return result, nil
+}
+
+// setCollation applies "C" collation to the public schema.
 func (m *manager) setCollation(ctx context.Context) error {
+	return m.setCollationOnSchema(ctx, "public")
+}
+
+// setCollationOnSchema sets "C" collation on string columns
+// within the named schema. This is critical for correct sorting
+// and comparison of scientific names.
+func (m *manager) setCollationOnSchema(
+	ctx context.Context,
+	schemaName string,
+) error {
 	pool := m.operator.Pool()
 	if pool == nil {
 		return NotConnectedError()
@@ -141,12 +262,11 @@ func (m *manager) setCollation(ctx context.Context) error {
 		{"vernacular_strings", "name"},
 	}
 
-	qStr := `ALTER TABLE %s ALTER COLUMN %s ` +
-		`TYPE TEXT COLLATE "C"`
-
 	for _, col := range columns {
-		q := formatCollationSQL(qStr, col.table,
-			col.column)
+		q := fmt.Sprintf(
+			`ALTER TABLE %s.%s ALTER COLUMN %s TYPE TEXT COLLATE "C"`,
+			schemaName, col.table, col.column,
+		)
 		if _, err := pool.Exec(ctx, q); err != nil {
 			return CollationError(col.table, col.column, err)
 		}
