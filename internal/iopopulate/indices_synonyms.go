@@ -51,6 +51,12 @@ func (p *populator) processSynonyms(
 		if err != nil {
 			return 0, fmt.Errorf("failed to scan synonym row: %w", err)
 		}
+		// Skip self-synonyms: a synonym pointing to itself is a data error
+		// (the name is already represented as an accepted taxon).
+		if t.synonymID == t.taxonID {
+			continue
+		}
+
 		if t.statusID == "" {
 			t.statusID = "SYNONYM"
 		}

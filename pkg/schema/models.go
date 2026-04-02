@@ -168,7 +168,7 @@ type NameStringIndex struct {
 	RecordID string `gorm:"type:varchar(255);primaryKey"`
 
 	// NameStringID is UUID5 of a full name-string from the dataset.
-	NameStringID string `gorm:"type:uuid;primaryKey;index:name_string_id"`
+	NameStringID string `gorm:"type:uuid;index:name_string_id"`
 
 	// The id to create an outlink.
 	OutlinkID string `gorm:"type:varchar(255)"`
@@ -193,7 +193,7 @@ type NameStringIndex struct {
 	TaxonomicStatus string `gorm:"type:varchar(255)"`
 
 	// RecordID of a currently accepted name-string for the taxon.
-	AcceptedRecordID string `gorm:"type:varchar(255);index:accepted_record_id"`
+	AcceptedRecordID string `gorm:"type:varchar(255);primaryKey;index:accepted_record_id"`
 
 	// Pipe-delimited string containing classification supplied with the resource.
 	Classification string
