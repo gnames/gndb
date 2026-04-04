@@ -51,6 +51,15 @@ data_sources:
     outlink_url: "https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Undef&name={}&lvl=0&srchmode=1&keep=1&unlock"
     outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical (prepared in SFGA)
 
+  # Index Fungorum
+  - id: 5
+    parent: http://opendata.globalnames.org/sfga/
+    title: "Index Fungorum: Species Fungorum"
+    title_short: "Species Fungorum"
+    home_url: "https://www.speciesfungorum.org"
+    outlink_url: "https://www.indexfungorum.org/Names/NamesRecord.asp?RecordID={}"
+    outlink_id_column: "name.col__alternative_id" 
+
   # GRIN Plant Taxonomy
   - id: 6
     parent: http://opendata.globalnames.org/sfga/
@@ -62,6 +71,14 @@ data_sources:
     outlink_url: "https://npgsweb.ars-grin.gov/gringlobal/taxon/taxonomydetail?id={}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
+  # IRMNG with species (old)
+  - id: 8
+    parent: http://opendata.globalnames.org/sfga/
+    title: The Interim Register of Marine and Nonmarine Genera
+    title_short: "IRMNG with species"
+    home_url: https://irmng.org/
+    has_classification: true
+
   # WoRMS
   - id: 9
     parent: http://opendata.globalnames.org/sfga/
@@ -72,7 +89,19 @@ data_sources:
     outlink_url: "https://www.marinespecies.org/aphia.php?p=taxdetails&id={}"
     outlink_id_column: "taxon.col__alternative_id" # Custom: last part of col__id after ':' split (prepared in SFGA)
 
-  # EOL
+# GBIF Backbone
+  - id: 11
+    parent: https://opendata.globalnames.org/sfga
+    title: Global Biodiversity Information Facility Backbone Taxonomy
+    title_short: GBIF Backbone Taxonomy
+    home_url: https://www.gbif.org/dataset/d7dddbf4-2cf0-4f39-9b2a-bb099caae36c
+    is_auto_curated: true
+    has_classification: true
+    outlink_url: https://gbif.org/species/{}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+# EOL
   - id: 12
     parent: http://opendata.globalnames.org/sfga/
     title_short: "EOL"
@@ -101,6 +130,15 @@ data_sources:
     title_short: "VASCAN"
     is_curated: true
     has_classification: true
+    
+  # IUCN
+  - id: 163
+    parent: http://opendata.globalnames.org/sfga/
+    title_short: "IUCN"
+    is_curated: true
+    has_classification: true
+    outlink_url: "{}"
+    outlink_id_column: "name.col__link"
 
   # IPNI
   - id: 167

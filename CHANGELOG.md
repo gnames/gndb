@@ -2,11 +2,18 @@
 
 ## Unreleased
 
+## [v0.1.3] - 2026-04-04 Sat
+
+- Fix: contrain primary key in name_string_indices further, removing
+  possibility to have duplicates. Two datasets that are outdated are now
+  removed: Union and Freebase (they had duplicates and were not worth to
+  be fixed.
 - Add [#10]: export subcommand to convert dataset from gnames database to
   SFGA format. So far it does work, however some of the datasets have duplicated
   record_id values and this problem will need to be resolved. Also we do
   not have a composite primary key for name_string_indices table, this needs
   to be fixed as well.
+- Add [#12]: improve migration using Atlas.
 
 ## [v0.1.2] - 2026-03-26 Thu
 
@@ -62,13 +69,16 @@
 
 This document follows [changelog guidelines]
 
+[v0.1.3]: https://github.com/gnames/gndb/tree/v0.1.3
 [v0.1.2]: https://github.com/gnames/gndb/tree/v0.1.2
 [v0.1.1]: https://github.com/gnames/gndb/tree/v0.1.1
 [v0.1.0]: https://github.com/gnames/gndb/tree/v0.1.0
 [v0.0.3]: https://github.com/gnames/gndb/tree/v0.0.3
 [v0.0.2]: https://github.com/gnames/gndb/tree/v0.0.2
 [v0.0.1]: https://github.com/gnames/gndb/tree/v0.0.1
+[#12]: https://github.com/gnames/gndb/issues/12
 [#11]: https://github.com/gnames/gndb/issues/11
+[#10]: https://github.com/gnames/gndb/issues/10
 [#9]: https://github.com/gnames/gndb/issues/9
 [#8]: https://github.com/gnames/gndb/issues/8
 [#7]: https://github.com/gnames/gndb/issues/7
