@@ -124,6 +124,138 @@ data_sources:
     outlink_url: "https://www.catalogueoflife.org/data/taxon/{}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
+  - id: 93
+    parent: https://opendata.globalnames.org/sfga
+    title: Passiflora vernacular names
+    title_short: Passiflora vernacular names
+    description: Passiflora vernacular names
+    prefer_flat_classification: false
+
+  - id: 94
+    parent: https://opendata.globalnames.org/sfga
+    title: Inventory of Fish Species in the Wami River Basin
+    title_short: Inventory of Fish Species in the Wami Riv...
+    description: Inventory of fish fauna for use in assessing the environmental flow of the Wami River Sub-Basin i.e. how much water is needed for human uses and sustaining ecological integrity of the river?
+    prefer_flat_classification: false
+
+  - id: 95
+    parent: https://opendata.globalnames.org/sfga
+    title: Pheasant Diversity and Conservation in the Mt. Gaoligonshan Region
+    title_short: Pheasant Diversity and Conservation in th...
+    description: A jouranal article that describes about the status of Phaesant species diversity in the Mt. Gaologongshan region in Yunnan, P. R. China
+    prefer_flat_classification: false
+
+  - id: 96
+    parent: https://opendata.globalnames.org/sfga
+    title: Finding Species
+    title_short: Finding Species
+    description: Uses compelling and original professional-grade photographic images, technology, and on-the-ground field experience to “give a face to biodiversity,” promoting the conservation of threatened species and habitats.
+    prefer_flat_classification: false
+
+  - id: 97
+    parent: https://opendata.globalnames.org/sfga
+    title: Birds of Lindi Forests Plantation
+    title_short: Birds of Lindi Forests Plantation
+    description: The survey was conducted around Lindi Forests plantation mainly to identify birds of the area fo better management and conservation of the forest.
+    prefer_flat_classification: false
+
+  - id: 98
+    parent: https://opendata.globalnames.org/sfga
+    title: Nemertea
+    title_short: Nemertea
+    description: '{}'
+    prefer_flat_classification: false
+
+  - id: 99
+    parent: https://opendata.globalnames.org/sfga
+    title: Kihansi Gorge Amphibian Species Checklist
+    title_short: Kihansi Gorge Amphibian Species Checklist
+    description: This is a checklist of Amphibian Species in the Kihansi Gorge in the Udzungwa Tanzania. It is an important information on Biodiversity status of the Udzungwa Mountains as a Mega Biodiverse Hotspot of the Eastern Arc Mountains. It contains endemic and species with the risk of extinction (endangered, critically endangered, extinct in the wild). The studies on amphibian species commenced with the discovery of the Kihansi Spray Toad (KST) (Nectophrynoides asperginis) in December 1996 and its description in 1998 (Poynton et al., 1998). To date several species of amphibians in the Order Anura in Five different Families have been identified to exist in the Kihansi Gorge. Unfortunately Nectophrynoides asperginis went extinct in the wild mainly due to habitat alteration by the Kihansi River water abstraction where water is used for Hydro power project. Further studies are underway to establish the exact cause of the population crash of KST in the Kihansi Gorge as one of the effort to bring back the KST population in the  wild. These include the studies on Chytrid fungus, sediments flush from the reservoir,agricultural pesticide residue and water quality changes. Thanks to the Captive breeding programs that the species is under control for reintroduction back to its original habitat. This description therefore intends to report the amphibians occurring in the Kihansi Gorge i.e. amphibians occurring in the Spray Wetlands, at the edges of the spray wetlands as well as those appearing in other areas of the gorge. These are important for testing different scientific scenarios related to KSTs disappearance in the Kihansi Gorge since 2003.
+    prefer_flat_classification: false
+  
+  - id: 100
+    parent: https://opendata.globalnames.org/sfga
+    title: Mushroom Observer
+    title_short: Mushroom Observer
+    description: 'Purpose: record observations about mushrooms, help people identify mushrooms they aren’t familiar with, and expand the community around the scientific exploration of mushrooms (mycology)'
+    prefer_flat_classification: false
+    
+  - id: 101
+    parent: https://opendata.globalnames.org/sfga
+    title: TaxonConcept
+    title_short: TaxonConcept
+    description: TaxonConcept provides human and machine readable species description documents that help describe the attributes and variation within a species. These documents stabilize the "meaning" of these species identifiers to improve large scale data integration.
+    prefer_flat_classification: false
+
+  - id: 102
+    parent: https://opendata.globalnames.org/sfga
+    title: Amphibia and Reptilia of Yunnan
+    title_short: Amphibia and Reptilia of Yunnan
+    description: "A book edited by Yang Datong (Chief editor) and Rao Dingqi (Deputy editor), and published by Yunnan Publishing Group Corporation, Yunnan Science and Technology Press, Kunming, 2008.\n\nIn this book, 115 speies of amphibinas and 162 species of reptiles are described. Among them are seven new species of Frog. All of the species described in the book are based on over 20,000 specimens that occurs in Yunnan, described by staff of herbpetology section of Kunming Institue of Zoology. The book lists amphibian and reptile species from 6 natural geographial regions and 12 natural reservs of Yunnan. \n\nPreface to the book is in English. Also includes 240 colour photographs."
+    prefer_flat_classification: false
+
+  - id: 103
+    parent: https://opendata.globalnames.org/sfga
+    title: Common names of Chilean Plants
+    title_short: Common names of Chilean Plants
+    description: Common names of Chilean Plants www.florachilena.cl
+    prefer_flat_classification: false
+
+  - id: 104
+    parent: https://opendata.globalnames.org/sfga
+    title: Invasive Species of Belgium
+    title_short: Invasive Species of Belgium
+    description: The Belgian Forum on Invasive Species (BFIS) is an informal structure animated by the Belgian Biodiversity Platform where in scientists interested in biological invasions are involved.
+    prefer_flat_classification: false
+
+  - id: 105
+    parent: https://opendata.globalnames.org/sfga
+    title: ZooKeys
+    title_short: ZooKeys
+    description: ZooKeys is a peer-reviewed, open-access, rapidly produced journal launched to support free exchange of ideas and information in systematic zoology.
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 106
+    parent: https://opendata.globalnames.org/sfga
+    title: COA Wildlife Conservation List
+    title_short: COA Wildlife Conservation List
+    description: |-
+      Taiwan's unique geographical location and varied topography resulted in diverse fauna on this beautiful island. However, excessive land development and resource utilization have incessantly squeezed the space for the survival of wildlife. Wildlife conservation is not just a simple act of protection, it warrants reasonable and sustainable use of natural resources.
+
+      The Wildlife Conservation Act, enacted by Council of Agriculture, Executive Yuan, is an important legal basis for wildlife management and habitat protection. Its purpose is to maintain species diversity and ecological balance. The government and related conservation organizations have designated 17 wildlife refuges. Not only are they the subject of academic researches, they are also the indicators of environmental quality. The checklist of Taiwan (TaiBNET) lists 238 endangered, rare, and other protected species of wildlife in Taiwan. The database also provides information on these species, such as their scientific names (including authors and years), common names, and synonyms. Through Taiwan Biodiversity Information Facility (TaiBIF), the information can be shared and exchanged with other GBIF participants. Users can use keywords to link to other websites with relevant information. All these efforts will result in the circulation of information in the fields of research, education and conservation, which in turn will arouse global attention to the protection of wildlife.
+    prefer_flat_classification: false
+
+  - id: 107
+    parent: https://opendata.globalnames.org/sfga
+    title: AskNature
+    title_short: AskNature
+    description: AskNature's goal is to connect innovative minds with life's best ideas, and in the process, inspire technologies that create conditions conducive to life.
+    prefer_flat_classification: false
+
+  - id: 108
+    parent: https://opendata.globalnames.org/sfga
+    title: 'China: Yunnan, Southern Gaoligongshan, Rapid Biological Inventories Report No. 04'
+    title_short: 'China: Yunnan, Southern Gaoligongshan, Ra...'
+    description: |-
+      Rapid biological inventories are meant to catalyze effective action for conservation in threatened regions of high biological diversity and uniqueness. The book summarises the result of rapid biological and social inventories carried out by team of scientists in the Southern GaoligongShan of Yunnan in China. The biological inventories do not attempt to produce an exhaustive list of species or higher taxa. Rather, the rapid surveys (1) identify the important biological communities in the site or region of interest and (2) determine whether these communities are of outstanding quality and significance in a regional
+      or global context. During rapid social asset inventories, scientists and local communities collaborate to identify patterns of social organization and opportunities for capacity building.
+    prefer_flat_classification: false
+
+  - id: 109
+    parent: https://opendata.globalnames.org/sfga
+    title: Native Orchids from Gaoligongshan Mountains, China
+    title_short: Native Orchids from Gaoligongshan Mountai...
+    description: Describes about 352 species of Orchids from the Gaoligong Mountain in Yunnan, P.R China, also provides coloured photographs and brief description.
+    prefer_flat_classification: false
+    
+  - id: 110
+    parent: https://opendata.globalnames.org/sfga
+    title: Illinois Wildflowers
+    title_short: Illinois Wildflowers
+    description: Contains descriptions, photographs, and range maps of many wildflowers in Illinois.
+    prefer_flat_classification: false
+
   # VASCAN
   - id: 147
     parent: http://opendata.globalnames.org/sfga/
