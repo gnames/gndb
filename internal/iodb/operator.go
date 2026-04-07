@@ -9,6 +9,7 @@ import (
 
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
+	"github.com/gnames/gndb/pkg/schema"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -225,6 +226,82 @@ func (p *pgxOperator) DropMaterializedViews(
 			"DROP MATERIALIZED VIEW IF EXISTS %s CASCADE", view)
 		if _, err := p.pool.Exec(ctx, dropSQL); err != nil {
 			return DropViewError(view, err)
+		}
+	}
+
+	return nil
+}
+
+// GetDataSources returns DataSource records for the given IDs.
+// If ids is empty, all data sources are returned.
+func (p *pgxOperator) GetDataSources(
+	ctx context.Context,
+	ids []int,
+) ([]schema.DataSource, error) {
+	if p.pool == nil {
+		return nil, NotConnectedError()
+	}
+
+	var err error
+
+	query := "SELECT id, title FROM data_sources ORDER BY id"
+	var args []any
+	if len(ids) > 0 {
+		query = "SELECT id, title FROM data_sources WHERE id = ANY($1) ORDER BY id"
+		args = append(args, ids)
+	}
+
+	rows, err := p.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, QueryDataSourcesError(err)
+	}
+	defer rows.Close()
+
+	var sources []schema.DataSource
+	for rows.Next() {
+		var ds schema.DataSource
+		if err := rows.Scan(&ds.ID, &ds.Title); err != nil {
+			return nil, QueryDataSourcesError(err)
+		}
+		sources = append(sources, ds)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, QueryDataSourcesError(err)
+	}
+
+	return sources, nil
+}
+
+// DeleteDatasets removes all records for the given data source IDs.
+// It deletes from vernacular_string_indices, name_string_indices,
+// and data_sources. Orphaned name_strings/canonicals are left for
+// the optimize command to clean up.
+func (p *pgxOperator) DeleteDatasets(
+	ctx context.Context,
+	ids []int,
+) error {
+	if p.pool == nil {
+		return NotConnectedError()
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	steps := []struct {
+		table string
+		sql   string
+	}{
+		{"vernacular_string_indices",
+			"DELETE FROM vernacular_string_indices WHERE data_source_id = ANY($1)"},
+		{"name_string_indices",
+			"DELETE FROM name_string_indices WHERE data_source_id = ANY($1)"},
+		{"data_sources",
+			"DELETE FROM data_sources WHERE id = ANY($1)"},
+	}
+
+	for _, s := range steps {
+		if _, err := p.pool.Exec(ctx, s.sql, ids); err != nil {
+			return DeleteDatasetError(s.table, err)
 		}
 	}
 

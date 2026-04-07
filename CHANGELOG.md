@@ -2,9 +2,14 @@
 
 ## Unreleased
 
+## [v0.1.4] - 2026-04-07 Tue
+
+- Add [#13]: subcommand `gndb delete` to remove datasets from database.
+- Add: datasets 93-110.
+
 ## [v0.1.3] - 2026-04-04 Sat
 
-- Fix: contrain primary key in name_string_indices further, removing
+- Fix: constrain primary key in name_string_indices further, removing
   possibility to have duplicates. Two datasets that are outdated are now
   removed: Union and Freebase (they had duplicates and were not worth to
   be fixed.
@@ -69,6 +74,7 @@
 
 This document follows [changelog guidelines]
 
+[v0.1.4]: https://github.com/gnames/gndb/tree/v0.1.4
 [v0.1.3]: https://github.com/gnames/gndb/tree/v0.1.3
 [v0.1.2]: https://github.com/gnames/gndb/tree/v0.1.2
 [v0.1.1]: https://github.com/gnames/gndb/tree/v0.1.1
@@ -76,6 +82,7 @@ This document follows [changelog guidelines]
 [v0.0.3]: https://github.com/gnames/gndb/tree/v0.0.3
 [v0.0.2]: https://github.com/gnames/gndb/tree/v0.0.2
 [v0.0.1]: https://github.com/gnames/gndb/tree/v0.0.1
+[#13]: https://github.com/gnames/gndb/issues/13
 [#12]: https://github.com/gnames/gndb/issues/12
 [#11]: https://github.com/gnames/gndb/issues/11
 [#10]: https://github.com/gnames/gndb/issues/10

@@ -62,6 +62,10 @@ const (
 	ExportSFGAWriteError
 	ExportAllSourcesFailedError
 
+	// Delete errors
+	DeleteQuerySourcesError
+	DeleteDatasetError
+
 	// Optimizer errors
 	OptimizerReparseError
 	OptimizerTempTableError

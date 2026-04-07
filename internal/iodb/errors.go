@@ -222,3 +222,30 @@ func CreateViewIndexError(viewName string, err error) error {
 		Err:  fmt.Errorf("failed to create index on %s: %w", viewName, err),
 	}
 }
+
+// QueryDataSourcesError creates an error for when querying
+// data sources fails.
+func QueryDataSourcesError(err error) error {
+	msg := "Cannot query data sources"
+
+	return &gn.Error{
+		Code: errcode.DeleteQuerySourcesError,
+		Msg:  msg,
+		Vars: nil,
+		Err:  fmt.Errorf("failed to query data sources: %w", err),
+	}
+}
+
+// DeleteDatasetError creates an error for when deleting
+// dataset records from a table fails.
+func DeleteDatasetError(table string, err error) error {
+	msg := "Cannot delete dataset records from <em>%s</em>"
+	vars := []any{table}
+
+	return &gn.Error{
+		Code: errcode.DeleteDatasetError,
+		Msg:  msg,
+		Vars: vars,
+		Err:  fmt.Errorf("failed to delete from %s: %w", table, err),
+	}
+}

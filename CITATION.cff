@@ -2,8 +2,8 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "GNdb: A CLI tool for managing a PostgreSQL database for local GNverifier instances"
-version: 0.1.3
-date-released: "2026-04-04"
+version: 0.1.4
+date-released: "2026-04-07"
 doi: 10.5281/zenodo.18895372
 license: MIT
 repository-code: https://github.com/gnames/gndb

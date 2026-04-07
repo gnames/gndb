@@ -86,6 +86,7 @@ For more information, see the project's README file.`,
 	rootCmd.AddCommand(getPopulateCmd())
 	rootCmd.AddCommand(getOptimizeCmd())
 	rootCmd.AddCommand(getExportCmd())
+	rootCmd.AddCommand(getDeleteCmd())
 
 	return rootCmd
 }

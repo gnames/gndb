@@ -155,6 +155,114 @@ func TestPgxOperator_TableExists(t *testing.T) {
 		"Nonexistent table should not exist")
 }
 
+// TestPgxOperator_GetDataSources_Empty verifies that
+// GetDataSources returns an empty slice (not an error) when
+// no data sources exist or the supplied IDs have no matches.
+func TestPgxOperator_GetDataSources_Empty(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	cfg := getTestDBConfig(t)
+	if cfg == nil {
+		t.Skip("Database not configured")
+	}
+
+	ctx := context.Background()
+	op := NewPgxOperator()
+
+	err := op.Connect(ctx, cfg)
+	require.NoError(t, err)
+	defer op.Close()
+
+	// Request an ID that is extremely unlikely to exist.
+	sources, err := op.GetDataSources(ctx, []int{999999})
+	require.NoError(t, err)
+	assert.Empty(t, sources,
+		"Non-existent IDs should return an empty slice")
+}
+
+// TestPgxOperator_GetDataSources_All verifies that passing
+// an empty IDs slice returns all data sources.
+func TestPgxOperator_GetDataSources_All(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	cfg := getTestDBConfig(t)
+	if cfg == nil {
+		t.Skip("Database not configured")
+	}
+
+	ctx := context.Background()
+	op := NewPgxOperator()
+
+	err := op.Connect(ctx, cfg)
+	require.NoError(t, err)
+	defer op.Close()
+
+	sources, err := op.GetDataSources(ctx, []int{})
+	require.NoError(t, err)
+
+	// We can't assert a specific count since it depends on DB
+	// state, but every returned record must have a non-zero ID
+	// and a non-empty title.
+	for _, s := range sources {
+		assert.NotZero(t, s.ID,
+			"Each source must have a non-zero ID")
+		assert.NotEmpty(t, s.Title,
+			"Each source must have a non-empty title")
+	}
+}
+
+// TestPgxOperator_DeleteDatasets_Empty verifies that
+// DeleteDatasets with an empty ID list is a no-op.
+func TestPgxOperator_DeleteDatasets_Empty(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	cfg := getTestDBConfig(t)
+	if cfg == nil {
+		t.Skip("Database not configured")
+	}
+
+	ctx := context.Background()
+	op := NewPgxOperator()
+
+	err := op.Connect(ctx, cfg)
+	require.NoError(t, err)
+	defer op.Close()
+
+	err = op.DeleteDatasets(ctx, []int{})
+	assert.NoError(t, err,
+		"DeleteDatasets with empty IDs should be a no-op")
+}
+
+// TestPgxOperator_DeleteDatasets_NonExistent verifies that
+// deleting IDs that do not exist is not an error.
+func TestPgxOperator_DeleteDatasets_NonExistent(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration test")
+	}
+
+	cfg := getTestDBConfig(t)
+	if cfg == nil {
+		t.Skip("Database not configured")
+	}
+
+	ctx := context.Background()
+	op := NewPgxOperator()
+
+	err := op.Connect(ctx, cfg)
+	require.NoError(t, err)
+	defer op.Close()
+
+	err = op.DeleteDatasets(ctx, []int{999999})
+	assert.NoError(t, err,
+		"Deleting non-existent IDs should not error")
+}
+
 // getTestDBConfig returns database config from environment
 // or nil if not configured.
 func getTestDBConfig(t *testing.T) *config.DatabaseConfig {

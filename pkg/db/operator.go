@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/gnames/gndb/pkg/config"
+	"github.com/gnames/gndb/pkg/schema"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -46,4 +47,13 @@ type Operator interface {
 	// CreateMaterializedViews creates all materialized views for the database.
 	// Used after migration and during optimization.
 	CreateMaterializedViews(ctx context.Context) error
+
+	// GetDataSources returns DataSource records for the given IDs.
+	// If ids is empty, all data sources are returned.
+	GetDataSources(ctx context.Context, ids []int) ([]schema.DataSource, error)
+
+	// DeleteDatasets removes all records belonging to the given data source IDs
+	// from name_string_indices, vernacular_string_indices, and data_sources.
+	// Orphaned name_strings/canonicals are cleaned up by the optimize command.
+	DeleteDatasets(ctx context.Context, ids []int) error
 }
