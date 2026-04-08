@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
-	"github.com/gnames/gndb/pkg/schema"
 	"github.com/gnames/gnfmt"
 	"github.com/gnames/gnlib/ent/nomcode"
 	"github.com/gnames/gnparser"
@@ -20,33 +20,52 @@ import (
 // exportNames reads name_strings for a data source in batches, re-parses
 // each name with gnparser using the appropriate nomenclatural code, and
 // writes them to the SFGA archive. Returns the count of names written.
+//
+// Uses keyset pagination (WHERE ns.id > $cursor) instead of OFFSET for
+// stable performance regardless of dataset size.
 func exportNames(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	arc sfga.Archive,
 	parsers map[nomcode.Code]gnparser.GNparser,
-	ds schema.DataSource,
+	sourceID int,
 	batchSize int,
 ) (int, error) {
 	t := time.Now()
 	gn.Info("(2/5) exporting names...")
 
+	totalCount, err := countNames(ctx, pool, sourceID)
+	if err != nil {
+		return 0, err
+	}
+
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Exporting names: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
+	// Use nil UUID as initial cursor — it sorts before all real UUID5 values,
+	// so the first batch returns the earliest rows.
 	total := 0
-	for offset := 0; ; offset += batchSize {
-		batch, err := queryNamesBatch(ctx, pool, parsers, int(ds.ID), batchSize, offset)
+	cursor := "00000000-0000-0000-0000-000000000000"
+	for {
+		batch, err := queryNamesBatch(ctx, pool, parsers, sourceID, batchSize, cursor)
 		if err != nil {
-			return total, fmt.Errorf("names batch at offset %d: %w", offset, err)
+			return total, fmt.Errorf("names batch after cursor %q: %w", cursor, err)
 		}
 		if len(batch) == 0 {
 			break
 		}
 		if err = arc.InsertNames(batch); err != nil {
-			return total, SFGAWriteError(ds.ID, "names", err)
+			return total, SFGAWriteError(sourceID, "names", err)
 		}
 		total += len(batch)
+		cursor = batch[len(batch)-1].ID
+		bar.Add(len(batch))
+
 		slog.Debug("names batch written",
-			"source_id", ds.ID,
-			"offset", offset,
+			"source_id", sourceID,
+			"cursor", cursor,
 			"batch", len(batch),
 			"total", total,
 		)
@@ -59,21 +78,35 @@ func exportNames(
 	return total, nil
 }
 
-// namesQuery fetches one page of distinct name_strings for a data source.
-// code_id and classification are used to select the appropriate parser.
-// Rows with a non-null outlink_id are preferred (NULLS LAST ordering).
+func countNames(ctx context.Context, pool *pgxpool.Pool, sourceID int) (int, error) {
+	var count int
+	err := pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT name_string_id)
+		   FROM name_string_indices
+		  WHERE data_source_id = $1`, sourceID).Scan(&count)
+	return count, err
+}
+
+// namesQuery fetches one page of distinct name_strings for a data source
+// using keyset pagination on name_string_id.
+//
+// The DISTINCT ON is pushed into a subquery so PostgreSQL can use the
+// name_string_indices index to seek directly to the cursor position and
+// limit early, avoiding a full sort of the remaining rows.
 const namesQuery = `
-SELECT DISTINCT ON (ns.id)
-    ns.id,
-    ns.name,
-    nsi.code_id,
-    nsi.classification,
-    nsi.outlink_id
-FROM name_strings ns
-JOIN name_string_indices nsi ON nsi.name_string_id = ns.id
-WHERE nsi.data_source_id = $1
-ORDER BY ns.id, nsi.outlink_id NULLS LAST
-LIMIT $2 OFFSET $3
+SELECT ns.id, ns.name,
+       sub.code_id, sub.classification, sub.outlink_id
+FROM (
+    SELECT DISTINCT ON (name_string_id)
+        name_string_id, code_id, classification, outlink_id
+    FROM name_string_indices
+    WHERE data_source_id = $1
+      AND name_string_id > $2
+    ORDER BY name_string_id, outlink_id NULLS LAST
+    LIMIT $3
+) sub
+JOIN name_strings ns ON ns.id = sub.name_string_id
+ORDER BY ns.id
 `
 
 func queryNamesBatch(
@@ -81,9 +114,10 @@ func queryNamesBatch(
 	pool *pgxpool.Pool,
 	parsers map[nomcode.Code]gnparser.GNparser,
 	sourceID int,
-	limit, offset int,
+	limit int,
+	cursor string,
 ) ([]coldp.Name, error) {
-	rows, err := pool.Query(ctx, namesQuery, sourceID, limit, offset)
+	rows, err := pool.Query(ctx, namesQuery, sourceID, cursor, limit)
 	if err != nil {
 		return nil, err
 	}

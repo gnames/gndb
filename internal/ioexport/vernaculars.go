@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
-	"github.com/gnames/gndb/pkg/schema"
 	"github.com/gnames/gnfmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sfborg/sflib/pkg/coldp"
@@ -21,28 +21,45 @@ func exportVernaculars(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	arc sfga.Archive,
-	ds schema.DataSource,
+	sourceID int,
 	batchSize int,
 ) (int, error) {
 	t := time.Now()
 	gn.Info("(5/5) exporting vernaculars...")
 
+	totalCount, err := countVernaculars(ctx, pool, sourceID)
+	if err != nil {
+		return 0, err
+	}
+
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Exporting vernaculars: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
 	total := 0
-	for offset := 0; ; offset += batchSize {
-		batch, err := queryVernacularsBatch(ctx, pool, ds.ID, batchSize, offset)
+	cursor := vernCursor{
+		recordID:           "",
+		vernacularStringID: "00000000-0000-0000-0000-000000000000",
+	}
+	for {
+		batch, lastCursor, err := queryVernacularsBatch(ctx, pool, sourceID, batchSize, cursor)
 		if err != nil {
-			return total, fmt.Errorf("vernaculars batch at offset %d: %w", offset, err)
+			return total, fmt.Errorf("vernaculars batch after cursor %q: %w", cursor.recordID, err)
 		}
 		if len(batch) == 0 {
 			break
 		}
 		if err = arc.InsertVernaculars(batch); err != nil {
-			return total, SFGAWriteError(ds.ID, "vernaculars", err)
+			return total, SFGAWriteError(sourceID, "vernaculars", err)
 		}
 		total += len(batch)
+		cursor = lastCursor
+		bar.Add(len(batch))
+
 		slog.Debug("vernaculars batch written",
-			"source_id", ds.ID,
-			"offset", offset,
+			"source_id", sourceID,
+			"cursor", cursor.recordID,
 			"batch", len(batch),
 			"total", total,
 		)
@@ -55,6 +72,15 @@ func exportVernaculars(
 	return total, nil
 }
 
+func countVernaculars(ctx context.Context, pool *pgxpool.Pool, sourceID int) (int, error) {
+	var count int
+	err := pool.QueryRow(ctx,
+		`SELECT COUNT(*)
+		   FROM vernacular_string_indices
+		  WHERE data_source_id = $1`, sourceID).Scan(&count)
+	return count, err
+}
+
 const vernacularsQuery = `
 SELECT
     vsi.record_id,
@@ -63,43 +89,61 @@ SELECT
     vsi.lang_code,
     vsi.country_code,
     vsi.locality,
-    vsi.preferred
+    vsi.preferred,
+    vsi.vernacular_string_id
 FROM vernacular_string_indices vsi
 JOIN vernacular_strings vs ON vs.id = vsi.vernacular_string_id
 WHERE vsi.data_source_id = $1
-ORDER BY vsi.record_id
-LIMIT $2 OFFSET $3
+  AND (vsi.record_id, vsi.vernacular_string_id) > ($2, $3)
+ORDER BY vsi.record_id, vsi.vernacular_string_id
+LIMIT $4
 `
+
+// vernCursor tracks the composite cursor for vernacular keyset pagination.
+type vernCursor struct {
+	recordID           string
+	vernacularStringID string
+}
 
 func queryVernacularsBatch(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	sourceID int,
-	limit, offset int,
-) ([]coldp.Vernacular, error) {
-	rows, err := pool.Query(ctx, vernacularsQuery, sourceID, limit, offset)
+	limit int,
+	cursor vernCursor,
+) ([]coldp.Vernacular, vernCursor, error) {
+	rows, err := pool.Query(ctx, vernacularsQuery, sourceID, cursor.recordID, cursor.vernacularStringID, limit)
 	if err != nil {
-		return nil, err
+		return nil, vernCursor{}, err
 	}
 	defer rows.Close()
 
-	var batch []coldp.Vernacular
+	var (
+		batch   []coldp.Vernacular
+		lastRec string
+		lastVSI string
+	)
 	for rows.Next() {
 		var (
-			recordID    string
-			name        string
-			language    *string
-			langCode    *string
-			countryCode *string
-			locality    *string
-			preferred   *bool
+			recordID           string
+			name               string
+			language           *string
+			langCode           *string
+			countryCode        *string
+			locality           *string
+			preferred          *bool
+			vernacularStringID string
 		)
 		if err := rows.Scan(
 			&recordID, &name,
 			&language, &langCode, &countryCode, &locality, &preferred,
+			&vernacularStringID,
 		); err != nil {
-			return nil, err
+			return nil, vernCursor{}, err
 		}
+
+		lastRec = recordID
+		lastVSI = vernacularStringID
 
 		v := coldp.Vernacular{
 			TaxonID: recordID,
@@ -125,5 +169,6 @@ func queryVernacularsBatch(
 
 		batch = append(batch, v)
 	}
-	return batch, rows.Err()
+	last := vernCursor{recordID: lastRec, vernacularStringID: lastVSI}
+	return batch, last, rows.Err()
 }

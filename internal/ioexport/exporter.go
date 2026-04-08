@@ -168,22 +168,22 @@ func (e *exporter) exportSource(ctx context.Context, ds schema.DataSource) error
 		gnfmt.TimeString(time.Since(t).Seconds()))
 
 	// (2/5) Names
-	if _, err := exportNames(ctx, pool, arc, e.parsers, ds, batchSize); err != nil {
+	if _, err := exportNames(ctx, pool, arc, e.parsers, int(ds.ID), batchSize); err != nil {
 		return err
 	}
 
 	// (3/5) Taxa
-	if _, err := exportTaxa(ctx, pool, arc, ds, batchSize); err != nil {
+	if _, err := exportTaxa(ctx, pool, arc, int(ds.ID), batchSize); err != nil {
 		return err
 	}
 
 	// (4/5) Synonyms
-	if _, err := exportSynonyms(ctx, pool, arc, ds, batchSize); err != nil {
+	if _, err := exportSynonyms(ctx, pool, arc, int(ds.ID), batchSize); err != nil {
 		return err
 	}
 
 	// (5/5) Vernaculars
-	if _, err := exportVernaculars(ctx, pool, arc, ds, batchSize); err != nil {
+	if _, err := exportVernaculars(ctx, pool, arc, int(ds.ID), batchSize); err != nil {
 		return err
 	}
 

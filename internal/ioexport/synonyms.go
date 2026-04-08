@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
-	"github.com/gnames/gndb/pkg/schema"
 	"github.com/gnames/gnfmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sfborg/sflib/pkg/coldp"
@@ -21,28 +21,42 @@ func exportSynonyms(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	arc sfga.Archive,
-	ds schema.DataSource,
+	sourceID int,
 	batchSize int,
 ) (int, error) {
 	t := time.Now()
 	gn.Info("(4/5) exporting synonyms...")
 
+	totalCount, err := countSynonyms(ctx, pool, sourceID)
+	if err != nil {
+		return 0, err
+	}
+
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Exporting synonyms: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
 	total := 0
-	for offset := 0; ; offset += batchSize {
-		batch, err := querySynonymsBatch(ctx, pool, ds.ID, batchSize, offset)
+	cursor := ""
+	for {
+		batch, err := querySynonymsBatch(ctx, pool, sourceID, batchSize, cursor)
 		if err != nil {
-			return total, fmt.Errorf("synonyms batch at offset %d: %w", offset, err)
+			return total, fmt.Errorf("synonyms batch after cursor %q: %w", cursor, err)
 		}
 		if len(batch) == 0 {
 			break
 		}
 		if err = arc.InsertSynonyms(batch); err != nil {
-			return total, SFGAWriteError(ds.ID, "synonyms", err)
+			return total, SFGAWriteError(sourceID, "synonyms", err)
 		}
 		total += len(batch)
+		cursor = batch[len(batch)-1].ID
+		bar.Add(len(batch))
+
 		slog.Debug("synonyms batch written",
-			"source_id", ds.ID,
-			"offset", offset,
+			"source_id", sourceID,
+			"cursor", cursor,
 			"batch", len(batch),
 			"total", total,
 		)
@@ -55,23 +69,36 @@ func exportSynonyms(
 	return total, nil
 }
 
+func countSynonyms(ctx context.Context, pool *pgxpool.Pool, sourceID int) (int, error) {
+	var count int
+	err := pool.QueryRow(ctx,
+		`SELECT COUNT(*)
+		   FROM name_string_indices
+		  WHERE data_source_id = $1
+		    AND taxonomic_status IN ('synonym', 'ambiguous synonym', 'misapplied')`,
+		sourceID).Scan(&count)
+	return count, err
+}
+
 const synonymsQuery = `
 SELECT
     record_id, accepted_record_id, name_string_id, taxonomic_status
 FROM name_string_indices
 WHERE data_source_id = $1
+  AND record_id > $2
   AND taxonomic_status IN ('synonym', 'ambiguous synonym', 'misapplied')
 ORDER BY record_id
-LIMIT $2 OFFSET $3
+LIMIT $3
 `
 
 func querySynonymsBatch(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	sourceID int,
-	limit, offset int,
+	limit int,
+	cursor string,
 ) ([]coldp.Synonym, error) {
-	rows, err := pool.Query(ctx, synonymsQuery, sourceID, limit, offset)
+	rows, err := pool.Query(ctx, synonymsQuery, sourceID, cursor, limit)
 	if err != nil {
 		return nil, err
 	}

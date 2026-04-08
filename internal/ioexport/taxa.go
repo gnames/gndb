@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/gnames/gn"
-	"github.com/gnames/gndb/pkg/schema"
 	"github.com/gnames/gnfmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sfborg/sflib/pkg/coldp"
@@ -22,28 +22,42 @@ func exportTaxa(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	arc sfga.Archive,
-	ds schema.DataSource,
+	sourceID int,
 	batchSize int,
 ) (int, error) {
 	t := time.Now()
 	gn.Info("(3/5) exporting taxa...")
 
+	totalCount, err := countTaxa(ctx, pool, sourceID)
+	if err != nil {
+		return 0, err
+	}
+
+	bar := pb.Full.Start(totalCount)
+	bar.Set("prefix", "Exporting taxa: ")
+	bar.Set(pb.CleanOnFinish, true)
+	defer bar.Finish()
+
 	total := 0
-	for offset := 0; ; offset += batchSize {
-		batch, err := queryTaxaBatch(ctx, pool, ds.ID, batchSize, offset)
+	cursor := ""
+	for {
+		batch, err := queryTaxaBatch(ctx, pool, sourceID, batchSize, cursor)
 		if err != nil {
-			return total, fmt.Errorf("taxa batch at offset %d: %w", offset, err)
+			return total, fmt.Errorf("taxa batch after cursor %q: %w", cursor, err)
 		}
 		if len(batch) == 0 {
 			break
 		}
 		if err = arc.InsertTaxa(batch); err != nil {
-			return total, SFGAWriteError(ds.ID, "taxa", err)
+			return total, SFGAWriteError(sourceID, "taxa", err)
 		}
 		total += len(batch)
+		cursor = batch[len(batch)-1].ID
+		bar.Add(len(batch))
+
 		slog.Debug("taxa batch written",
-			"source_id", ds.ID,
-			"offset", offset,
+			"source_id", sourceID,
+			"cursor", cursor,
 			"batch", len(batch),
 			"total", total,
 		)
@@ -56,6 +70,17 @@ func exportTaxa(
 	return total, nil
 }
 
+func countTaxa(ctx context.Context, pool *pgxpool.Pool, sourceID int) (int, error) {
+	var count int
+	err := pool.QueryRow(ctx,
+		`SELECT COUNT(*)
+		   FROM name_string_indices
+		  WHERE data_source_id = $1
+		    AND (taxonomic_status NOT IN ('synonym', 'ambiguous synonym', 'misapplied')
+		         OR taxonomic_status IS NULL)`, sourceID).Scan(&count)
+	return count, err
+}
+
 const taxaQuery = `
 SELECT
     record_id, name_string_id,
@@ -63,19 +88,21 @@ SELECT
     classification, classification_ids, classification_ranks
 FROM name_string_indices
 WHERE data_source_id = $1
+  AND record_id > $2
   AND (taxonomic_status NOT IN ('synonym', 'ambiguous synonym', 'misapplied')
        OR taxonomic_status IS NULL)
 ORDER BY record_id
-LIMIT $2 OFFSET $3
+LIMIT $3
 `
 
 func queryTaxaBatch(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	sourceID int,
-	limit, offset int,
+	limit int,
+	cursor string,
 ) ([]coldp.Taxon, error) {
-	rows, err := pool.Query(ctx, taxaQuery, sourceID, limit, offset)
+	rows, err := pool.Query(ctx, taxaQuery, sourceID, cursor, limit)
 	if err != nil {
 		return nil, err
 	}
