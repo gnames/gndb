@@ -159,7 +159,7 @@ type CanonicalStem struct {
 // NameStringIndex is a name-strings relations to datasets.
 type NameStringIndex struct {
 	// DataSourceID refers to a data-source ID.
-	DataSourceID int `gorm:"primaryKey;autoIncrement:false"`
+	DataSourceID int `gorm:"primaryKey;autoIncrement:false;index:idx_nsi_ds_name,priority:1"`
 
 	// RecordID is a unique ID for record. We do our best to
 	// get it from the record IDs, either global or local,
@@ -168,7 +168,7 @@ type NameStringIndex struct {
 	RecordID string `gorm:"type:varchar(255);primaryKey"`
 
 	// NameStringID is UUID5 of a full name-string from the dataset.
-	NameStringID string `gorm:"type:uuid;index:name_string_id"`
+	NameStringID string `gorm:"type:uuid;index:name_string_id;index:idx_nsi_ds_name,priority:2"`
 
 	// The id to create an outlink.
 	OutlinkID string `gorm:"type:varchar(255)"`

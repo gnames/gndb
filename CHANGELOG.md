@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fix: issues with `gndb export` subcommand, add the rest of missing
+  datasets to `sources.yaml`.
+
 ## [v0.1.4] - 2026-04-07 Tue
 
 - Add [#13]: subcommand `gndb delete` to remove datasets from database.

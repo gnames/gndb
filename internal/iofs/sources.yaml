@@ -256,6 +256,266 @@ data_sources:
     description: Contains descriptions, photographs, and range maps of many wildflowers in Illinois.
     prefer_flat_classification: false
 
+  - id: 112
+    parent: http://opendata.globalnames.org/sfga/
+    title: Coleorrhyncha Species File
+    title_short: Coleorrhyncha Species File
+    description: This file contains taxon names and related nomenclatural information for the suborder Coleorrhyncha originating from the Coleorrhyncha Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 113
+    parent: http://opendata.globalnames.org/sfga/
+    title: Zoological names
+    title_short: Zoological names
+    prefer_flat_classification: false
+
+  - id: 114
+    parent: http://opendata.globalnames.org/sfga/
+    title: Peces de la zona hidrogeográfica de la Amazonia, Colombia (Spreadsheet)
+    title_short: Peces de la zona hidrogeográfica de la A...
+    description: 'Se registra un total de 753 especies para la zona hidrogeográfica del Amazonas, agrupadas en 14 órdenes y 47 familias. Los órdenes con mayor representación específica fueron: Characiformes (367 spp.), Siluriformes (228 spp.) y Perciformes (87 spp.). Los 11 órdenes restantes presentaron de 34 a una sola especie. La familia con la mayor riqueza fue Characidae (208 spp.) que representa el 27,6% del total de las especies.'
+    prefer_flat_classification: false
+
+  - id: 115
+    parent: http://opendata.globalnames.org/sfga/
+    title: Eastern Mediterranean Syllidae
+    title_short: Eastern Mediterranean Syllidae
+    description: Occurence records of Syllidae (Annelida:Polychaeta) from three locations in the Eastern Mediterranean Sea (Crete (Greece) and Israel).
+    prefer_flat_classification: false
+
+  - id: 116
+    parent: http://opendata.globalnames.org/sfga/
+    title: Gaoligong Shan Medicinal Plants Checklist
+    title_short: Gaoligong Shan Medicinal Plants Checklist
+    description: The book is the fifth volume of the Gaoligong Shan Research Series. The Editors are Qian Zigang and Li Anhua, and is published by Science Press,China, published in 2008.
+    prefer_flat_classification: false
+
+  - id: 117
+    parent: http://opendata.globalnames.org/sfga/
+    title: Birds of Tansania
+    title_short: Birds of Tansania
+    description: "Tanzania has the richest bird life which now stands at 1,148 known species. However, this information is currently not freely available for public use. A checklist presented here is the first reading online for anyone interested in understanding of the birds of Tanzania. The nomenclature is based on Britton, P.E. (Ed.) (1980) Birds of East Africa (EANHS) with update versions provided in Tanzania Bird Atlas. Endemic species are marked by a letter E. Although this list is subject to changes due to usual taxonomic revisions and/or new records provided it is a useful guidance especially to those without access to recent literature. Kiswahili names are from Mlingwa, C.O.F. (2000) Checklist of Kiswahili names of the Birds of Tanzania, Wildlife Conservation Society of Tanzania. \nWe are privileged to have the opportunity to compile the checklist for Tanzania Biodiversity Information Facility (TanBIF) under COSTECH. We commend this initiative meant to reach a wider audience."
+    prefer_flat_classification: false
+
+  - id: 118
+    parent: http://opendata.globalnames.org/sfga/
+    title: AmphibiaWeb
+    title_short: AmphibiaWeb
+    description: AmphibiaWeb is an online system that provides access to information on amphibian declines, conservation, natural history, and taxonomy.
+    prefer_flat_classification: false
+
+  - id: 119
+    parent: http://opendata.globalnames.org/sfga/
+    title: Tansania Plant Specimens
+    title_short: Tansania Plant Specimens
+    description: 'Plants are a vital part of the world’s biodiversity, yet they are endangered by a combination of factors: over-exploitation, agricultural activities and forestry practices, urbanization, land use changes and spread of invasive species. Therefore, the need for data basing and digitizing the rich flora of Tanzania is equally important in order to catch up with an alarming rate of natural habitats degradation. Also The   available data is not easily accessible to the public and other institutions for use.'
+    prefer_flat_classification: false
+
+  - id: 120
+    parent: http://opendata.globalnames.org/sfga/
+    title: Papahanaumokuakea Marine National Monument
+    title_short: Papahanaumokuakea Marine National Monument
+    description: PMNM initial species list test data.
+    prefer_flat_classification: false
+
+  - id: 121
+    parent: http://opendata.globalnames.org/sfga/
+    title: Taiwanese IUCN species list
+    title_short: Taiwanese IUCN species list
+    description: |-
+      The Red List of Threatened Species, published by International Union for Conservation of Nature (IUCN), lists the conservation status of a representative selection of plant and animal species according to the level of threat to their survival. A species may have a limited distribution or be found only in a small area in a country. From the point of view of biodiversity, however, the extinction of any species can prompt a global impact. Therefore, the related information of an endangered species should be recognized and its conservation effort be executed.
+
+      IUCN estimates that there are 20,000 endangered species. The checklist of Taiwan (TaiBNET) lists 127 species as vulnerable (VU) or higher levels. The scientific name (including author and year), common names, synonyms, assessment level, and other information of these species are also included in the database. Taiwan, even the whole world, needs to actively promote the conservation work of these species. Through Taiwan Biodiversity Information Facility (TaiBIF), the information of Taiwan’s endangered species can be shared and exchanged with other GBIF participants. Users can use keywords to link to other websites with relevant information. All these efforts are to draw the world's attention to the conservation issue of endangered animals and plants.
+    prefer_flat_classification: false
+
+  - id: 122
+    parent: http://opendata.globalnames.org/sfga/
+    title: BioPedia
+    title_short: BioPedia
+    description: Bio*pedia is a communal repository of descriptions of organisms. Bio*pedia works in conjunction with the STAR biodiversity web sites, such as micro*scope, and with the Encyclopedia of Life.
+    prefer_flat_classification: false
+
+  - id: 123
+    parent: http://opendata.globalnames.org/sfga/
+    title: AnAge
+    title_short: AnAge
+    description: AnAge is a database of longevity and ageing in animals. It features quantitative life history data for over 4,000 species, including extensive longevity records, body masses at different developmental stages, reproductive data, and physiological traits re
+    prefer_flat_classification: false
+
+  - id: 124
+    parent: http://opendata.globalnames.org/sfga/
+    title: Embioptera Species File
+    title_short: Embioptera Species File
+    description: This file contains taxon names and related nomenclatural information for the order Embioptera originating from the Embioptera Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 125
+    parent: http://opendata.globalnames.org/sfga/
+    title: Global Invasive Species Database
+    title_short: Global Invasive Species Database
+    description: The Global Invasive Species Database is a free, online searchable source of information about species that negatively impact biodiversity. The GISD aims to increase public awareness about invasive species and to facilitate effective prevention and management activities by disseminating specialist’s knowledge and experience to a broad global audience. It focuses on invasive alien species that threaten native biodiversity and covers all taxonomic groups from micro-organisms to animals and plants.
+    prefer_flat_classification: false
+
+  - id: 126
+    parent: http://opendata.globalnames.org/sfga/
+    title: 'Sendoya S., Fernández F. AAT de hormigas (Hymenoptera: Formicidae) del Neotrópico 1.0 2004 (Spreadsheet)'
+    title_short: Sendoya S., Fernández F. AAT de hormigas...
+    description: Se presenta una lista sinonímica de las subfamilias, tribus, géneros y de las especies de hormigas presentes en todo el neotrópico, considerando las regiones incluidas desde el sur de los Estados Unidos hasta Argentina, (incluyendo el caribe). La mayoria de los registros anteriores a 1995 están basados en el catálogo Bolton (1995), por lo que se recomienda su consulta para información más detallada.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 127
+    parent: http://opendata.globalnames.org/sfga/
+    title: Flora of Gaoligong Mountains
+    title_short: Flora of Gaoligong Mountains
+    description: The Book covers all the seed plants found in the Gaoligong Mountains, including 2 phyla, 210 families, 1086 genera and 4303 species and varieties. Each species is listed with scientific name, distribution, collection number, life form, habitat, altitude, economic uses and scientific value.
+    prefer_flat_classification: false
+
+  - id: 128
+    parent: http://opendata.globalnames.org/sfga/
+    title: ARKive
+    title_short: ARKive
+    description: ARKive is a Wildscreen initiative – a non-profit charitable organization dedicated to promoting the public understanding of biodiversity and the need for its conservation.
+    prefer_flat_classification: false
+
+  - id: 129
+    parent: http://opendata.globalnames.org/sfga/
+    title: True Fruit Flies (Diptera, Tephritidae) of the Afrotropical Region
+    title_short: True Fruit Flies (Diptera, Tephritidae) o...
+    description: |-
+      This checklist covers all relevant information of the major dacine fruit fly genera of Africa.
+      Initially established under the ENBI project, it provides a list current taxonomic status of species involved, as well as synonymy.
+      Limitations of scope: the pilot study is focusing on a group of Afrotropical fruit flies only. Reason is that, over the last decade years several projects have focused on this group (cf. above) and that a mass of specimen related data are available. Afrotropical is used here in the biogeographical sense, hence the region below of the Sahara dessert. However, some additional records from northern Africa and the Middle East are included but not as exhaustive as those for the true Afrotropical region.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 130
+    parent: http://opendata.globalnames.org/sfga/
+    title: 3i - Typhlocybinae Database
+    title_short: 3i - Typhlocybinae Database
+    description: 3I (Internet-accessible Interactive Identification) is a set of software tools for creating on-line identification keys, taxonomic databases, and virtual taxonomic revisions.
+    prefer_flat_classification: false
+
+  - id: 131
+    parent: http://opendata.globalnames.org/sfga/
+    title: CATE Sphingidae
+    title_short: CATE Sphingidae
+    description: An open-access taxonomic web-revision of the Sphingidae (Hawkmoths)
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 132
+    parent: http://opendata.globalnames.org/sfga/
+    title: ZooBank
+    title_short: ZooBank
+    description: ZooBank Registered Names.
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 133
+    parent: http://opendata.globalnames.org/sfga/
+    title: Diatoms
+    title_short: Diatoms
+    description: |-
+      Kociolek, P., P. Hargraves, D. Williams, M. Sullivan, A. Witkowski, E. Theriot, M. Ashworth, A. Thessen and D. Patterson. 2010. The Diatoms Classification. http://diatoms.lifedesks.org..
+      This is a global, consensus-based classification for diatoms first
+    prefer_flat_classification: false
+
+  - id: 134
+    parent: http://opendata.globalnames.org/sfga/
+    title: AntWeb
+    title_short: AntWeb
+    description: AntWeb is generally recognized as the most advanced biodiversity information system at species level dedicated to ants.
+    prefer_flat_classification: false
+
+  - id: 135
+    parent: http://opendata.globalnames.org/sfga/
+    title: Endemic species in Taiwan
+    title_short: Endemic species in Taiwan
+    description: |-
+      Taiwan is a continental island, located between the southeastern coastline of mainland China and Japan's Ryukyu Islands. With diverse terrain and wide range of vertical elevations, Taiwan has tropical, subtropical, temperate, and frigid climate zones. These unique geographical conditions, coupled with the effect of habitat isolation, gave Taiwan its high biodiversity.
+
+      The endemic species of Taiwan denotes the native plants and animals of Taiwan and its offshore islands such as Penghu Archipelago, Orchid Island, Green Island, etc. Even though the areas are small, the Checklist of Taiwan (TaiBNET) lists around 50,000 valid species scientific names. Among them, 8,000 are endemic species (including endemic subspecies and varietas), showing the abundance of Taiwan’s endemic Species. TaiBNET also provides information on these species, such as their scientific names (including authors and years), common names, and synonyms. Through Taiwan Biodiversity Information Facility (TaiBIF), the information on these endemic species are published and then shared and exchanged with other GBIF participants. Users can use keywords to link to other websites with relevant information. All these efforts will result in the circulation and utilization of information in the areas of research, education and conservation.
+    prefer_flat_classification: false
+
+  - id: 136
+    parent: http://opendata.globalnames.org/sfga/
+    title: Dermaptera Species File
+    title_short: Dermaptera Species File
+    description: This file contains taxon names and related nomenclatural information for the order Dermaptera originating from the Dermaptera Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 137
+    parent: http://opendata.globalnames.org/sfga/
+    title: Mantodea Species File
+    title_short: Mantodea Species File
+    description: This file contains taxon names and related nomenclatural information for the order Mantodea originating from the Mantodea Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 138
+    parent: http://opendata.globalnames.org/sfga/
+    title: 'Birds of the World: Recommended English Names'
+    title_short: 'Birds of the World: Recommended English N...'
+    description: This initiative provides a set of unique English-language names for the extant species of the birds of the world. The names are based on a consensus of leading ornithologists worldwide and conform to standard rules of construction.<br/><br/>The English names recommended here are:<br/><br/>based on explicit guidelines and spelling rules<br/>selected to involve minimal use of hyphens for group names<br/>anglicized without glottal stops, accents, and the like<br/>based on interregional agreement and global consensus, with compromises<br/>selected with deference to long-established names<br/>aligned with current species taxonomy<br/>available for general adoption<br/>sponsored and endorsed by the IOC and by committee members<br/>This was a volunteer, community effort on behalf of the International Ornithological Congress (IOC).<br/><br/>Commissioned in 1991, the project took 15 years to complete. All participants gave freely and generously of their valuable time and resources. We waived royalty rights and subsidized the publication of the work to maximize its quality and affordability.<br/><br/>Wide dissemination, use, and improvement of the recommended International English names are our only goals. Gratis license to use this list in derivative works can be obtained by writing Frank Gill, P.O. Box 428 , Rushland PA 18956.<br/><br/>In the spirit of realized humility, we dedicate this work to Burt L. Monroe Jr. We just finished the first phase of what he started.<br/><br/>Frank Gill and Minturn Wright <br/>Co-chairs, IOC Standing Committee on English Names  <br/>April 2007
+    prefer_flat_classification: false
+
+  - id: 139
+    parent: http://opendata.globalnames.org/sfga/
+    title: New Zealand Animalia
+    title_short: New Zealand Animalia
+    description: '{}'
+    prefer_flat_classification: false
+
+  - id: 140
+    parent: http://opendata.globalnames.org/sfga/
+    title: Blattodea Species File
+    title_short: Blattodea Species File
+    description: This file contains taxon names and related nomenclatural information for the order Blattodea originating from the Blattodea Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 141
+    parent: http://opendata.globalnames.org/sfga/
+    title: Plecoptera Species File
+    title_short: Plecoptera Species File
+    description: This file contains taxon names and related nomenclatural information for the order Plecoptera originating from the Plecoptera Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 143
+    parent: http://opendata.globalnames.org/sfga/
+    title: Coreoidea Species File
+    title_short: Coreoidea Species File
+    description: This file contains taxon names and related nomenclatural information for the superfamily Coreoidea originating from the Coreoidea Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 144
+    parent: http://opendata.globalnames.org/sfga/
+    title: Freshwater Animal Diversity Assessment - Normalized export
+    title_short: Freshwater Animal Diversity Assessment - ...
+    description: The Freshwater Animal Diversity Assessment (FADA) database contains authoritative species lists for several taxonomic groups and distribution data at the level of faunistic regions. The groups currently published (27-05-2011) include Halacaridae, Cnidaria-Hydroida, Cladocera, Copepoda, Mysidaceae, Ephemeroptera, Plecoptera, Macrophytes, Bivalvia, Nematomorpha, Rotifera, Fish and Mammals
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 145
+    parent: http://opendata.globalnames.org/sfga/
+    title: Catalogue of Vascular Plant Species of Central and Northeastern Brazil
+    title_short: Catalogue of Vascular Plant Species of Ce...
+    description: NY Botanical Garden's International Plant Science Center is one of the few institutions worldwide with the resources, collections, and expertise to develop the information needed to understand and manage plant diversity
+    prefer_flat_classification: false
+
+  - id: 146
+    parent: http://opendata.globalnames.org/sfga/
+    title: Wikipedia in EOL
+    title_short: Wikipedia in EOL
+    description: The free encyclopedia.
+    prefer_flat_classification: false
+
   # VASCAN
   - id: 147
     parent: http://opendata.globalnames.org/sfga/
@@ -263,6 +523,125 @@ data_sources:
     is_curated: true
     has_classification: true
     
+  - id: 148
+    parent: http://opendata.globalnames.org/sfga/
+    title: Phasmida Species File
+    title_short: Phasmida Species File
+    description: This file contains taxon names and related nomenclatural information for the order Phasmida originating from the Phasmida Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 149
+    parent: http://opendata.globalnames.org/sfga/
+    title: Ocean Biodiversity Information System
+    title_short: OBIS
+    description: OBIS was established by the Census of Marine Life program (www.coml.org). It is an evolving strategic alliance of people and organizations sharing a vision to make marine biogeographic data, from all over the world, available over the World Wide Web.
+    prefer_flat_classification: false
+
+  - id: 150
+    parent: http://opendata.globalnames.org/sfga/
+    title: USDA NRCS PLANTS Database
+    title_short: USDA NRCS PLANTS Database
+    description: The PLANTS Database provides standardized information about the vascular plants, mosses, liverworts, hornworts, and lichens of the U.S. and its territories.
+    prefer_flat_classification: false
+
+  - id: 151
+    parent: http://opendata.globalnames.org/sfga/
+    title: Catalog of Fishes
+    title_short: Catalog of Fishes
+    description: The Catalog of Fishes is a comprehensive compilation of the scientific names for fishes, edited William N. Eschmeyer.
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 152
+    parent: http://opendata.globalnames.org/sfga/
+    title: Aphid Species File
+    title_short: Aphid Species File
+    description: This file contains taxon names and related nomenclatural information for the infraorder Aphidomorpha, including aphids and their relatives, originating from Aphid Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 153
+    parent: http://opendata.globalnames.org/sfga/
+    title: The National Checklist of Taiwan
+    title_short: The National Checklist of Taiwan
+    description: |-
+      The catalog of Taiwanese species is call "TaiBNET" and the national node of GBIF (Global Biodiversity Information Facility) in Taiwan is called "TaiBIF". Currently, the websites have been established at Academia Sinica (http://taibnet.sinica.edu.tw and http://www.gbif.org.tw). Both of the Biodiversity Research Center and the Computing Center of Academia Sinica are in charge of the maintenance and the updating biodiversity related information and data.
+
+      Through the node, the background of participating GBIF, related documents, news, upcoming conferences, name list of Taiwanese taxonomists, catalog of life in Taiwan, specimen database, biodiversity related organization, team research projects, independent biological databases, natural heritage, and local publications etc. can be accessed. Among them, "Name list of Taiwanese taxonomists" and "Catalog of Life of Taiwan" are one promoting project sponsored by the National Science Council. So far, 236 local taxonomists have included their titles, telephones, e-mail addresses, and the taxa that they are expertised. In the future, we hope to include all of the ecologists or the applied scientists in agriculture, forestry, fishery, and animal husbandry in the name list.
+
+      The first phase of Catalog of Life in Taiwan will contain the following items of animals (including insects), plants, and fungi: species names, authors and year, suggested Chinese names, endemic in Taiwan or not, their classification hierarchy, the most authorized citation proving that particular species has occurred in Taiwan. Users can get the name list of one group of organisms through keywords search, species name searching, or image searching etc. Further information of each species can be obtained through the hyperlink to more than 18 well-known global databases or networks, such as Species2000 and ITIS etc. Right now, more than 30,000 species have been compiled, and we hope to collect more than 60,000 species by July 2004. Species checklist of the microorganisms will be included next year. We hope to get more funding and collaborators in the next phase to collect specimen or ecological photos (endemic species first), description (morphology, ecology and biology), geographical distribution, synonyms, literatures, as well as deposited specimen data for each species.
+
+      Through this node, the most authorized information of high biodiversity and endemism of Taiwan can be exchanged and shared with other GBIF participants. This mission is also requested by both of the Convention on Biological Diversity and GBIF to each member because in such a way, education, research, and conservation of biodiversity in the world could be promoted effectively.
+    prefer_flat_classification: false
+
+  - id: 154
+    parent: http://opendata.globalnames.org/sfga/
+    title: Psocodea Species File
+    title_short: Psocodea Species File
+    description: This file contains taxon names and related nomenclatural information for the order Psocodea originating from the Psocodea Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 155
+    parent: http://opendata.globalnames.org/sfga/
+    title: FishBase
+    title_short: FishBase
+    description: FishBase, a  global information system with all you ever wanted to know about fishes. FishBase is a relational database with information to cater to different professionals such as research scientists, fisheries managers, zoologists and many more.
+    home_url: https://www.fishbase.in/home.htm
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 156
+    parent: http://opendata.globalnames.org/sfga/
+    title: 3i - Typhlocybinae Database
+    title_short: 3i - Typhlocybinae Database
+    description: World Typhlocybinae database
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 157
+    parent: http://opendata.globalnames.org/sfga/
+    title: Belgian Species List
+    title_short: Belgian Species List
+    description: "This resource was created by publishing the backend database of the Belgian Species List website (www.species.be). This publishing work has been done by the Belgian Biodiversity Platform (http://www.biodiversity.be) in the framework of the \"GBIF award for evaluating checklist publication format\" during May 2011.\n\nData extracted by Francis Strobbe on May 27th 2011.\n\nAbstract of the Belgian Species List project:\nSince almost a year now, people of all ages can access the Belgian Species List for an extensive overview of the biodiversity in Belgium. Animals, plants, fungi: you can make your way through a total of more than 32.000 species!\n\nThe Belgian species list was set up by the RBINS – the research institution behind the Museum of Natural Sciences – in cooperation with different Belgian and international institutions and organizations.\n\nThe purpose of the species list is to become the online reference in naming and occurrence of species in Belgium, easy to consult in just one website that centralizes and standardizes the information. For every species that's been described, information is given on among other things the conservation status, the distribution, the habitat and much more. More and more species index cards are fitted with pictures and interesting links.\n\nThe website is aimed at a broad audience: researchers, decision makers, students, journalists, nature conversationists and all nature lovers.\n\nWant to know more? \nLog on to www.species.be!"
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 158
+    parent: http://opendata.globalnames.org/sfga/
+    title: European Nature Information System
+    title_short: EUNIS
+    description: 'Find species, habitat types and protected sites across Europe '
+    home_url: https://eunis.eea.europa.eu/
+    is_auto_curated: true
+    has_classification: true
+    outlink_url: https://eunis.eea.europa.eu/species/{}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 159
+    parent: http://opendata.globalnames.org/sfga/
+    title: CU*STAR
+    title_short: CU*STAR
+    description: CU*STAR is the indexing backbone to the star websites for biology - such as micro*scope.
+    prefer_flat_classification: false
+
+  - id: 161
+    parent: http://opendata.globalnames.org/sfga/
+    title: Orthoptera Species File
+    title_short: Orthoptera Species File
+    description: This file contains taxon names and related nomenclatural information for the order Orthoptera originating from the Orthoptera Species File maintained by the Species File Group (http://software.speciesfile.org) at the University of Illinois, Illinois Natural History Survey.
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 162
+    parent: http://opendata.globalnames.org/sfga/
+    title: Bishop Museum
+    title_short: Bishop Museum
+    description: Bishop Museum Taxonomic Database
+    prefer_flat_classification: false
+
   # IUCN
   - id: 163
     parent: http://opendata.globalnames.org/sfga/
@@ -272,6 +651,30 @@ data_sources:
     outlink_url: "{}"
     outlink_id_column: "name.col__link"
 
+  - id: 164
+    parent: http://opendata.globalnames.org/sfga/
+    title: BioLib.cz
+    title_short: BioLib.cz
+    description: BioLib is an international encyclopedia of plants, fungi and animals.
+    prefer_flat_classification: false
+
+  - id: 165
+    parent: http://opendata.globalnames.org/sfga/
+    title: Tropicos - Missouri Botanical Garden
+    title_short: Tropicos
+    description: The Tropicos database links over 1.33M scientific names with over 4.87M specimens and over 685K digital images. The data includes over 150K references from over 52.6K publications offered as a free service to the world’s scientific community.
+    is_curated: true
+    outlink_url: https://tropicos.org/name/{}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 166
+    parent: http://opendata.globalnames.org/sfga/
+    title: nlbif
+    title_short: nlbif
+    description: NLBIF is the Dutch Node of the Global Biodiversity Information Facility network.
+    prefer_flat_classification: false
+
   # IPNI
   - id: 167
     parent: http://opendata.globalnames.org/sfga/
@@ -280,6 +683,26 @@ data_sources:
     is_curated: true
     outlink_url: "https://www.ipni.org/n/{}"
     outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
+
+  - id: 168
+    parent: http://opendata.globalnames.org/sfga/
+    title: Index to Organism Names
+    title_short: ION
+    description: |-
+      ION contains millions of animal names, both fossil and recent, at all taxonomic ranks, reported from the scientific literature. (Bacteria, plant and virus names will be added soon).
+
+      These names are derived from premier Clarivate databases: Zoological Record®, BIOSIS Previews®, and Biological Abstracts®. All names are tied to at least one published article. Together, these resources cover every aspect of the life sciences - providing names from over 30 million scientific records, including approximately ,000 international journals, patents, books, and conference proceedings. They provide a powerful foundation for the most complete collection of organism names available today.
+    home_url: http://organismnames.com/
+    outlink_url: http://www.organismnames.com/details.htm?lsid={}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 169
+    parent: http://opendata.globalnames.org/sfga/
+    title: uBio NameBank
+    title_short: uBio NameBank
+    description: uBio uses names and taxonomic intelligence to manage information about organisms.
+    prefer_flat_classification: false
 
   # Arctos
   - id: 170
@@ -291,6 +714,13 @@ data_sources:
     outlink_url: "https://arctos.database.museum/name/{}"
     outlink_id_column: "name.col__alternative_id" # Custom: URL-encoded canonical_full (prepared in SFGA)
 
+  - id: 171
+    parent: http://opendata.globalnames.org/sfga/
+    title: Checklist of Beetles (Coleoptera) of Canada and Alaska. Second Edition.
+    title_short: Checklist of Beetles (Coleoptera) of Cana...
+    description: All 8238 species-group taxa of Coleoptera known to occur in Canada and Alaska are recorded by province/territory or state, along with their author(s) and year of publication, in a classification framework. Only presence of taxa in each Canadian province or territory and Alaska is noted. Labrador is considered a distinct geographical entity. Adventive and Holarctic species-group taxa are indicated. References to pertinent identification keys are given under the corresponding supraspecific taxa.
+    prefer_flat_classification: false
+
   # PaleoBioDB
   - id: 172
     parent: http://opendata.globalnames.org/sfga/
@@ -299,6 +729,74 @@ data_sources:
     is_curated: true
     has_classification: true
     prefer_flat_classification: true
+
+  - id: 173
+    parent: http://opendata.globalnames.org/sfga/
+    title: The Reptile Database
+    title_short: The Reptile DataBase
+    description: This database provides a catalogue of all living reptile species and their classification. The database covers all living snakes, lizards, turtles, amphisbaenians, tuataras, and crocodiles. Currently there are about 9,500 species including another 2,800 subspecies (statistics). The database focuses on taxonomic data, i.e. names and synonyms, distribution and type data and literature references.
+    home_url: http://reptile-database.org/
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 174
+    parent: http://opendata.globalnames.org/sfga/
+    title: The Mammal Species of The World
+    title_short: Mammal Species of the World
+    description: Mammal Species of the World, 3rd edition (MSW3) is a database of mammalian taxonomy, based upon the 2005 book Mammal Species of the World. A Taxonomic and Geographic Reference (3rd ed). Don E. Wilson & DeeAnn M. Reeder (editors).
+    home_url: https://www.departments.bucknell.edu/biology/resources/msw3/
+    data_url: https://www.departments.bucknell.edu/biology/resources/msw3/export.asp
+    is_curated: true
+    has_classification: true
+    outlink_url: https://www.departments.bucknell.edu/biology/resources/msw3/browse.asp?s=y&id={}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 175
+    parent: http://opendata.globalnames.org/sfga/
+    title: BirdLife International
+    title_short: BirdLife International
+    description: BirdLife is widely recognised as the world leader in bird conservation. Rigorous science informed by practical feedback from projects on the ground in important sites and habitats enables us to implement successful conservation programmes for birds and all nature.
+    home_url: http://www.birdlife.org/
+    data_url: http://datazone.birdlife.org/species/taxonomy
+    is_curated: true
+    has_classification: true
+    outlink_url: http://datazone.birdlife.org/species/results?thrlev1=&thrlev2=&kw={}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 176
+    parent: http://opendata.globalnames.org/sfga/
+    title: Checklist da Flora de Portugal (Continental, Açores e Madeira)
+    title_short: Checklist da Flora de Portugal (Continent...
+    description: The checklist of vascular plants of Portugal, including Mainland Portugal, Azores and Madeira, was published in 2012 by ALFA (Associação Lusitana de Fitossociologia), and adopted formally by the Instituto de Conservação da Natureza e da Biodiversidade (presently ICNF). The checklist covers Continental Portugal, Azores and Madeira. It includes a total of 3995 taxa (including infraspecific taxa), of which 3314 are for Mainland Portugal, 1006 for Azores and 1233 for Madeira. These taxa are distributed among 185 families and 1066 genera. The checklist also includes establishment means, identifying native, introduced of endemic taxa.
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 177
+    parent: http://opendata.globalnames.org/sfga/
+    title: FishBase Cache
+    title_short: FishBase Cache
+    description: FishBase is a global species database of fish species(specifically finfish). It is the largest and the mostextensively accessed online database of finfish
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 178
+    parent: http://opendata.globalnames.org/sfga/
+    title: Silva
+    title_short: Silva
+    description: High quality ribosomal RNA databases
+    prefer_flat_classification: false
+
+  - id: 179
+    parent: http://opendata.globalnames.org/sfga/
+    title: Open Tree of Life Reference Taxonomy
+    title_short: Open Tree of Life
+    description: Open Tree of Life aims to construct a comprehensive, dynamic and digitally-available tree of life by synthesizing published phylogenetic trees along withtaxonomic data. The project is a collaborative effortbetween 11 PIs across 10 institutions.
+    home_url: https://tree.opentreeoflife.org/
+    data_url: https://files.opentreeoflife.org/ott/
+    is_auto_curated: true
+    prefer_flat_classification: false
 
   # iNaturalist
   - id: 180
@@ -311,6 +809,115 @@ data_sources:
     outlink_url: "https://www.inaturalist.org/taxa/{}"
     outlink_id_column: "taxon.col__id" # Taxonomic database: uses taxon ID
 
+  - id: 181
+    parent: http://opendata.globalnames.org/sfga/
+    title: The Interim Register of Marine and Nonmarine Genera
+    title_short: IRMNG
+    description: The Interim Register of Marine and Nonmarine Genera is a provisional (or ‘interim’) compilation of genus names – including species names in many cases – and covers both living and extinct biota into a single system to support taxonomic and other queries dealing with e.g. homonyms, authorities, parent-child relationships, spelling variations and distinctions between marine and non-marine or fossil and recent taxa
+    home_url: https://irmng.org/
+    data_url: https://irmng.org/export/
+    is_curated: true
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 183
+    parent: http://opendata.globalnames.org/sfga/
+    title: Index Animalium by Charles Davies Sherborn
+    title_short: Sherborn Index Animalium
+    description: Index Animalium is a monumental work that covers 400 000 zoological names registered by science between 1758 and 1850
+    home_url: https://www.sil.si.edu/DigitalCollections/indexanimalium/taxonomicnames/
+    data_url: https://www.sil.si.edu/DigitalCollections/indexanimalium/Datasets/2006.01.06.TaxonomicData.csv
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 184
+    parent: http://opendata.globalnames.org/sfga/
+    title: ASM Mammal Diversity Database
+    title_short: ASM Mammal Diversity DB
+    description: Mammal Diversity Database. 2021. www.mammaldiversity.org. American Society of Mammalogists. Accessed 2021-01-28.
+    home_url: https://mammaldiversity.org/
+    data_url: https://mammaldiversity.org/
+    is_curated: true
+    has_classification: true
+    outlink_url: https://mammaldiversity.org/species-account/species-id={}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 185
+    parent: http://opendata.globalnames.org/sfga/
+    title: IOC World Bird List
+    title_short: IOC World Bird List
+    description: The IOC World Bird List is an open access resource of the international community of ornithologists. Our primary goal is to facilitate worldwide communication in ornithology and conservation based on an up-to-date evolutionary classification of world birds and a set of English names that follow explicit guidelines for spelling and construction.
+    home_url: https://www.worldbirdnames.org/
+    data_url: https://www.worldbirdnames.org/ioc-lists/master-list-2/
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 186
+    parent: http://opendata.globalnames.org/sfga/
+    title: MCZbase
+    title_short: MCZbase
+    description: The Museum of Comparative Zoology was founded in 1859 on the concept that collections are an integral and fundamental component of zoological research and teaching. This more than 150-year-old commitment remains a strong and proud tradition for the MCZ. The present-day MCZ contains over 21-million specimens in ten research collections which comprise one of the world's richest and most varied resources for studying the diversity of life. The museum serves as the primary repository for zoological specimens collected by past and present Harvard faculty-curators, staff and associates conducting research around the world. As a premier university museum and research institution, the specimens and their related data are available to researchers of the scientific and museum community. doi:10.5281/zenodo.891420
+    home_url: https://mczbase.mcz.harvard.edu/
+    is_auto_curated: true
+    outlink_url: https://mczbase.mcz.harvard.edu/name/{}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 187
+    parent: http://opendata.globalnames.org/sfga/
+    title: The eBird/Clements Checklist of Birds of the World
+    title_short: Clements' Birds of the World
+    description: 'The eBird/Clements Checklist of Birds of the World: v2019. Downloaded from https://www.birds.cornell.edu/clementschecklist/download/'
+    home_url: https://www.birds.cornell.edu/clementschecklist/
+    data_url: https://www.birds.cornell.edu/clementschecklist/download/
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 188
+    parent: http://opendata.globalnames.org/sfga/
+    title: American Ornithological Society
+    title_short: American Ornithological Society
+    description: |-
+      The American Ornithological Society's (AOS) Checklist is the official source on the taxonomy of birds found in North and Middle America, including adjacent islands. This list is produced by the North American Classification and Nomenclature Committee (NACC) of the AOS.
+
+      Recommended citation: Chesser, R. T., K. J. Burns, C. Cicero, J. L. Dunn, A. W. Kratter, I. J. Lovette, P. C. Rasmussen, J. V. Remsen, Jr., D. F. Stotz, and K. Winker. 2019. Check-list of North American Birds (online). American Ornithological Society. http://checklist.aou.org/taxa
+    home_url: https://americanornithology.org/
+    data_url: https://checklist.americanornithology.org/taxa.csv
+    is_curated: true
+    outlink_url: https://checklist.americanornithology.org/taxa/{}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 189
+    parent: http://opendata.globalnames.org/sfga/
+    title: Howard and Moore Complete Checklist of the Birds of the World
+    title_short: Howard & Moore Birds of the World
+    description: Christidis et al. 2018. The Howard and Moore Complete Checklist of the Birds of the World, version 4.1 (Downloadable checklist). Accessed from https://www.howardandmoore.org.
+    home_url: https://www.howardandmoore.org/
+    data_url: https://www.howardandmoore.org/howard-and-moore-database/
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 193
+    parent: http://opendata.globalnames.org/sfga/
+    title: Myriatrix
+    title_short: Myriatrix
+    description: |-
+      Myriatrix is a Scratchpads-based Virtual Research Environment proposed to the International Society of Myriapodology. It allows collaborative editing and linking of the classification, literature, and morphological traits of the many-legged terrestrial invertebrate groups Onychophora and Myriapoda (to the inclusion of Euthycarcinoidea). The taxonomic backbone is based on the Species 2000 & ITIS Catalogue of Life (2015 release). The literature database contains circa 1300 references, spanning from 1535 to present. This dataset represents the output of an ongoing endeavor, and therefore is periodically updated. For more information, please see http://myriatrix.myspecies.info/ and the original database proposal on https://www.researchgate.net/publication/337844165
+
+
+
+      How to cite:
+
+      The Fellegship of the Rings (2020 onwards): Myriatrix. Available from http://myriatrix.myspecies.info
+    home_url: http://myriatrix.myspecies.info
+    is_curated: true
+    has_classification: true
+    outlink_url: https://myriatrix.myspecies.info/myriatrix/{}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
   # Plazi
   - id: 194
     parent: http://opendata.globalnames.org/sfga/
@@ -318,6 +925,18 @@ data_sources:
     home_url: "https://www.plazi.org"
     description: "Plazi is an association supporting and promoting the development of persistent and openly accessible digital taxonomic literature."
     is_curated: true
+
+  - id: 195
+    parent: http://opendata.globalnames.org/sfga/
+    title: AlgaeBase
+    title_short: AlgaeBase
+    description: AlgaeBase is a global algal database of taxonomic, nomenclatural and distributional information.
+    home_url: https://www.algaebase.org/
+    is_curated: true
+    has_classification: true
+    outlink_url: https://www.algaebase.org/search/species/detail/?species_id={}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
 
   # World Flora Online
   - id: 196
@@ -340,6 +959,23 @@ data_sources:
     outlink_id_column: "name.col__alternative_id"
     prefer_flat_classification: true
 
+  - id: 198
+    parent: http://opendata.globalnames.org/sfga/
+    title: The Leipzig Catalogue of Vascular Plants
+    title_short: Leipzig Cat. Vasc. Plants
+    description: LCVP, The Leipzig catalogue of vascular plants, a new taxonomic reference list for all known vascular plants
+    home_url: https://github.com/idiv-biodiversity/LCVP
+    has_classification: true
+    prefer_flat_classification: false
+
+  - id: 200
+    parent: http://opendata.globalnames.org/sfga/
+    title: The Terrestrial Parasite Tracker
+    title_short: Terrestrial Parasite Tracker
+    description: The goal of the Terrestrial Parasite Tracker (TPT) project is to mobilize and digitally capture vector and parasite collections to help build a picture of parasite host-association evolution, distributions, and the ecological interactions of disease vectors which will assist scientists, educators, land managers, and policy makers.
+    home_url: https://github.com/njdowdy/tpt-taxonomy
+    prefer_flat_classification: false
+
   # ICTV Virus Taxonomy
   - id: 201
     parent: http://opendata.globalnames.org/sfga/
@@ -356,6 +992,42 @@ data_sources:
     is_curated: true
     outlink_url: "https://www.mycobank.org/page/Name details page/{}"
     outlink_id_column: "name.col__id" # Nomenclatural database: uses name ID (all record types)
+
+  - id: 204
+    parent: http://opendata.globalnames.org/sfga/
+    title: Fungal Names
+    title_short: Fungal Names
+    description: |-
+      Fungal Names, a global data repository of fungal taxonomy, is established by the Institute of Microbiology, Chinese Academy of Sciences. The repository aims at providing integrated services on Fungi and fungus-like organisms involving fungal name registration, species identification, specimen preservation, taxonomists overview and related information query, statistics or data sharing for people worked with or interested in mycology.
+
+      Fang Wang, Ke Wang, Lei Cai, Mingjun Zhao, Paul M Kirk, Guomei Fan, Qinglan Sun, Bo Li, Shuai Wang, Zhengfei Yu, Dong Han, Juncai Ma, Linhuan Wu*, Yijian Yao*, Fungal names: a comprehensive nomenclatural repository and knowledge base for fungal taxonomy, Nucleic Acids Research, 2022, gkac926, https://doi.org/10.1093/nar/gkac926
+    home_url: https://nmdc.cn/fungalnames
+    is_curated: true
+    has_classification: true
+    outlink_url: https://nmdc.cn/fungalnames/namesearch/toallfungalinfo?recordNumber={}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
+
+  - id: 205
+    parent: http://opendata.globalnames.org/sfga/
+    title: Nomenclator Zoologicus
+    title_short: Nomenclator Zoologicus
+    description: Nomenclator Zoologicus is a catalog of the bibliographic origins of the names of every genus and subgenus in the published literature since the tenth edition of Linnaeus' System Natureae in 1758 (Linnæus, 1758) up to 1994. An estimated 340,000 genera are represented in the text and there are approximately 3000 supplemental corrections. It provides a nucleus of core genera data and is recognized as an essential reference document by the zoological taxonomic community.
+    home_url: https://doi.org/10.5281/zenodo.7010676
+    is_curated: true
+    prefer_flat_classification: false
+
+  - id: 207
+    parent: http://opendata.globalnames.org/sfga/
+    title: Wikidata
+    title_short: Wikidata
+    description: Wikidata is a collaboratively edited multilingual knowledge graph hosted by the Wikimedia Foundation. It is a common source of open data that Wikimedia projects such as Wikipedia, and anyone else, can use under the CC0 public domain license. Wikidata is a wiki powered by the software MediaWiki, including its extension for semi-structured data, the Wikibase.
+    home_url: https://wikidata.org
+    data_url: https://www.wikidata.org/wiki/Wikidata:Database_download
+    is_auto_curated: true
+    outlink_url: https://wikidata.org/wiki/{}
+    outlink_id_column: name.col__alternative_id
+    prefer_flat_classification: false
 
   # Ruhoff 1980
   - id: 206
