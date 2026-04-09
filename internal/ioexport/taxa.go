@@ -53,7 +53,7 @@ func exportTaxa(
 		}
 		total += len(batch)
 		cursor = batch[len(batch)-1].ID
-		bar.Add(len(batch))
+		bar.SetCurrent(int64(total))
 
 		slog.Debug("taxa batch written",
 			"source_id", sourceID,

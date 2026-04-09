@@ -55,7 +55,7 @@ func exportVernaculars(
 		}
 		total += len(batch)
 		cursor = lastCursor
-		bar.Add(len(batch))
+		bar.SetCurrent(int64(total))
 
 		slog.Debug("vernaculars batch written",
 			"source_id", sourceID,

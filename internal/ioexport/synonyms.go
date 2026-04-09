@@ -52,7 +52,7 @@ func exportSynonyms(
 		}
 		total += len(batch)
 		cursor = batch[len(batch)-1].ID
-		bar.Add(len(batch))
+		bar.SetCurrent(int64(total))
 
 		slog.Debug("synonyms batch written",
 			"source_id", sourceID,

@@ -54,6 +54,7 @@ func (p *populator) processSynonyms(
 		// Skip self-synonyms: a synonym pointing to itself is a data error
 		// (the name is already represented as an accepted taxon).
 		if t.synonymID == t.taxonID {
+			bar.Add(1)
 			continue
 		}
 
