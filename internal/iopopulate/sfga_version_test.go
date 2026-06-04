@@ -99,10 +99,10 @@ func TestCheckSfgaVersionInvalidFormat(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE VERSION (ID TEXT)")
+	_, err = db.Exec("CREATE TABLE VERSION (sf__id TEXT)")
 	require.NoError(t, err)
 
-	_, err = db.Exec("INSERT INTO VERSION (ID) VALUES ('not-a-version')")
+	_, err = db.Exec("INSERT INTO VERSION (sf__id) VALUES ('not-a-version')")
 	require.NoError(t, err)
 
 	p := &populator{

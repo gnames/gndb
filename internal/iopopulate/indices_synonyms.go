@@ -83,7 +83,7 @@ func (p *populator) processSynonyms(
 
 		record := []any{
 			source.ID,                   // data_source_id
-			t.synonymID,                 // record_id (synonym's own ID)
+			t.synonymID,                 // record_id (col__id|col__taxon_id|name_col__id — unique per synonym-taxon-name triple)
 			nameStringID,                // name_string_id
 			outlinkID,                   // outlink_id
 			t.globalID,                  // global_id
@@ -137,7 +137,7 @@ func (p *populator) getSynonymData(outlinkCol string) (*sql.Rows, error) {
 	// Query synonyms with their accepted taxon info
 	query := `
 		SELECT
-			s.col__id, s.col__taxon_id, n.col__id, n.gn__scientific_name_string,
+			COALESCE(s.col__id,'') || '|' || s.col__taxon_id || '|' || n.col__id, s.col__taxon_id, n.col__id, n.gn__scientific_name_string,
 			n.col__code_id, n.col__rank_id, s.col__status_id,
 			t.col__kingdom, t.sf__kingdom_id, t.col__phylum, t.sf__phylum_id,
 			t.col__subphylum, t.sf__subphylum_id, t.col__class, t.sf__class_id,

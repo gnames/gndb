@@ -6,6 +6,7 @@ package iodb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/gnames/gndb/pkg/config"
 	"github.com/gnames/gndb/pkg/db"
@@ -60,6 +61,7 @@ func (p *pgxOperator) Connect(
 	// Create pool
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
+		slog.Error("Cannot create db pool", "error", err)
 		return ConnectionError(cfg.Host, cfg.Port,
 			cfg.Database, cfg.User, err)
 	}
@@ -67,6 +69,7 @@ func (p *pgxOperator) Connect(
 	// Verify connection
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
+		slog.Error("Cannot connect to db", "error", err)
 		return ConnectionError(cfg.Host, cfg.Port,
 			cfg.Database, cfg.User, err)
 	}

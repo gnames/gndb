@@ -7,7 +7,7 @@ import (
 
 func (p *populator) checkSfgaVersion(sourceID int) error {
 	var version string
-	row := p.sfgaDB.QueryRow("SELECT ID FROM VERSION LIMIT 1")
+	row := p.sfgaDB.QueryRow("SELECT sf__id FROM VERSION LIMIT 1")
 	err := row.Scan(&version)
 	if err != nil {
 		return SfgaGetVersionError(sourceID, err)

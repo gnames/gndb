@@ -12,7 +12,7 @@ require (
 	github.com/gnames/gnparser v1.15.0
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/sfborg/sflib v0.6.2
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
