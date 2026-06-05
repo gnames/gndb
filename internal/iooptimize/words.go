@@ -537,12 +537,6 @@ func saveWordNameStrings(
 	}
 	totalSaved := 0
 
-	bar := newProgressBar(
-		len(wordNames),
-		"Saving word linkages: ",
-	)
-	defer bar.Finish()
-
 	for i := 0; i < len(wordNames); i += batchSize {
 		end := min(i+batchSize, len(wordNames))
 		batch := wordNames[i:end]
@@ -573,7 +567,6 @@ func saveWordNameStrings(
 		}
 
 		totalSaved += int(copyCount)
-		bar.Add(len(batch))
 	}
 
 	slog.Info(
