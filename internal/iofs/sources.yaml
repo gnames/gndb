@@ -1116,3 +1116,14 @@ data_sources:
     outlink_url:     "{}"
     outlink_id_column: "name.col__link"
 
+  # MDD
+  - id: 216
+    parent: http://opendata.globalnames.org/sfga/
+    title: "The Mammal Diversity Database"
+    title_short: "MDD"
+    home_url: "https://www.mammaldiversity.org"
+    data_url: "https://github.com/mammaldiversity/mammaldiversity.github.io/raw/refs/heads/master/assets/data/MDD.zip"
+    is_curated: true
+    has_classification: true
+    outlink_url:     "https://www.mammaldiversity.org/taxon/{}"
+    outlink_id_column: "taxon.col__alternative_id"
