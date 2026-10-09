@@ -2,11 +2,20 @@
 
 ## Unreleased
 
-- Add: `abbr_lookups` table built by `gndb optimize` (new step 6 of 7)
+## [v0.1.5] - 2026-10-09 Fri
+
+- Add [#14]: `abbr_lookups` table built by `gndb optimize` (new step 6 of 7)
   to find candidate names for abbreviations like `C. elegans`. Keys
   are built with gnparser's `stemmer.AbbrKey`, shared with gnames.
 - Fix: issues with `gndb export` subcommand, add the rest of missing
   datasets to `sources.yaml`.
+- Add: abbreviation lookup considers only canonical forms with
+  cardinality > 1, because uninomials cannot be abbreviated this way.
+- Add: Mammal Diversity Database (MDD) with ID 216.
+- Add: dinoflagellates datasets to `sources.yaml`.
+- Remove: name linkage bar.
+- Change: rename version id to `sf__id`.
+- Update: Go dependencies.
 
 ## [v0.1.4] - 2026-04-07 Tue
 
@@ -80,6 +89,7 @@
 
 This document follows [changelog guidelines]
 
+[v0.1.5]: https://github.com/gnames/gndb/tree/v0.1.5
 [v0.1.4]: https://github.com/gnames/gndb/tree/v0.1.4
 [v0.1.3]: https://github.com/gnames/gndb/tree/v0.1.3
 [v0.1.2]: https://github.com/gnames/gndb/tree/v0.1.2
@@ -88,6 +98,7 @@ This document follows [changelog guidelines]
 [v0.0.3]: https://github.com/gnames/gndb/tree/v0.0.3
 [v0.0.2]: https://github.com/gnames/gndb/tree/v0.0.2
 [v0.0.1]: https://github.com/gnames/gndb/tree/v0.0.1
+[#14]: https://github.com/gnames/gndb/issues/14
 [#13]: https://github.com/gnames/gndb/issues/13
 [#12]: https://github.com/gnames/gndb/issues/12
 [#11]: https://github.com/gnames/gndb/issues/11
