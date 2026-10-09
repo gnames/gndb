@@ -9,7 +9,7 @@ require (
 	github.com/gnames/gn v0.1.4
 	github.com/gnames/gnfmt v0.6.5
 	github.com/gnames/gnlib v0.64.0
-	github.com/gnames/gnparser v1.15.1
+	github.com/gnames/gnparser v1.15.2
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
@@ -81,5 +81,3 @@ require (
 )
 
 tool github.com/spf13/cobra-cli
-
-replace github.com/gnames/gnparser => ../gnparser
