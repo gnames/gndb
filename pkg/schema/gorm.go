@@ -17,6 +17,7 @@ func AllModels() []interface{} {
 		&WordNameString{},
 		&VernacularString{},
 		&VernacularStringIndex{},
+		&AbbrLookup{},
 	}
 }
 

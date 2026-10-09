@@ -5,15 +5,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/gnames/gnparser"
+	"github.com/gnames/gnparser/ent/stemmer"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gnames/gndb/internal/iodb"
 	"github.com/gnames/gndb/internal/iooptimize"
 	"github.com/gnames/gndb/internal/iopopulate"
 	"github.com/gnames/gndb/internal/ioschema"
 	"github.com/gnames/gndb/pkg/config"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestGetOptimizeCmd_Exists verifies getOptimizeCmd
@@ -82,7 +87,7 @@ func TestGetOptimizeCmd_IndependentInstances(t *testing.T) {
 
 // TestOptimize_EndToEnd_VASCAN tests the complete
 // optimization workflow using source 1002 (VASCAN)
-// from testdata. This test verifies all 6 optimization
+// from testdata. This test verifies all 7 optimization
 // phases complete successfully.
 func TestOptimize_EndToEnd_VASCAN(t *testing.T) {
 	if testing.Short() {
@@ -296,10 +301,14 @@ func TestOptimize_EndToEnd_VASCAN(t *testing.T) {
 	assert.GreaterOrEqual(t, indexCount, 3,
 		"Verification view should have at least 3 indexes")
 
-	// Verify Phase 6: VACUUM ANALYZE completed
+	// Verify Phase 6: Abbreviation lookup
+	abbrCount := checkAbbrLookup(t, ctx, pool)
+
+	// Verify Phase 7: VACUUM ANALYZE completed
 	// (no direct verification, but command succeeded)
 
 	t.Logf("VASCAN optimization successful:")
+	t.Logf("  - Abbreviation lookup rows: %d", abbrCount)
 	t.Logf("  - NameStrings: %d", nsCount)
 	t.Logf("  - Canonical forms: %d", canonicalCount)
 	t.Logf("  - Words: %d", wordsCount)
@@ -486,6 +495,12 @@ func TestOptimize_Idempotent(t *testing.T) {
 	).Scan(&verificationCount1)
 	require.NoError(t, err)
 
+	var abbrCount1 int
+	err = pool.QueryRow(ctx,
+		"SELECT COUNT(*) FROM abbr_lookups",
+	).Scan(&abbrCount1)
+	require.NoError(t, err)
+
 	// Run optimize second time
 	err = optimizer.Optimize(ctx, testCfg)
 	require.NoError(t, err,
@@ -504,6 +519,12 @@ func TestOptimize_Idempotent(t *testing.T) {
 	).Scan(&verificationCount2)
 	require.NoError(t, err)
 
+	var abbrCount2 int
+	err = pool.QueryRow(ctx,
+		"SELECT COUNT(*) FROM abbr_lookups",
+	).Scan(&abbrCount2)
+	require.NoError(t, err)
+
 	// Counts should be consistent
 	assert.Equal(t, wordsCount1, wordsCount2,
 		"Words count should be stable across runs")
@@ -511,9 +532,117 @@ func TestOptimize_Idempotent(t *testing.T) {
 		verificationCount1,
 		verificationCount2,
 		"Verification count should be stable across runs")
+	assert.Equal(t, abbrCount1, abbrCount2,
+		"Abbreviation lookup count should be stable across runs")
 
 	t.Logf("Idempotency verified:")
 	t.Logf("  - Words: %d (both runs)", wordsCount1)
 	t.Logf("  - Verification: %d (both runs)",
 		verificationCount1)
+	t.Logf("  - Abbreviation lookup: %d (both runs)", abbrCount1)
+}
+
+// checkAbbrLookup verifies the abbr_lookups table built by
+// optimize and returns its row count.
+func checkAbbrLookup(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+) int {
+	t.Helper()
+
+	var count int
+	err := pool.QueryRow(ctx,
+		"SELECT COUNT(*) FROM abbr_lookups",
+	).Scan(&count)
+	require.NoError(t, err)
+	assert.Greater(t, count, 0,
+		"Abbreviation lookup should have records")
+
+	// A well-known VASCAN name is found by its key.
+	var found bool
+	err = pool.QueryRow(ctx,
+		`SELECT EXISTS (
+			SELECT FROM abbr_lookups
+			WHERE abbr_key = $1 AND genus = 'Acer' AND pos = 2
+		)`,
+		stemmer.AbbrKey("A.", "saccharum"),
+	).Scan(&found)
+	require.NoError(t, err)
+	assert.True(t, found, "Acer saccharum should be in abbr_lookups")
+
+	// Repeated epithets do not create duplicate rows.
+	var dupCount int
+	err = pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM (
+			SELECT abbr_key, canonical_stem_id
+			FROM abbr_lookups
+			GROUP BY abbr_key, canonical_stem_id
+			HAVING COUNT(*) > 1
+		) d`,
+	).Scan(&dupCount)
+	require.NoError(t, err)
+	assert.Equal(t, 0, dupCount,
+		"Each key and name should have one row")
+
+	// The gnparser version used for keys is recorded.
+	var comment string
+	err = pool.QueryRow(ctx,
+		"SELECT obj_description('abbr_lookups'::regclass, 'pg_class')",
+	).Scan(&comment)
+	require.NoError(t, err)
+	assert.Equal(t, "gnparser "+gnparser.Version, comment)
+
+	// Hybrids are skipped.
+	var hybridCount int
+	err = pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM abbr_lookups
+		 WHERE canonical_stem ~ '[×+‘]'`,
+	).Scan(&hybridCount)
+	require.NoError(t, err)
+	assert.Equal(t, 0, hybridCount, "Hybrids should be skipped")
+
+	// Every binomial can be found by the key gnames would build
+	// from text.
+	rows, err := pool.Query(ctx,
+		`SELECT DISTINCT c.name, ns.canonical_stem_id
+		 FROM name_strings ns
+		 JOIN canonicals c ON c.id = ns.canonical_id
+		 WHERE ns.canonical_stem_id IS NOT NULL
+		   AND array_length(string_to_array(c.name, ' '), 1) = 2
+		   AND c.name !~ '[×+‘]'
+		 LIMIT 500`,
+	)
+	require.NoError(t, err)
+
+	type binomial struct {
+		genus, epithet, stemID string
+	}
+	var names []binomial
+	for rows.Next() {
+		var name, stemID string
+		require.NoError(t, rows.Scan(&name, &stemID))
+		words := strings.Fields(name)
+		names = append(names, binomial{words[0], words[1], stemID})
+	}
+	require.NoError(t, rows.Err())
+	rows.Close()
+	require.NotEmpty(t, names)
+
+	for _, n := range names {
+		key := stemmer.AbbrKey(n.genus, n.epithet)
+		err = pool.QueryRow(ctx,
+			`SELECT EXISTS (
+				SELECT FROM abbr_lookups
+				WHERE abbr_key = $1 AND canonical_stem_id = $2
+			)`,
+			key, n.stemID,
+		).Scan(&found)
+		require.NoError(t, err)
+		assert.True(t, found,
+			"key %q for %s %s should be in abbr_lookups",
+			key, n.genus, n.epithet)
+	}
+
+	return count
 }

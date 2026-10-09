@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add: `abbr_lookups` table built by `gndb optimize` (new step 6 of 7)
+  to find candidate names for abbreviations like `C. elegans`. Keys
+  are built with gnparser's `stemmer.AbbrKey`, shared with gnames.
 - Fix: issues with `gndb export` subcommand, add the rest of missing
   datasets to `sources.yaml`.
 

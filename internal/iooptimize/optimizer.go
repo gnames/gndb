@@ -28,14 +28,15 @@ func NewOptimizer(op db.Operator) gndb.Optimizer {
 	}
 }
 
-// Optimize applies performance optimizations by executing 6
+// Optimize applies performance optimizations by executing 7
 // sequential steps:
 //  1. Reparse all name_strings with latest gnparser algorithms
 //  2. Normalize vernacular language codes
 //  3. Remove orphaned records
 //  4. Extract and link words for fuzzy matching
 //  5. Create verification materialized view with indexes
-//  6. Run VACUUM ANALYZE to update statistics
+//  6. Build abbreviation lookup table
+//  7. Run VACUUM ANALYZE to update statistics
 //
 // Errors are returned to the CLI layer for user-friendly display
 // via gn.PrintErrorMessage(). Progress messages are logged via
@@ -68,7 +69,7 @@ func (o *optimizer) Optimize(
 
 	// Step 1: Reparse all name_strings with latest gnparser
 	// algorithms
-	msg = "Step 1/6: Reparsing name strings"
+	msg = "Step 1/7: Reparsing name strings"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -76,10 +77,10 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 1/6: Complete - Name strings reparsed")
+	slog.Info("Step 1/7: Complete - Name strings reparsed")
 
 	// Step 2: Normalize vernacular language codes
-	msg = "Step 2/6: Normalizing vernacular languages"
+	msg = "Step 2/7: Normalizing vernacular languages"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -90,12 +91,12 @@ func (o *optimizer) Optimize(
 		"%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()),
 	)
 	slog.Info(
-		"Step 2/6: Complete - " +
+		"Step 2/7: Complete - " +
 			"Vernacular languages normalized",
 	)
 
 	// Step 3: Remove orphaned records
-	msg = "Step 3/6: Removing orphaned records"
+	msg = "Step 3/7: Removing orphaned records"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -103,10 +104,10 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 3/6: Complete - Orphaned records removed")
+	slog.Info("Step 3/7: Complete - Orphaned records removed")
 
 	// Step 4: Extract and link words for advanced matching
-	msg = "Step 4/6: Extracting words for advanced matching"
+	msg = "Step 4/7: Extracting words for advanced matching"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -114,10 +115,10 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 4/6: Complete - Words extracted and linked")
+	slog.Info("Step 4/7: Complete - Words extracted and linked")
 
 	// Step 5: Create verification materialized view
-	msg = "Step 5/6: Creating verification view"
+	msg = "Step 5/7: Creating verification view"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -125,10 +126,21 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 5/6: Complete - Verification view created")
+	slog.Info("Step 5/7: Complete - Verification view created")
 
-	// Step 6: Run VACUUM ANALYZE
-	msg = "Step 6/6: Running VACUUM ANALYZE"
+	// Step 6: Build abbreviation lookup table
+	msg = "Step 6/7: Building abbreviation lookup"
+	gn.Info(msg)
+	slog.Info(msg)
+	stepStart = time.Now()
+	if msg, err = buildAbbrLookup(ctx, o, cfg); err != nil {
+		return err
+	}
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
+	slog.Info("Step 6/7: Complete - Abbreviation lookup built")
+
+	// Step 7: Run VACUUM ANALYZE
+	msg = "Step 7/7: Running VACUUM ANALYZE"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -139,7 +151,7 @@ func (o *optimizer) Optimize(
 		"<em>VACUUM ANALYZE completed</em> %s",
 		gnfmt.TimeString(time.Since(stepStart).Seconds()),
 	)
-	slog.Info("Step 6/6: Complete - VACUUM ANALYZE finished")
+	slog.Info("Step 7/7: Complete - VACUUM ANALYZE finished")
 
 	totalDuration := time.Since(startTime)
 	slog.Info("Optimization complete",

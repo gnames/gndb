@@ -14,7 +14,7 @@ import (
 // vacuumAnalyze runs VACUUM ANALYZE on the entire database to
 // reclaim space and update query planner statistics.
 //
-// This is Step 6 of the optimize workflow - a gndb enhancement
+// This is Step 7 of the optimize workflow - a gndb enhancement
 // not present in gnidump. VACUUM reclaims storage occupied by
 // dead tuples. ANALYZE updates statistics used by the query
 // planner.

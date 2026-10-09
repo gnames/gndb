@@ -280,3 +280,31 @@ type VernacularStringIndex struct {
 	// is preferred.
 	Preferred bool
 }
+
+// AbbrLookup finds candidate names for abbreviated binomials and
+// trinomials, e.g. "C. elegans" -> key "c-elegans".
+// The table is rebuilt by the optimize command.
+type AbbrLookup struct {
+	// AbbrKey is the lowercase first letter of the genus, a dash,
+	// and the epithet stem, e.g. "c-elegans". Built by gnparser's
+	// stemmer.AbbrKey.
+	AbbrKey string `gorm:"type:varchar(255);not null"`
+
+	// Pos is the position of the epithet in the canonical form:
+	// 2 for a specific epithet, 3+ for infraspecific ones.
+	// For repeated epithets, the lowest position is kept.
+	Pos int16
+
+	// Genus is the full genus name.
+	Genus string `gorm:"type:varchar(255);not null"`
+
+	// CanonicalStemID links to canonical_stems.
+	CanonicalStemID string `gorm:"type:uuid;not null"`
+
+	// CanonicalStem is the stemmed canonical form.
+	CanonicalStem string `gorm:"type:varchar(255);not null"`
+
+	// DsNum is the number of data sources that have names with
+	// this stemmed canonical form. Used for ranking.
+	DsNum int16
+}

@@ -134,6 +134,7 @@ All directories are created during bootstrap (`cmd/root.go`).
 4. **Optimization** (`gndb.Optimizer`):
    - Creates indexes for fast lookups
    - Builds materialized views and denormalized tables
+     (`verification` view, `abbr_lookups` for abbreviated names)
    - Always rebuilds from scratch to apply algorithm improvements
 
 ### Database Schema Highlights
@@ -148,6 +149,8 @@ Aligned with gnidump for gnverifier compatibility:
 - **NameStringIndex**: Links name-strings to data sources with
   taxonomic metadata (rank, status, classification)
 - **Word/WordNameString**: Word-level indexes for fuzzy matching
+- **AbbrLookup**: Candidate names for abbreviations like `C. elegans`,
+  keyed by genus first letter and epithet stem (gnparser `stemmer.AbbrKey`)
 - **VernacularString/VernacularStringIndex**: Common names in multiple
   languages
 

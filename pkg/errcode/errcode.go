@@ -75,4 +75,5 @@ const (
 	OptimizerWordExtractionError
 	OptimizerViewCreationError
 	OptimizerVacuumError
+	OptimizerAbbrLookupError
 )
