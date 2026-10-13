@@ -112,6 +112,7 @@ CREATE INDEX abbr_lookups_key_idx ON abbr_lookups (abbr_key)
 //  4. Create the lookup index, drop the staging table
 //  5. Record the gnparser version in a comment on the table
 //  6. Log the largest keys to make odd cases easy to spot
+//  7. Build abbr_genera with sizes and classifications of genera
 //
 // Uses: cfg.Database.BatchSize
 func buildAbbrLookup(
@@ -175,9 +176,15 @@ func buildAbbrLookup(
 		return "", err
 	}
 
+	generaNum, err := buildAbbrGenera(ctx, pool)
+	if err != nil {
+		return "", err
+	}
+
 	msg := fmt.Sprintf(
-		"<em>Created abbreviation lookup with %s records</em>",
+		"<em>Created abbreviation lookup with %s records and %s genera</em>",
 		humanize.Comma(count),
+		humanize.Comma(generaNum),
 	)
 	return msg, nil
 }
@@ -234,6 +241,10 @@ func stageAbbrRows(
 // returns one row per epithet. Uninomials and names that do not
 // start with a capital letter give no rows. Epithets with an empty
 // stem (such as "que") are skipped.
+//
+// Names with an abbreviated genus ("C. elegans") or with a broken
+// character in the genus (U+FFFD from a wrong encoding) give no rows:
+// such genera cannot be candidates for an abbreviation found in text.
 func abbrRows(canonical, stemID string) []abbrRow {
 	words := strings.Fields(canonical)
 	if len(words) < 2 {
@@ -243,6 +254,11 @@ func abbrRows(canonical, stemID string) []abbrRow {
 	genus := words[0]
 	first, _ := utf8.DecodeRuneInString(genus)
 	if !unicode.IsUpper(first) {
+		return nil
+	}
+
+	if strings.HasSuffix(genus, ".") ||
+		strings.ContainsRune(genus, utf8.RuneError) {
 		return nil
 	}
 

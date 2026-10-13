@@ -18,6 +18,7 @@ func AllModels() []interface{} {
 		&VernacularString{},
 		&VernacularStringIndex{},
 		&AbbrLookup{},
+		&AbbrGenus{},
 	}
 }
 

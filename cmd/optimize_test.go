@@ -303,6 +303,7 @@ func TestOptimize_EndToEnd_VASCAN(t *testing.T) {
 
 	// Verify Phase 6: Abbreviation lookup
 	abbrCount := checkAbbrLookup(t, ctx, pool)
+	checkAbbrGenera(t, ctx, pool)
 
 	// Verify Phase 7: VACUUM ANALYZE completed
 	// (no direct verification, but command succeeded)
@@ -645,4 +646,77 @@ func checkAbbrLookup(
 	}
 
 	return count
+}
+
+// checkAbbrGenera verifies the abbr_genera table built by optimize.
+// VASCAN is the only data source, so it gives the classifications.
+func checkAbbrGenera(
+	t *testing.T,
+	ctx context.Context,
+	pool *pgxpool.Pool,
+) {
+	t.Helper()
+
+	// Every genus of abbr_lookups has a row.
+	var missing int
+	err := pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT l.genus) FROM abbr_lookups l
+		 LEFT JOIN abbr_genera g ON g.genus = l.genus
+		 WHERE g.genus IS NULL`,
+	).Scan(&missing)
+	require.NoError(t, err)
+	assert.Equal(t, 0, missing, "Every genus should be in abbr_genera")
+
+	// A genus has one row per kingdom.
+	var dupCount int
+	err = pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM (
+			SELECT genus, kingdom FROM abbr_genera
+			GROUP BY genus, kingdom HAVING COUNT(*) > 1
+		) d`,
+	).Scan(&dupCount)
+	require.NoError(t, err)
+	assert.Equal(t, 0, dupCount,
+		"Each genus and kingdom should have one row")
+
+	// The size is the number of distinct epithet stems.
+	var epithetsNum, keysNum int
+	var kingdom, classification, ranks string
+	var dataSourceID int
+	err = pool.QueryRow(ctx,
+		`SELECT epithets_num, kingdom, classification,
+		        classification_ranks, data_source_id
+		 FROM abbr_genera WHERE genus = 'Acer'`,
+	).Scan(&epithetsNum, &kingdom, &classification, &ranks, &dataSourceID)
+	require.NoError(t, err)
+	err = pool.QueryRow(ctx,
+		`SELECT COUNT(DISTINCT abbr_key) FROM abbr_lookups
+		 WHERE genus = 'Acer'`,
+	).Scan(&keysNum)
+	require.NoError(t, err)
+	assert.Equal(t, keysNum, epithetsNum)
+
+	// VASCAN classifications start at class, so there is no kingdom.
+	assert.Equal(t, "", kingdom)
+
+	// The classification is cut at the genus.
+	assert.Equal(t,
+		"Equisetopsida|Magnoliidae|Rosanae|Sapindales|Sapindaceae|"+
+			"Hippocastanoideae|Acereae|Acer",
+		classification)
+	assert.True(t, strings.HasSuffix(classification, "|Acer"),
+		"classification %q should end with the genus", classification)
+	assert.True(t, strings.HasSuffix(ranks, "|genus"),
+		"ranks %q should end with genus", ranks)
+	assert.Equal(t, 1002, dataSourceID)
+
+	// Without IRMNG, a genus is known only if it has a classification.
+	var knownMismatch int
+	err = pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM abbr_genera
+		 WHERE known <> (data_source_id <> 0)`,
+	).Scan(&knownMismatch)
+	require.NoError(t, err)
+	assert.Equal(t, 0, knownMismatch,
+		"Without IRMNG, known genera should be classified genera")
 }
