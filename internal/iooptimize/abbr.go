@@ -241,6 +241,10 @@ func stageAbbrRows(
 // returns one row per epithet. Uninomials and names that do not
 // start with a capital letter give no rows. Epithets with an empty
 // stem (such as "que") are skipped.
+//
+// Names with an abbreviated genus ("C. elegans") or with a broken
+// character in the genus (U+FFFD from a wrong encoding) give no rows:
+// such genera cannot be candidates for an abbreviation found in text.
 func abbrRows(canonical, stemID string) []abbrRow {
 	words := strings.Fields(canonical)
 	if len(words) < 2 {
@@ -250,6 +254,11 @@ func abbrRows(canonical, stemID string) []abbrRow {
 	genus := words[0]
 	first, _ := utf8.DecodeRuneInString(genus)
 	if !unicode.IsUpper(first) {
+		return nil
+	}
+
+	if strings.HasSuffix(genus, ".") ||
+		strings.ContainsRune(genus, utf8.RuneError) {
 		return nil
 	}
 

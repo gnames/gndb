@@ -8,6 +8,9 @@
   for homonyms. Classifications come from Catalogue of Life XR, then
   Catalogue of Life, then the largest data source with genus ranks.
   Needs `gndb migrate` on existing databases.
+- Fix: abbreviation lookup skips names with an abbreviated genus
+  (`C. elegans`) or a broken character in the genus, which cannot be
+  candidates for abbreviations found in text.
 
 ## [v0.1.5] - 2026-10-09 Fri
 

@@ -52,6 +52,16 @@ func TestAbbrRows_Split(t *testing.T) {
 			canonical: "aus bus",
 			want:      nil,
 		},
+		{
+			name:      "abbreviated genus",
+			canonical: "C. elegans",
+			want:      nil,
+		},
+		{
+			name:      "broken character in genus",
+			canonical: "Pleuro�yne rotata",
+			want:      nil,
+		},
 	}
 
 	for _, tt := range tests {
