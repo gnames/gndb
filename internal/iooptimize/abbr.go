@@ -112,6 +112,7 @@ CREATE INDEX abbr_lookups_key_idx ON abbr_lookups (abbr_key)
 //  4. Create the lookup index, drop the staging table
 //  5. Record the gnparser version in a comment on the table
 //  6. Log the largest keys to make odd cases easy to spot
+//  7. Build abbr_genera with sizes and classifications of genera
 //
 // Uses: cfg.Database.BatchSize
 func buildAbbrLookup(
@@ -175,9 +176,15 @@ func buildAbbrLookup(
 		return "", err
 	}
 
+	generaNum, err := buildAbbrGenera(ctx, pool)
+	if err != nil {
+		return "", err
+	}
+
 	msg := fmt.Sprintf(
-		"<em>Created abbreviation lookup with %s records</em>",
+		"<em>Created abbreviation lookup with %s records and %s genera</em>",
 		humanize.Comma(count),
+		humanize.Comma(generaNum),
 	)
 	return msg, nil
 }

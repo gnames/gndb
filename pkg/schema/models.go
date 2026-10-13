@@ -308,3 +308,44 @@ type AbbrLookup struct {
 	// this stemmed canonical form. Used for ranking.
 	DsNum int16
 }
+
+// AbbrGenus contains the size and the classification of a genus from
+// abbr_lookups. Genera with the same name in different kingdoms
+// (homonyms, such as Morus, a plant and a bird) have a row for every
+// kingdom. Genera without a classification have one row with
+// DataSourceID 0. The table is rebuilt by the optimize command.
+type AbbrGenus struct {
+	// Genus is the full genus name, as in abbr_lookups.
+	Genus string `gorm:"type:varchar(255);not null;index"`
+
+	// Kingdom is the kingdom of the genus from its classification.
+	// It is empty if the genus has no classification, or if the
+	// classification has no kingdom rank.
+	Kingdom string `gorm:"type:varchar(255);not null"`
+
+	// EpithetsNum is the number of distinct epithet stems of the genus
+	// in abbr_lookups. Homonyms share the same number.
+	EpithetsNum int `gorm:"not null"`
+
+	// NamesNum is the number of records with this genus and kingdom
+	// that support the classification.
+	NamesNum int `gorm:"not null"`
+
+	// Classification is the classification path of the genus,
+	// separated by `|`, ending with the genus.
+	Classification string
+
+	// ClassificationRanks contains ranks of the Classification,
+	// separated by `|`.
+	ClassificationRanks string
+
+	// DataSourceID is the data source of the classification. It is 0
+	// if the genus has no classification.
+	DataSourceID int
+}
+
+// TableName sets the table name, because GORM would not use the Latin
+// plural of genus.
+func (AbbrGenus) TableName() string {
+	return "abbr_genera"
+}

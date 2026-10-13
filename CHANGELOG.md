@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add: `abbr_genera` table built in the abbreviation step of
+  `gndb optimize`. It has the size of every genus of `abbr_lookups`
+  (distinct epithet stems) and its classification, one row per kingdom
+  for homonyms. Classifications come from Catalogue of Life XR, then
+  Catalogue of Life, then the largest data source with genus ranks.
+  Needs `gndb migrate` on existing databases.
+
 ## [v0.1.5] - 2026-10-09 Fri
 
 - Add [#14]: `abbr_lookups` table built by `gndb optimize` (new step 6 of 7)
