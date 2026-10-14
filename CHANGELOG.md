@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fix: only `GNDB_*` environment variables configure gndb. Generic
+  variables like `DATABASE_HOST`, `DATABASE_PASSWORD` or `LOG_LEVEL`,
+  set for other programs, were used as well.
+
 ## [v0.1.5] - 2026-10-09 Fri
 
 - Add [#14]: `abbr_lookups` table built by `gndb optimize` (new step 6 of 7)

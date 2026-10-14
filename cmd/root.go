@@ -255,30 +255,36 @@ func initEnvVars(v *viper.Viper) {
 	// We set them manually so we can see clearly which env variables are allowed.
 	// These match the fields included in config.ToOptions() - i.e., persistent
 	// configuration that can be stored in config.yaml.
+	//
+	// BindEnv is called with a key only, so viper builds the variable name
+	// from the prefix and the key (database.host -> GNDB_DATABASE_HOST).
+	// If a name is given explicitly, viper uses it as is, without the prefix,
+	// and generic variables like DATABASE_HOST would configure gndb.
+	// AutomaticEnv is not used for the same reason.
 
 	v.SetEnvPrefix("GNDB")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	// Database configuration
-	_ = v.BindEnv("database.host", "DATABASE_HOST")
-	_ = v.BindEnv("database.port", "DATABASE_PORT")
-	_ = v.BindEnv("database.user", "DATABASE_USER")
-	_ = v.BindEnv("database.password", "DATABASE_PASSWORD")
-	_ = v.BindEnv("database.database", "DATABASE_DATABASE")
-	_ = v.BindEnv("database.ssl_mode", "DATABASE_SSL_MODE")
-	_ = v.BindEnv("database.batch_size", "DATABASE_BATCH_SIZE")
-	slog.Info("Database environment variables bound")
+	keys := []string{
+		// Database configuration
+		"database.host",
+		"database.port",
+		"database.user",
+		"database.password",
+		"database.database",
+		"database.ssl_mode",
+		"database.batch_size",
 
-	// Log configuration
-	_ = v.BindEnv("log.level", "LOG_LEVEL")
-	_ = v.BindEnv("log.format", "LOG_FORMAT")
-	_ = v.BindEnv("log.destination", "LOG_DESTINATION")
-	slog.Info("Log environment variables bound")
+		// Log configuration
+		"log.level",
+		"log.format",
+		"log.destination",
 
-	// General configuration
-	_ = v.BindEnv("jobs_number", "JOBS_NUMBER")
-
-	v.AutomaticEnv()
-	slog.Info("Environment variable binding complete",
-		"automatic_env_lookup", "enabled")
+		// General configuration
+		"jobs_number",
+	}
+	for _, k := range keys {
+		_ = v.BindEnv(k)
+	}
+	slog.Info("Environment variables bound", "prefix", "GNDB", "count", len(keys))
 }
