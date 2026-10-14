@@ -1,6 +1,6 @@
 module github.com/gnames/gndb
 
-go 1.26.4
+go 1.27
 
 require (
 	ariga.io/atlas v1.3.0
