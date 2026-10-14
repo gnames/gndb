@@ -152,7 +152,8 @@ Aligned with gnidump for gnverifier compatibility:
 - **AbbrLookup**: Candidate names for abbreviations like `C. elegans`,
   keyed by genus first letter and epithet stem (gnparser `stemmer.AbbrKey`)
 - **AbbrGenus** (`abbr_genera`): Size and classification of every
-  genus in `abbr_lookups`, one row per kingdom for homonyms
+  genus in `abbr_lookups`, one row per kingdom for homonyms, and
+  whether the genus is known (in IRMNG or classified)
 - **VernacularString/VernacularStringIndex**: Common names in multiple
   languages
 

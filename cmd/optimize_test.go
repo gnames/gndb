@@ -709,4 +709,14 @@ func checkAbbrGenera(
 	assert.True(t, strings.HasSuffix(ranks, "|genus"),
 		"ranks %q should end with genus", ranks)
 	assert.Equal(t, 1002, dataSourceID)
+
+	// Without IRMNG, a genus is known only if it has a classification.
+	var knownMismatch int
+	err = pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM abbr_genera
+		 WHERE known <> (data_source_id <> 0)`,
+	).Scan(&knownMismatch)
+	require.NoError(t, err)
+	assert.Equal(t, 0, knownMismatch,
+		"Without IRMNG, known genera should be classified genera")
 }

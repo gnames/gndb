@@ -342,6 +342,10 @@ type AbbrGenus struct {
 	// DataSourceID is the data source of the classification. It is 0
 	// if the genus has no classification.
 	DataSourceID int
+
+	// Known is true if the genus is in IRMNG or has a classification.
+	// Misspelled genera are usually unknown. Homonyms share the value.
+	Known bool `gorm:"not null;default:false"`
 }
 
 // TableName sets the table name, because GORM would not use the Latin

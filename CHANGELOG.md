@@ -8,6 +8,9 @@
   for homonyms. Classifications come from Catalogue of Life XR, then
   Catalogue of Life, then the largest data source with genus ranks.
   Needs `gndb migrate` on existing databases.
+- Add: `known` flag in `abbr_genera`: the genus is in IRMNG (data
+  source 181) or has a classification. Misspelled genera are usually
+  unknown. Needs `gndb migrate`.
 - Fix: abbreviation lookup skips names with an abbreviated genus
   (`C. elegans`) or a broken character in the genus, which cannot be
   candidates for abbreviations found in text.

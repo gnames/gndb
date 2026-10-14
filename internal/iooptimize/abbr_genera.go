@@ -13,6 +13,11 @@ import (
 // than Catalogue of Life.
 var abbrGeneraSourceIDs = []int{13, 1}
 
+// abbrIRMNGID is the data source of the Interim Register of Marine and
+// Nonmarine Genera. It lists genera and higher taxa only, and is used to
+// tell real genera from misspelled ones.
+const abbrIRMNGID = 181
+
 // abbrGeneraSQL fills abbr_genera from abbr_lookups and the
 // classifications of a data source ($1).
 //
@@ -29,11 +34,25 @@ var abbrGeneraSourceIDs = []int{13, 1}
 // Homonyms are separated by kingdom, not by nomenclatural code. Codes
 // of records are sometimes wrong (beetles marked as botanical), and
 // groups such as Chromista have no fixed code.
+//
+// A genus is known if it is a genus of IRMNG ($2), accepted or a
+// synonym, or if it has a classification. Misspelled genera
+// (Caenorbditis) are usually neither. A classification rescues new
+// genera that IRMNG does not have yet. All rows of a homonym have the
+// same value, because every row of a classified genus has a
+// classification.
 const abbrGeneraSQL = `
 INSERT INTO abbr_genera
   (genus, kingdom, epithets_num, names_num,
-   classification, classification_ranks, data_source_id)
-WITH sizes AS (
+   classification, classification_ranks, data_source_id, known)
+WITH irmng AS (
+  SELECT DISTINCT c.name AS genus
+  FROM name_string_indices nsi
+  JOIN name_strings ns ON ns.id = nsi.name_string_id
+  JOIN canonicals c ON c.id = ns.canonical_id
+  WHERE nsi.data_source_id = $2
+    AND nsi.rank = 'genus'
+), sizes AS (
   SELECT genus, count(DISTINCT abbr_key)::int AS epithets_num
   FROM abbr_lookups
   GROUP BY genus
@@ -78,9 +97,11 @@ SELECT s.genus,
        coalesce(k.names_num, 0),
        coalesce(k.classification, ''),
        coalesce(k.classification_ranks, ''),
-       CASE WHEN k.genus IS NULL THEN 0 ELSE $1 END
+       CASE WHEN k.genus IS NULL THEN 0 ELSE $1 END,
+       k.genus IS NOT NULL OR i.genus IS NOT NULL
 FROM sizes s
 LEFT JOIN kingdoms k ON k.genus = s.genus
+LEFT JOIN irmng i ON i.genus = s.genus
 ORDER BY s.genus, k.names_num DESC`
 
 // buildAbbrGenera rebuilds abbr_genera, the sizes and classifications
@@ -97,25 +118,30 @@ func buildAbbrGenera(ctx context.Context, pool *pgxpool.Pool) (int64, error) {
 	}
 	slog.Info("Classifying abbreviation genera", "data_source_id", sourceID)
 
-	if _, err = pool.Exec(ctx, abbrGeneraSQL, sourceID); err != nil {
+	_, err = pool.Exec(ctx, abbrGeneraSQL, sourceID, abbrIRMNGID)
+	if err != nil {
 		return 0, abbrError("insert genera", err)
 	}
 
-	var generaNum, classifiedNum, homonymsNum int64
+	var generaNum, classifiedNum, knownNum, homonymsNum int64
 	q := `
 SELECT count(DISTINCT genus),
        count(DISTINCT genus) FILTER (WHERE data_source_id <> 0),
+       count(DISTINCT genus) FILTER (WHERE known),
        (SELECT count(*) FROM (
           SELECT genus FROM abbr_genera GROUP BY genus HAVING count(*) > 1
         ) h)
 FROM abbr_genera`
-	err = pool.QueryRow(ctx, q).Scan(&generaNum, &classifiedNum, &homonymsNum)
+	err = pool.QueryRow(ctx, q).Scan(
+		&generaNum, &classifiedNum, &knownNum, &homonymsNum,
+	)
 	if err != nil {
 		return 0, abbrError("count genera", err)
 	}
 	slog.Info("Built abbreviation genera",
 		"genera", generaNum,
 		"classified", classifiedNum,
+		"known", knownNum,
 		"homonyms", homonymsNum,
 	)
 	return generaNum, nil

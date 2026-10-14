@@ -336,6 +336,38 @@ Winning stems expand to real canonicals with the existing index on
 `name_strings.canonical_stem_id`. The exact epithet ending in the
 text (*alba* vs *albus*) then gives a ranking bonus.
 
+## Genus table
+
+The abbreviation step also builds `abbr_genera`: one row per genus of
+`abbr_lookups` and kingdom, with the size of the genus (distinct
+epithet stems), its classification and the source of the
+classification. See "Genus table from gndb" in gnames `PLAN.md`.
+
+### Known genera
+
+`abbr_lookups` has many genera that exist only as misspellings
+(*Caenorbditis elegans*) or parsing artifacts (*Helicidae*, *Pseud*).
+Most of them have one name, and a genus with one name gets the most
+evidence from a match, so they must be marked.
+
+A genus is `known` if:
+
+- it is a genus-rank name of IRMNG (data source 181), accepted or a
+  synonym. IRMNG lists genera and higher taxa only, so it is a check
+  of genus spelling. Synonyms count, because old literature uses them;
+- or it has a classification (CoL XR, then CoL, then the largest
+  source with genus ranks). This rescues new genera that IRMNG does not
+  have yet (*Venolactarius*).
+
+All rows of a homonym have the same value. Without IRMNG in the
+database, known genera are the classified ones.
+
+On `gntest`: 417,710 genera are known and 81,580 are unknown. IRMNG
+has 66% of genera with one name, 86% of genera with 2 to 5 names, and
+more than 97% of larger genera. Most unknown genera have one name and
+no classification. Computing the flag adds about 20 seconds to the
+step.
+
 ## Future: taxonomic context
 
 Publications are often mostly about one group (plants, insects, ...).
