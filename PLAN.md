@@ -158,8 +158,8 @@ canonical would still match exactly.
 Add a boolean column to `canonicals`, for example `maybe_misspelling`
 (default false).
 
-A flagged canonical is in ION only, by definition (see the rule below).
-So every `name_strings` row with this canonical belongs to ION, and the
+A flagged canonical is in ION only, by definition (see the rule below):
+no other source has it, reliable or not. So every `name_strings` row with this canonical belongs to ION, and the
 flag cannot hide a name of another source. Nothing is moved or deleted:
 
 * ION rows stay in `name_string_indices`, gndict keeps reading them as
@@ -178,7 +178,10 @@ exact, because the rule decides per canonical.
 
 Flag a canonical if:
 
-1. it is used only by ION, no reliable source has it;
+1. ION is its only source. The measurement above used a weaker test (no
+   reliable source has it), but 29% of those canonicals (205,399 of
+   718,233, checked 2026-11-06) are also in other unreliable sources,
+   and flagging them would hide names of these sources;
 2. it has 2 or more words;
 3. its stem is not a stem of any reliable name;
 4. the trie of reliable stems gives a match with edit distance 1
@@ -296,9 +299,35 @@ Dependencies: `github.com/dvirsky/levenshtein` and
 
 * Name of the column, and whether other unreliable sources need the same
   treatment later.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
+  Suggestion: maybe_misspelling, there maybe other sources that would benefit
+  from this column.
 * The set of reliable sources is defined by gndict. Should gndb have it
   in configuration instead of hard-coded ids (2 is Wikispecies, curated
   but has junk; 11 GBIF, 12 EOL, 206 Ruhoff are not curated but used)?
+  Suggestion: keep 13 -- CoL Expanded, remove 11 -- GBIF, I think 13 should be
+  pretty much a superset of 1 -- CoL and 11 -- GBIF, do the same in gndict.
+  Consider a gnlib hardcoded list, so gndb and gndict can both use it, or
+  place it in gndb?
 * Edit distance 2 (`MaxEditDist` 2 is allowed in gnmatcher) was not
   measured.
+  Suggestion: Edit Distance 2 generates too many false positives, I would
+  ignore it for flagging misspelled ION names.
 * Should a dry-run report be kept as a regular command option?
+  Suggestion: if we make dry-run universal for gndb features, but may be it is
+  a low priority?

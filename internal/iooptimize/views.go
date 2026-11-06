@@ -12,7 +12,7 @@ import (
 )
 
 // createVerificationView orchestrates the creation of the
-// verification materialized view. This is Step 5 of the
+// verification materialized view. This is Step 6 of the
 // optimization workflow from gnidump.
 //
 // Workflow:

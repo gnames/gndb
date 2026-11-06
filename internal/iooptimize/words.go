@@ -34,7 +34,7 @@ type wordResult struct {
 }
 
 // extractWords orchestrates the word extraction and insertion
-// process. This is Step 4 of the optimization workflow from
+// process. This is Step 5 of the optimization workflow from
 // gnidump.
 //
 // Workflow:

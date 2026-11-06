@@ -135,6 +135,12 @@ type Canonical struct {
 
 	// Canonical name-string
 	Name string `gorm:"type:text;not null"`
+
+	// MaybeMisspelling is true if ION is the only source of the canonical,
+	// and it looks like a misspelling of a name from a reliable source.
+	// Such canonicals would block fuzzy matching, so gnmatcher skips them.
+	// gndb optimize recomputes the flag on every run.
+	MaybeMisspelling bool `gorm:"not null;default:false"`
 }
 
 // CanonicalFull ia a full canonical form.

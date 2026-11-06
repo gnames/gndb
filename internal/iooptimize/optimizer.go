@@ -28,15 +28,16 @@ func NewOptimizer(op db.Operator) gndb.Optimizer {
 	}
 }
 
-// Optimize applies performance optimizations by executing 7
+// Optimize applies performance optimizations by executing 8
 // sequential steps:
 //  1. Reparse all name_strings with latest gnparser algorithms
 //  2. Normalize vernacular language codes
 //  3. Remove orphaned records
-//  4. Extract and link words for fuzzy matching
-//  5. Create verification materialized view with indexes
-//  6. Build abbreviation lookup table
-//  7. Run VACUUM ANALYZE to update statistics
+//  4. Flag possibly misspelled ION canonicals
+//  5. Extract and link words for fuzzy matching
+//  6. Create verification materialized view with indexes
+//  7. Build abbreviation lookup table
+//  8. Run VACUUM ANALYZE to update statistics
 //
 // Errors are returned to the CLI layer for user-friendly display
 // via gn.PrintErrorMessage(). Progress messages are logged via
@@ -69,7 +70,7 @@ func (o *optimizer) Optimize(
 
 	// Step 1: Reparse all name_strings with latest gnparser
 	// algorithms
-	msg = "Step 1/7: Reparsing name strings"
+	msg = "Step 1/8: Reparsing name strings"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -77,10 +78,10 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 1/7: Complete - Name strings reparsed")
+	slog.Info("Step 1/8: Complete - Name strings reparsed")
 
 	// Step 2: Normalize vernacular language codes
-	msg = "Step 2/7: Normalizing vernacular languages"
+	msg = "Step 2/8: Normalizing vernacular languages"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -91,12 +92,12 @@ func (o *optimizer) Optimize(
 		"%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()),
 	)
 	slog.Info(
-		"Step 2/7: Complete - " +
+		"Step 2/8: Complete - " +
 			"Vernacular languages normalized",
 	)
 
 	// Step 3: Remove orphaned records
-	msg = "Step 3/7: Removing orphaned records"
+	msg = "Step 3/8: Removing orphaned records"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -104,10 +105,21 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 3/7: Complete - Orphaned records removed")
+	slog.Info("Step 3/8: Complete - Orphaned records removed")
 
-	// Step 4: Extract and link words for advanced matching
-	msg = "Step 4/7: Extracting words for advanced matching"
+	// Step 4: Flag possibly misspelled ION canonicals
+	msg = "Step 4/8: Flagging ION misspellings"
+	gn.Info(msg)
+	slog.Info(msg)
+	stepStart = time.Now()
+	if msg, err = flagMisspellings(ctx, o, cfg); err != nil {
+		return err
+	}
+	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
+	slog.Info("Step 4/8: Complete - ION misspellings flagged")
+
+	// Step 5: Extract and link words for advanced matching
+	msg = "Step 5/8: Extracting words for advanced matching"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -115,10 +127,10 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 4/7: Complete - Words extracted and linked")
+	slog.Info("Step 5/8: Complete - Words extracted and linked")
 
-	// Step 5: Create verification materialized view
-	msg = "Step 5/7: Creating verification view"
+	// Step 6: Create verification materialized view
+	msg = "Step 6/8: Creating verification view"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -126,10 +138,10 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 5/7: Complete - Verification view created")
+	slog.Info("Step 6/8: Complete - Verification view created")
 
-	// Step 6: Build abbreviation lookup table
-	msg = "Step 6/7: Building abbreviation lookup"
+	// Step 7: Build abbreviation lookup table
+	msg = "Step 7/8: Building abbreviation lookup"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -137,10 +149,10 @@ func (o *optimizer) Optimize(
 		return err
 	}
 	gn.Message("%s %s", msg, gnfmt.TimeString(time.Since(stepStart).Seconds()))
-	slog.Info("Step 6/7: Complete - Abbreviation lookup built")
+	slog.Info("Step 7/8: Complete - Abbreviation lookup built")
 
-	// Step 7: Run VACUUM ANALYZE
-	msg = "Step 7/7: Running VACUUM ANALYZE"
+	// Step 8: Run VACUUM ANALYZE
+	msg = "Step 8/8: Running VACUUM ANALYZE"
 	gn.Info(msg)
 	slog.Info(msg)
 	stepStart = time.Now()
@@ -151,7 +163,7 @@ func (o *optimizer) Optimize(
 		"<em>VACUUM ANALYZE completed</em> %s",
 		gnfmt.TimeString(time.Since(stepStart).Seconds()),
 	)
-	slog.Info("Step 7/7: Complete - VACUUM ANALYZE finished")
+	slog.Info("Step 8/8: Complete - VACUUM ANALYZE finished")
 
 	totalDuration := time.Since(startTime)
 	slog.Info("Optimization complete",

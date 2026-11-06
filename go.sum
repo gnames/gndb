@@ -54,6 +54,8 @@ github.com/DATA-DOG/go-sqlmock v1.5.0 h1:Shsta01QNfFxHCfpW6YH2STWB0MudeXXEWMr20O
 github.com/DATA-DOG/go-sqlmock v1.5.0/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
+github.com/Shugyousha/mafsa v0.2.0 h1:6HY6Me41PPIOIi5fPp8ZmNHoS9WaqoQMweqP2GrHOH0=
+github.com/Shugyousha/mafsa v0.2.0/go.mod h1:h6m5+MtPR+uLmA+cytwLTiBC/5/9S1mOojyFe3wk5S0=
 github.com/VividCortex/ewma v1.2.0 h1:f58SaIzcDXrSy3kWaHNvuJgJ3Nmz59Zji6XoJR/q1ow=
 github.com/VividCortex/ewma v1.2.0/go.mod h1:nz4BbCtbLyFDeC9SUHbtcT5644juEuWfUAUnGx7j5l4=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=
@@ -113,6 +115,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=
 github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
+github.com/dvirsky/levenshtein v0.0.0-20200624034316-59b26b61c3c8 h1:ZHXmu38XBR16nVGtbMr39LBLtLpyat9KxM/17jp+MSE=
+github.com/dvirsky/levenshtein v0.0.0-20200624034316-59b26b61c3c8/go.mod h1:XKAbRrNT11mKMvr8sixVFkHyaFbkh7ag+086d9pNEFg=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
@@ -140,14 +144,14 @@ github.com/gnames/gn v0.1.4/go.mod h1:oeib+d5Gptj5eUW45bPP5MDBEBJmuI7mrCHU9dqQMB
 github.com/gnames/gnfmt v0.1.0/go.mod h1:WG9c3CoiVrGc1SDsxLk7zjmv2B4UIzI00m4K5Khc/d0=
 github.com/gnames/gnfmt v0.6.5 h1:p6mw/Dcub7g2i3gbiEV3X5aVvO0X4XUODkwsX7YQ72c=
 github.com/gnames/gnfmt v0.6.5/go.mod h1:VL7mM0BzryW5+8D9tvZ56ZnvZsGf4Vum8u7U3GuBXcY=
-github.com/gnames/gnlib v0.71.0 h1:bdCK/GqpnrwZLqmpqt7okxFYKotz+E0Q/W1JcvNTb3s=
-github.com/gnames/gnlib v0.71.0/go.mod h1:7/Tvt8pSomW08dnCqGkReSUr5/l5AttcMSWqmYldMOo=
 github.com/gnames/gnparser v1.15.2 h1:BTNMFRBW4QuDw3NbT+pMmfxK+7pceUJAXkn+3oHJscM=
 github.com/gnames/gnparser v1.15.2/go.mod h1:NBrwLLC8upETOn+JGDpFWw2sJQj3eD7PeOrjtKyWaEY=
 github.com/gnames/gnsys v0.4.4 h1:dZ6ujukf1f8sR7NROBGK2bYV9dG3kDIr/8X/XY6OD5Q=
 github.com/gnames/gnsys v0.4.4/go.mod h1:vf2ZbGZDw0qRpl5MctWTsyOHuAW8r26A2O+GxMN2PV0=
 github.com/gnames/gnuuid v0.2.0 h1:r6rRKQvPLEB5Woj9sTzC6Y13LZeRqN4iTFzVPt0HaFY=
 github.com/gnames/gnuuid v0.2.0/go.mod h1:XLcmCV/e0YRE9ED3B6jc8c4V3lTUlZiSb/fYnWD2HV0=
+github.com/gnames/levenshtein v0.4.0 h1:yC/2IcSmG7akKxqpWyvDUPzVwogislkA1LG+BURxqxU=
+github.com/gnames/levenshtein v0.4.0/go.mod h1:SxfO0pn22XHRXFSuREr8SWwpzc/OKy/ArG60xNck+Ug=
 github.com/gnames/organizer v0.1.1 h1:3Xcz4QWS6cDBKI5sFK6ZJjpNptMJV6Fsq4N9gmC7Um8=
 github.com/gnames/organizer v0.1.1/go.mod h1:IZrbsFCqHb7DzKWmM9gf17khqRmSTG5ywuPF5BdM6qU=
 github.com/gnames/tribool v0.1.1 h1:kktNme8blgibopZVgQ02kkJGHMpxslD2Tv5UZCyb/vw=

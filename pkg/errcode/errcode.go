@@ -76,4 +76,5 @@ const (
 	OptimizerViewCreationError
 	OptimizerVacuumError
 	OptimizerAbbrLookupError
+	OptimizerMisspellingError
 )

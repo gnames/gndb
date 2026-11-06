@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add: `maybe_misspelling` flag in `canonicals`, computed by a new step
+  of `gndb optimize` (step 4 of 8). It marks multi-word names that only
+  ION has and that gnmatcher would otherwise fuzzy-match to a name of a
+  reliable source. Flagged pairs are saved to
+  `~/.cache/gndb/misspellings.tsv`. Needs `gndb migrate`.
 - Add: `abbr_genera` table built in the abbreviation step of
   `gndb optimize`. It has the size of every genus of `abbr_lookups`
   (distinct epithet stems) and its classification, one row per kingdom

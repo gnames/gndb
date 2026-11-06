@@ -217,8 +217,10 @@ gndb optimize
 
 1. Reparses all name-strings using the latest [GNparser]
 2. Builds canonical forms (simple, full, stemmed)
-3. Creates word indexes for advanced name search
-4. Builds materialized views and runs VACUUM ANALYZE
+3. Flags ION names that look like misspellings of reliable names
+   (they are saved to `~/.cache/gndb/misspellings.tsv` for a review)
+4. Creates word indexes for advanced name search
+5. Builds materialized views and runs VACUUM ANALYZE
 
 Optimization may take 20–90 minutes depending on the dataset size.
 Progress bars show the current status. You can re-run this command

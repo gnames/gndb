@@ -25,6 +25,7 @@ require (
 )
 
 require (
+	github.com/Shugyousha/mafsa v0.2.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
@@ -32,9 +33,11 @@ require (
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/dvirsky/levenshtein v0.0.0-20200624034316-59b26b61c3c8 // indirect
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/gnames/gnsys v0.4.4 // indirect
+	github.com/gnames/levenshtein v0.4.0 // indirect
 	github.com/gnames/organizer v0.1.1 // indirect
 	github.com/gnames/tribool v0.1.1 // indirect
 	github.com/go-openapi/inflect v1.0.1 // indirect
@@ -81,3 +84,5 @@ require (
 )
 
 tool github.com/spf13/cobra-cli
+
+replace github.com/gnames/gnlib => ../gnlib

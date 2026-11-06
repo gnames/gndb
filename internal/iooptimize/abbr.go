@@ -99,7 +99,7 @@ CREATE INDEX abbr_lookups_key_idx ON abbr_lookups (abbr_key)
 
 // buildAbbrLookup rebuilds the abbr_lookups table used to find
 // candidate names for abbreviations like "C. elegans". This is
-// Step 6 of the optimization workflow. It must run after reparsing
+// Step 7 of the optimization workflow. It must run after reparsing
 // (Step 1) and orphan removal (Step 3), and before VACUUM ANALYZE.
 //
 // Keys are built in Go with stemmer.AbbrKey from gnparser, the same
