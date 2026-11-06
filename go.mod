@@ -8,7 +8,7 @@ require (
 	github.com/dustin/go-humanize v1.1.0
 	github.com/gnames/gn v0.1.4
 	github.com/gnames/gnfmt v0.6.5
-	github.com/gnames/gnlib v0.71.0
+	github.com/gnames/gnlib v0.72.0
 	github.com/gnames/gnparser v1.15.2
 	github.com/gnames/gnuuid v0.2.0
 	github.com/google/uuid v1.6.0
@@ -84,5 +84,3 @@ require (
 )
 
 tool github.com/spf13/cobra-cli
-
-replace github.com/gnames/gnlib => ../gnlib
