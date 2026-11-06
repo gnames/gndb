@@ -320,8 +320,9 @@ Dependencies: `github.com/dvirsky/levenshtein` and
 * The set of reliable sources is defined by gndict. Should gndb have it
   in configuration instead of hard-coded ids (2 is Wikispecies, curated
   but has junk; 11 GBIF, 12 EOL, 206 Ruhoff are not curated but used)?
-  Suggestion: keep 13 -- CoL Expanded, remove 11 -- GBIF, I think 13 should be
-  pretty much a superset of 1 -- CoL and 11 -- GBIF, do the same in gndict.
+  Decision: gndb uses curated sources plus 11, 12, 13 and 206. 13 covers 1,
+  but not 11: 69,378 GBIF names are in no other reliable source. gndict
+  still has to add 13.
   Consider a gnlib hardcoded list, so gndb and gndict can both use it, or
   place it in gndb?
 * Edit distance 2 (`MaxEditDist` 2 is allowed in gnmatcher) was not

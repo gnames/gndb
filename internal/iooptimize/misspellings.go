@@ -32,8 +32,9 @@ const (
 )
 
 // reliableNamesSQL selects canonical forms of reliable sources with their
-// stems. Reliable sources are the curated ones, EOL (12), Catalogue of
-// Life XR (13) and Ruhoff 1980 (206).
+// stems. Reliable sources are the curated ones, GBIF (11), EOL (12),
+// Catalogue of Life XR (13) and Ruhoff 1980 (206). GBIF stays, because
+// Catalogue of Life XR does not cover all of its names.
 const reliableNamesSQL = `
 SELECT DISTINCT cs.name, c.name
 FROM name_string_indices nsi
@@ -41,7 +42,7 @@ JOIN data_sources ds ON ds.id = nsi.data_source_id
 JOIN name_strings ns ON ns.id = nsi.name_string_id
 JOIN canonicals c ON c.id = ns.canonical_id
 JOIN canonical_stems cs ON cs.id = ns.canonical_stem_id
-WHERE ds.is_curated OR ds.id IN (12, 13, 206)`
+WHERE ds.is_curated OR ds.id IN (11, 12, 13, 206)`
 
 // ionOnlyNamesSQL selects canonical forms that have 2 or more words and
 // are used by ION and by no other source, reliable or not. It guarantees
