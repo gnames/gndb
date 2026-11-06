@@ -19,6 +19,9 @@
 - Fix: abbreviation lookup skips names with an abbreviated genus
   (`C. elegans`) or a broken character in the genus, which cannot be
   candidates for abbreviations found in text.
+- Fix: `gndb migrate` dropped materialized views even with `--dry-run`,
+  when the user cancelled, or when the schema was up to date. Now it
+  drops them only right before applying changes.
 - Fix: only `GNDB_*` environment variables configure gndb. Generic
   variables like `DATABASE_HOST`, `DATABASE_PASSWORD` or `LOG_LEVEL`,
   set for other programs, were used as well.

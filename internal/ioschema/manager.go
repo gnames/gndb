@@ -90,12 +90,6 @@ func (m *manager) Migrate(
 		return NotConnectedError()
 	}
 
-	// Drop materialized views before migration
-	// (required for ALTER TABLE operations)
-	if err := m.operator.DropMaterializedViews(ctx); err != nil {
-		return err
-	}
-
 	// Open the Atlas Postgres driver on the shared connection pool.
 	sqlDB := stdlib.OpenDBFromPool(pool)
 	drv, err := atlasPG.Open(sqlDB)
@@ -125,7 +119,7 @@ func (m *manager) Migrate(
 	if len(changes) == 0 {
 		gn.Info("Schema is already up to date.")
 		if opts.RecreateViews {
-			return m.operator.CreateMaterializedViews(ctx)
+			return m.recreateViews(ctx)
 		}
 		return nil
 	}
@@ -149,6 +143,12 @@ func (m *manager) Migrate(
 		return nil
 	}
 
+	// Views are dropped only here, a dry-run or a cancelled migration must
+	// leave them intact (required for ALTER TABLE operations).
+	if err := m.operator.DropMaterializedViews(ctx); err != nil {
+		return err
+	}
+
 	// Apply changes.
 	if err := drv.ApplyChanges(ctx, changes, inPlace); err != nil {
 		return MigrateSchemaError(err)
@@ -164,6 +164,14 @@ func (m *manager) Migrate(
 	}
 
 	return nil
+}
+
+// recreateViews replaces existing materialized views with new ones.
+func (m *manager) recreateViews(ctx context.Context) error {
+	if err := m.operator.DropMaterializedViews(ctx); err != nil {
+		return err
+	}
+	return m.operator.CreateMaterializedViews(ctx)
 }
 
 // inspectDesiredSchema returns the Atlas schema representation of what
